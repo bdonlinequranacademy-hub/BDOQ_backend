@@ -1,11 +1,30 @@
 import { Router, Request, Response } from "express";
 import passport from "passport";
-import { login, oauthSuccess, register } from "../controllers/authController";
+import { auth } from "../middleware/auth";
+import { portalBaseUrl } from "../services/verificationTokens";
+import {
+  login,
+  oauthSuccess,
+  getMe,
+  register,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/authController";
 
 const router = Router();
 
+const oauthFailureRedirect = `${portalBaseUrl()}/login?error=oauth`;
+
 router.post("/register", register);
 router.post("/login", login);
+router.get("/me", auth, getMe);
+router.post("/verify-email", verifyEmail);
+router.get("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 router.get(
   "/google",
@@ -16,30 +35,13 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: "/api/auth/failed",
-  }),
-  oauthSuccess
-);
-
-router.get(
-  "/facebook",
-  passport.authenticate("facebook", { scope: ["email"] })
-);
-
-router.get(
-  "/facebook/callback",
-  passport.authenticate("facebook", {
-    session: false,
-    failureRedirect: "/api/auth/failed",
+    failureRedirect: oauthFailureRedirect,
   }),
   oauthSuccess
 );
 
 router.get("/failed", (_req: Request, res: Response) => {
-  res.status(401).json({
-    success: false,
-    message: "OAuth login failed",
-  });
+  res.redirect(oauthFailureRedirect);
 });
 
 export default router;

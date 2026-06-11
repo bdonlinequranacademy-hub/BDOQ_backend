@@ -1,0 +1,145 @@
+import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
+import { resolveSmtpConfig, smtpSetupHint } from "../config/smtp";
+
+let cachedTransporter: Transporter | null | undefined;
+
+function getTransporter(): Transporter | null {
+  if (cachedTransporter !== undefined) {
+    return cachedTransporter;
+  }
+
+  const config = resolveSmtpConfig();
+  if (!config) {
+    cachedTransporter = null;
+    return null;
+  }
+
+  cachedTransporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+
+  return cachedTransporter;
+}
+
+export function isSmtpConfigured(): boolean {
+  return getTransporter() !== null;
+}
+
+export function isEmailVerificationEnforced(): boolean {
+  return process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+}
+
+/** Call on server start to log SMTP readiness. */
+export async function verifySmtpConnection(): Promise<boolean> {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.warn(
+      "[email] SMTP not configured — verification links will print to the console in development.\n" +
+        smtpSetupHint()
+    );
+    return false;
+  }
+
+  try {
+    await transporter.verify();
+    const config = resolveSmtpConfig();
+    console.log(
+      `[email] SMTP ready (${config?.provider} → ${config?.host}:${config?.port})`
+    );
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    const hasKey = Boolean(
+      process.env.RESEND_API_KEY?.trim() || process.env.SMTP_PASS?.trim()
+    );
+    if (hasKey && /535|invalid|unauthorized|401/i.test(msg)) {
+      console.warn(
+        "[email] Resend/SMTP key rejected — emails disabled. Create a new API key at https://resend.com/api-keys, then npm run test-email. Dev: links still print to console."
+      );
+    } else {
+      console.warn(`[email] SMTP connection failed: ${msg}`);
+      console.warn(smtpSetupHint());
+    }
+    return false;
+  }
+}
+
+export async function sendEmail(options: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<{ sent: boolean; devLogged: boolean }> {
+  const config = resolveSmtpConfig();
+  const transporter = getTransporter();
+
+  if (!transporter || !config) {
+    const logInDev =
+      process.env.NODE_ENV !== "production" ||
+      process.env.SMTP_DEV_LOG === "true";
+    if (logInDev) {
+      console.log("\n--- Email (SMTP not configured) ---");
+      console.log(`To: ${options.to}`);
+      console.log(`Subject: ${options.subject}`);
+      console.log(options.text);
+      console.log("---\n");
+    }
+    return { sent: false, devLogged: logInDev };
+  }
+
+  await transporter.sendMail({
+    from: `Al Bayaan Academy <${config.from}>`,
+    to: options.to,
+    subject: options.subject,
+    text: options.text,
+    html: options.html,
+  });
+
+  return { sent: true, devLogged: false };
+}
+
+export async function sendVerificationEmail(
+  email: string,
+  name: string,
+  verifyUrl: string
+): Promise<void> {
+  await sendEmail({
+    to: email,
+    subject: "Verify your Al Bayaan Academy account",
+    text: `Hi ${name},\n\nPlease verify your email by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n— Al Bayaan Academy`,
+    html: `
+      <p>Hi ${name},</p>
+      <p>Please verify your email to access your learning portal:</p>
+      <p><a href="${verifyUrl}" style="color:#03214F;font-weight:bold">Verify my email</a></p>
+      <p>Or copy this link: ${verifyUrl}</p>
+      <p>This link expires in 24 hours.</p>
+      <p>— Al Bayaan Academy</p>
+    `,
+  });
+}
+
+export async function sendPasswordResetEmail(
+  email: string,
+  name: string,
+  resetUrl: string
+): Promise<void> {
+  await sendEmail({
+    to: email,
+    subject: "Reset your Al Bayaan Academy password",
+    text: `Hi ${name},\n\nReset your password:\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.\n\n— Al Bayaan Academy`,
+    html: `
+      <p>Hi ${name},</p>
+      <p><a href="${resetUrl}" style="color:#03214F;font-weight:bold">Reset my password</a></p>
+      <p>Or copy: ${resetUrl}</p>
+      <p>Expires in 1 hour.</p>
+      <p>— Al Bayaan Academy</p>
+    `,
+  });
+}
