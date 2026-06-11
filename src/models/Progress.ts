@@ -6,6 +6,9 @@ export interface IProgress extends Document {
   surahsCompleted: string[];
   tajweedScore: number;
   memorizedAyahs: number;
+  curriculumProgram?: string;
+  curriculumUnit?: string;
+  curriculumTopic?: string;
   notes?: string;
   updatedBy?: Types.ObjectId;
   createdAt: Date;
@@ -38,6 +41,18 @@ const progressSchema = new Schema<IProgress>(
       type: Number,
       default: 0,
       min: 0,
+    },
+    curriculumProgram: {
+      type: String,
+      trim: true,
+    },
+    curriculumUnit: {
+      type: String,
+      trim: true,
+    },
+    curriculumTopic: {
+      type: String,
+      trim: true,
     },
     notes: {
       type: String,
