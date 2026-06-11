@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const aiController_1 = require("../controllers/aiController");
+const router = (0, express_1.Router)();
+router.post("/parent-summary", auth_1.auth, (0, auth_1.checkRole)("admin", "teacher", "parent", "student"), aiController_1.generateParentSummary);
+router.get("/at-risk-students", auth_1.auth, (0, auth_1.checkRole)("admin", "teacher"), aiController_1.getAtRiskStudents);
+router.post("/early-warning", auth_1.auth, (0, auth_1.checkRole)("admin", "teacher"), aiController_1.generateEarlyWarningHandler);
+router.post("/progress-report", auth_1.auth, (0, auth_1.checkRole)("admin", "teacher"), aiController_1.generateProgressReport);
+router.post("/study-plan", auth_1.auth, (0, auth_1.checkRole)("admin", "teacher", "student"), aiController_1.generateStudyPlan);
+router.post("/class-log-draft", auth_1.auth, (0, auth_1.checkRole)("admin", "teacher"), aiController_1.generateClassLogDraftHandler);
+exports.default = router;
