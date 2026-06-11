@@ -22,6 +22,7 @@ export interface IClass extends Document {
   students: Types.ObjectId[];
   schedule?: ISchedule;
   meetingLink?: string;
+  sessionRateBdt?: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -80,6 +81,11 @@ const classSchema = new Schema<IClass>(
     meetingLink: {
       type: String,
       trim: true,
+    },
+    sessionRateBdt: {
+      type: Number,
+      min: 0,
+      default: 500,
     },
     isActive: {
       type: Boolean,
