@@ -47,6 +47,15 @@ export const auth = async (
       return;
     }
 
+    if (!user.isActive) {
+      res.status(401).json({
+        success: false,
+        message: "Account is deactivated",
+        data: null,
+      });
+      return;
+    }
+
     req.user = user;
     next();
   } catch {
