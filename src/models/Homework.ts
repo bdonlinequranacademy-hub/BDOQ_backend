@@ -1,9 +1,19 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
+export type HomeworkSubmissionStatus =
+  | "pending_review"
+  | "approved"
+  | "returned"
+  | "graded";
+
 export interface ISubmission {
+  _id?: Types.ObjectId;
   student: Types.ObjectId;
   submittedAt?: Date;
   content?: string;
+  status?: HomeworkSubmissionStatus;
+  reviewFeedback?: string;
+  reviewedAt?: Date;
   grade?: string;
   feedback?: string;
 }
@@ -14,6 +24,9 @@ export interface IHomework extends Document {
   class: Types.ObjectId;
   teacher: Types.ObjectId;
   dueDate: Date;
+  curriculumProgram?: string;
+  curriculumUnit?: string;
+  curriculumTopic?: string;
   submissions: ISubmission[];
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +44,16 @@ const submissionSchema = new Schema<ISubmission>(
     },
     content: {
       type: String,
+    },
+    status: {
+      type: String,
+      enum: ["pending_review", "approved", "returned", "graded"],
+    },
+    reviewFeedback: {
+      type: String,
+    },
+    reviewedAt: {
+      type: Date,
     },
     grade: {
       type: String,
@@ -68,9 +91,34 @@ const homeworkSchema = new Schema<IHomework>(
       type: Date,
       required: true,
     },
+    curriculumProgram: {
+      type: String,
+      trim: true,
+    },
+    curriculumUnit: {
+      type: String,
+      trim: true,
+    },
+    curriculumTopic: {
+      type: String,
+      trim: true,
+    },
     submissions: [submissionSchema],
   },
   { timestamps: true }
 );
 
 export const Homework = mongoose.model<IHomework>("Homework", homeworkSchema);
+
+export function resolveSubmissionStatus(
+  submission: ISubmission | undefined
+): HomeworkSubmissionStatus | null {
+  if (!submission?.submittedAt) return null;
+  if (submission.status) return submission.status;
+  if (submission.grade) return "graded";
+  return "approved";
+}
+
+export function isSubmissionAccepted(status: HomeworkSubmissionStatus | null): boolean {
+  return status === "approved" || status === "graded";
+}
