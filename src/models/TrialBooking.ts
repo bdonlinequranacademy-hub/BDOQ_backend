@@ -4,10 +4,11 @@ export type TrialBookingStatus = "new" | "contacted" | "scheduled" | "closed";
 
 export interface ITrialBooking extends Document {
   parentName: string;
-  email: string;
+  email?: string;
   whatsapp: string;
+  country?: string;
   learnerType: "child" | "teen" | "adult";
-  timeSlot?: "morning" | "afternoon" | "evening";
+  timeSlot?: "anytime" | "early_morning" | "morning" | "afternoon" | "evening" | "late_evening";
   teacherPreference: "any" | "female" | "male";
   preferredDays: string[];
   timezone?: string;
@@ -26,8 +27,9 @@ export interface ITrialBooking extends Document {
 const trialBookingSchema = new Schema<ITrialBooking>(
   {
     parentName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true, lowercase: true },
+    email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
+    country: { type: String, trim: true },
     learnerType: {
       type: String,
       enum: ["child", "teen", "adult"],
@@ -35,7 +37,7 @@ const trialBookingSchema = new Schema<ITrialBooking>(
     },
     timeSlot: {
       type: String,
-      enum: ["morning", "afternoon", "evening"],
+      enum: ["anytime", "early_morning", "morning", "afternoon", "evening", "late_evening"],
     },
     teacherPreference: {
       type: String,

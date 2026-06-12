@@ -12,8 +12,27 @@ function parseLearnerType(value: unknown): "child" | "teen" | "adult" | undefine
   return undefined;
 }
 
-function parseTimeSlot(value: unknown): "morning" | "afternoon" | "evening" | undefined {
-  if (value === "morning" || value === "afternoon" || value === "evening") return value;
+function parseTimeSlot(
+  value: unknown
+):
+  | "anytime"
+  | "early_morning"
+  | "morning"
+  | "afternoon"
+  | "evening"
+  | "late_evening"
+  | undefined {
+  const slots = [
+    "anytime",
+    "early_morning",
+    "morning",
+    "afternoon",
+    "evening",
+    "late_evening",
+  ] as const;
+  if (typeof value === "string" && slots.includes(value as (typeof slots)[number])) {
+    return value as (typeof slots)[number];
+  }
   return undefined;
 }
 
@@ -49,6 +68,7 @@ export const submitTrialBooking = async (req: Request, res: Response): Promise<v
       parentName: req.body.parentName,
       email: req.body.email,
       whatsapp: req.body.whatsapp,
+      country: req.body.country,
       learnerType,
       timeSlot: parseTimeSlot(req.body.timeSlot),
       teacherPreference: parseTeacherPreference(req.body.teacherPreference),

@@ -37,8 +37,9 @@ exports.TrialBooking = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const trialBookingSchema = new mongoose_1.Schema({
     parentName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true, lowercase: true },
+    email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
+    country: { type: String, trim: true },
     learnerType: {
         type: String,
         enum: ["child", "teen", "adult"],
@@ -46,7 +47,7 @@ const trialBookingSchema = new mongoose_1.Schema({
     },
     timeSlot: {
         type: String,
-        enum: ["morning", "afternoon", "evening"],
+        enum: ["anytime", "early_morning", "morning", "afternoon", "evening", "late_evening"],
     },
     teacherPreference: {
         type: String,

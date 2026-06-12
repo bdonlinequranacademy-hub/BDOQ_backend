@@ -18,8 +18,9 @@ function notifyEmail() {
 function formatBookingText(booking) {
     const lines = [
         `Name: ${booking.parentName}`,
-        `Email: ${booking.email}`,
+        booking.email ? `Email: ${booking.email}` : null,
         `WhatsApp: ${booking.whatsapp}`,
+        booking.country ? `Country: ${booking.country}` : null,
         `Learner: ${booking.learnerType}`,
         `Teacher preference: ${booking.teacherPreference}`,
         booking.timeSlot ? `Preferred time: ${booking.timeSlot}` : null,
@@ -41,6 +42,7 @@ function formatTrialBooking(booking) {
         parentName: booking.parentName,
         email: booking.email,
         whatsapp: booking.whatsapp,
+        country: booking.country,
         learnerType: booking.learnerType,
         timeSlot: booking.timeSlot,
         teacherPreference: booking.teacherPreference,
@@ -62,19 +64,24 @@ async function createTrialBooking(input) {
     const parentName = input.parentName?.trim();
     const email = input.email?.trim().toLowerCase();
     const whatsapp = input.whatsapp?.trim();
-    if (!parentName || !email || !whatsapp) {
-        return { error: "Name, email, and WhatsApp are required." };
+    const country = input.country?.trim();
+    if (!parentName || !whatsapp) {
+        return { error: "Name and WhatsApp are required." };
     }
-    if (!EMAIL_RE.test(email)) {
+    if (email && !EMAIL_RE.test(email)) {
         return { error: "Invalid email address." };
+    }
+    if (!country) {
+        return { error: "Country is required." };
     }
     if (!["child", "teen", "adult"].includes(input.learnerType)) {
         return { error: "Invalid learner type." };
     }
     const booking = await TrialBooking_1.TrialBooking.create({
         parentName,
-        email,
+        email: email || undefined,
         whatsapp,
+        country,
         learnerType: input.learnerType,
         timeSlot: input.timeSlot,
         teacherPreference: input.teacherPreference ?? "any",

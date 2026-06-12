@@ -12,8 +12,17 @@ function parseLearnerType(value) {
     return undefined;
 }
 function parseTimeSlot(value) {
-    if (value === "morning" || value === "afternoon" || value === "evening")
+    const slots = [
+        "anytime",
+        "early_morning",
+        "morning",
+        "afternoon",
+        "evening",
+        "late_evening",
+    ];
+    if (typeof value === "string" && slots.includes(value)) {
         return value;
+    }
     return undefined;
 }
 function parseTeacherPreference(value) {
@@ -45,6 +54,7 @@ const submitTrialBooking = async (req, res) => {
             parentName: req.body.parentName,
             email: req.body.email,
             whatsapp: req.body.whatsapp,
+            country: req.body.country,
             learnerType,
             timeSlot: parseTimeSlot(req.body.timeSlot),
             teacherPreference: parseTeacherPreference(req.body.teacherPreference),

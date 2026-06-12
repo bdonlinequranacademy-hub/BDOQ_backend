@@ -6,10 +6,11 @@ export type { TrialBookingStatus };
 
 export interface CreateTrialBookingInput {
   parentName: string;
-  email: string;
+  email?: string;
   whatsapp: string;
+  country?: string;
   learnerType: "child" | "teen" | "adult";
-  timeSlot?: "morning" | "afternoon" | "evening";
+  timeSlot?: "anytime" | "early_morning" | "morning" | "afternoon" | "evening" | "late_evening";
   teacherPreference?: "any" | "female" | "male";
   preferredDays?: string[];
   timezone?: string;
@@ -35,8 +36,9 @@ function notifyEmail(): string | null {
 function formatBookingText(booking: ITrialBooking): string {
   const lines = [
     `Name: ${booking.parentName}`,
-    `Email: ${booking.email}`,
+    booking.email ? `Email: ${booking.email}` : null,
     `WhatsApp: ${booking.whatsapp}`,
+    booking.country ? `Country: ${booking.country}` : null,
     `Learner: ${booking.learnerType}`,
     `Teacher preference: ${booking.teacherPreference}`,
     booking.timeSlot ? `Preferred time: ${booking.timeSlot}` : null,
@@ -60,6 +62,7 @@ export function formatTrialBooking(booking: ITrialBooking) {
     parentName: booking.parentName,
     email: booking.email,
     whatsapp: booking.whatsapp,
+    country: booking.country,
     learnerType: booking.learnerType,
     timeSlot: booking.timeSlot,
     teacherPreference: booking.teacherPreference,
@@ -84,13 +87,18 @@ export async function createTrialBooking(
   const parentName = input.parentName?.trim();
   const email = input.email?.trim().toLowerCase();
   const whatsapp = input.whatsapp?.trim();
+  const country = input.country?.trim();
 
-  if (!parentName || !email || !whatsapp) {
-    return { error: "Name, email, and WhatsApp are required." };
+  if (!parentName || !whatsapp) {
+    return { error: "Name and WhatsApp are required." };
   }
 
-  if (!EMAIL_RE.test(email)) {
+  if (email && !EMAIL_RE.test(email)) {
     return { error: "Invalid email address." };
+  }
+
+  if (!country) {
+    return { error: "Country is required." };
   }
 
   if (!["child", "teen", "adult"].includes(input.learnerType)) {
@@ -99,8 +107,9 @@ export async function createTrialBooking(
 
   const booking = await TrialBooking.create({
     parentName,
-    email,
+    email: email || undefined,
     whatsapp,
+    country,
     learnerType: input.learnerType,
     timeSlot: input.timeSlot,
     teacherPreference: input.teacherPreference ?? "any",
