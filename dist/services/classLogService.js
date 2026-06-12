@@ -8,11 +8,11 @@ exports.approveClassLog = approveClassLog;
 exports.rejectClassLog = rejectClassLog;
 exports.getTeacherLogStats = getTeacherLogStats;
 const ClassLog_1 = require("../models/ClassLog");
-const Notification_1 = require("../models/Notification");
+const notificationService_1 = require("./notificationService");
 const SessionSlot_1 = require("../models/SessionSlot");
-const User_1 = require("../models/User");
 const earningsService_1 = require("./earningsService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
+const curriculumService_1 = require("./curriculumService");
 function formatLog(log, student, teacher, classDoc) {
     return {
         _id: log._id.toString(),
@@ -25,6 +25,10 @@ function formatLog(log, student, teacher, classDoc) {
         durationLabel: (0, scheduleUtils_1.formatDuration)(log.durationMinutes),
         lessonReport: log.lessonReport,
         topicsCovered: log.topicsCovered ?? [],
+        curriculumProgram: log.curriculumProgram,
+        curriculumUnit: log.curriculumUnit,
+        curriculumTopic: log.curriculumTopic,
+        curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(log.curriculumProgram, log.curriculumUnit, log.curriculumTopic),
         status: log.status,
         adminNote: log.adminNote,
         approvedAt: log.approvedAt?.toISOString(),
@@ -65,15 +69,7 @@ async function mapLogs(logs) {
     return logs.map((log) => formatLog(log, log.student, log.teacher, log.class));
 }
 async function notifyAdmins(title, message) {
-    const admins = await User_1.User.find({ role: "admin", isActive: true }).select("_id");
-    if (admins.length === 0)
-        return;
-    await Notification_1.Notification.insertMany(admins.map((admin) => ({
-        user: admin._id,
-        title,
-        message,
-        type: "class",
-    })));
+    await (0, notificationService_1.notifyAdmins)(title, message, "class");
 }
 async function createClassLog(input) {
     const slot = await SessionSlot_1.SessionSlot.findOne({
@@ -110,6 +106,9 @@ async function createClassLog(input) {
         courseType: slot.courseType || classDoc.title,
         lessonReport: input.lessonReport.trim(),
         topicsCovered: input.topicsCovered ?? [],
+        curriculumProgram: input.curriculumProgram,
+        curriculumUnit: input.curriculumUnit,
+        curriculumTopic: input.curriculumTopic,
         status: "pending",
         times: {
             academy: {
@@ -181,8 +180,8 @@ async function approveClassLog(logId, adminId) {
         .populate("class", "title meetingLink");
     if (!log)
         return null;
-    await Notification_1.Notification.create({
-        user: log.teacher,
+    await (0, notificationService_1.createUserNotification)({
+        userId: log.teacher,
         title: "Class log approved",
         message: `Your class log for ${log.student.name} on ${log.sessionDate} was approved.`,
         type: "class",
@@ -201,8 +200,8 @@ async function rejectClassLog(logId, adminId, adminNote) {
         .populate("class", "title meetingLink");
     if (!log)
         return null;
-    await Notification_1.Notification.create({
-        user: log.teacher,
+    await (0, notificationService_1.createUserNotification)({
+        userId: log.teacher,
         title: "Class log rejected",
         message: `Your class log for ${log.student.name} on ${log.sessionDate} needs revision.`,
         type: "class",

@@ -80,7 +80,10 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         unique: true,
         sparse: true,
-        default: null,
+    },
+    gender: {
+        type: String,
+        enum: ["male", "female"],
     },
     timezone: {
         type: String,
@@ -91,6 +94,18 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
         default: "",
+    },
+    curriculumAssignments: {
+        type: [
+            {
+                programId: { type: String, required: true, trim: true },
+                unitId: { type: String, trim: true },
+                topicId: { type: String, trim: true },
+                completed: { type: Boolean, default: false },
+                completedAt: { type: Date },
+            },
+        ],
+        default: [],
     },
     meetingLink: {
         type: String,

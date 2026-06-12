@@ -61,6 +61,18 @@ const progressSchema = new mongoose_1.Schema({
         default: 0,
         min: 0,
     },
+    curriculumProgram: {
+        type: String,
+        trim: true,
+    },
+    curriculumUnit: {
+        type: String,
+        trim: true,
+    },
+    curriculumTopic: {
+        type: String,
+        trim: true,
+    },
     notes: {
         type: String,
         trim: true,

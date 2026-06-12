@@ -3,15 +3,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markAsRead = exports.submitHomework = exports.getMyNotifications = exports.getTodaySchedule = exports.getMyProgress = exports.getMyAttendance = exports.getMyHomework = exports.getMyClasses = exports.getClassById = void 0;
+exports.markAsRead = exports.submitHomework = exports.getMyNotifications = exports.getTodaySchedule = exports.getMyCurriculumPlan = exports.getMyProgress = exports.getMyAttendance = exports.getMyHomework = exports.getMyClasses = exports.getClassById = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const Class_1 = require("../models/Class");
 const Homework_1 = require("../models/Homework");
 const Attendance_1 = require("../models/Attendance");
 const Progress_1 = require("../models/Progress");
+const notificationService_1 = require("../services/notificationService");
 const Notification_1 = require("../models/Notification");
 const scheduleService_1 = require("../services/scheduleService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
+const complianceScanService_1 = require("../services/complianceScanService");
+const curriculumService_1 = require("../services/curriculumService");
+const User_1 = require("../models/User");
 const getClassById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -79,6 +83,8 @@ const getMyHomework = async (req, res) => {
             .sort({ dueDate: 1 });
         const homeworkWithSubmission = homework.map((hw) => {
             const submission = hw.submissions.find((s) => s.student.toString() === studentId);
+            const status = (0, Homework_1.resolveSubmissionStatus)(submission);
+            const labels = (0, curriculumService_1.resolveCurriculumLabels)(hw.curriculumProgram, hw.curriculumUnit, hw.curriculumTopic);
             return {
                 _id: hw._id,
                 title: hw.title,
@@ -86,11 +92,19 @@ const getMyHomework = async (req, res) => {
                 class: hw.class,
                 teacher: hw.teacher,
                 dueDate: hw.dueDate,
-                submitted: !!submission,
+                curriculumProgram: hw.curriculumProgram,
+                curriculumUnit: hw.curriculumUnit,
+                curriculumTopic: hw.curriculumTopic,
+                curriculumLabels: labels,
+                submitted: (0, Homework_1.isSubmissionAccepted)(status),
+                underReview: status === "pending_review",
+                canSubmit: !submission || status === "returned",
                 submission: submission
                     ? {
                         submittedAt: submission.submittedAt,
                         content: submission.content,
+                        status,
+                        reviewFeedback: submission.reviewFeedback,
                         grade: submission.grade,
                         feedback: submission.feedback,
                     }
@@ -157,7 +171,7 @@ const getMyProgress = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Progress fetched successfully",
-            data: progress,
+            data: (0, curriculumService_1.mapProgressDocsWithLabels)(progress),
         });
     }
     catch {
@@ -169,6 +183,24 @@ const getMyProgress = async (req, res) => {
     }
 };
 exports.getMyProgress = getMyProgress;
+const getMyCurriculumPlan = async (req, res) => {
+    try {
+        const student = await User_1.User.findById(req.user._id).select("curriculumAssignments");
+        res.status(200).json({
+            success: true,
+            message: "Curriculum plan fetched",
+            data: (0, curriculumService_1.mapAssignmentLabels)(student?.curriculumAssignments ?? []),
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch curriculum plan",
+            data: null,
+        });
+    }
+};
+exports.getMyCurriculumPlan = getMyCurriculumPlan;
 const getTodaySchedule = async (req, res) => {
     try {
         const sessions = await (0, scheduleService_1.getStudentTodaySchedule)(req.user._id);
@@ -230,6 +262,16 @@ const submitHomework = async (req, res) => {
             });
             return;
         }
+        const trimmedContent = content.trim();
+        const compliance = (0, complianceScanService_1.scanComplianceText)(trimmedContent);
+        if (!compliance.passed) {
+            res.status(400).json({
+                success: false,
+                message: compliance.message,
+                data: null,
+            });
+            return;
+        }
         const homework = await Homework_1.Homework.findById(id);
         if (!homework) {
             res.status(404).json({
@@ -251,38 +293,77 @@ const submitHomework = async (req, res) => {
             });
             return;
         }
-        const alreadySubmitted = homework.submissions.some((s) => s.student.equals(req.user._id));
-        if (alreadySubmitted) {
+        const existingSubmission = homework.submissions.find((s) => s.student.equals(req.user._id));
+        const existingStatus = (0, Homework_1.resolveSubmissionStatus)(existingSubmission);
+        if (existingSubmission &&
+            existingStatus !== "returned") {
             res.status(409).json({
                 success: false,
-                message: "You have already submitted this homework",
+                message: existingStatus === "pending_review"
+                    ? "Your submission is already under teacher review"
+                    : "You have already submitted this homework",
                 data: null,
+            });
+            return;
+        }
+        if (existingSubmission && existingStatus === "returned") {
+            await Homework_1.Homework.findOneAndUpdate({ _id: id, "submissions.student": req.user._id }, {
+                $set: {
+                    "submissions.$.content": trimmedContent,
+                    "submissions.$.submittedAt": new Date(),
+                    "submissions.$.status": "pending_review",
+                    "submissions.$.reviewFeedback": null,
+                    "submissions.$.reviewedAt": null,
+                },
+            });
+            await (0, notificationService_1.createUserNotification)({
+                userId: homework.teacher,
+                title: "Homework Resubmitted",
+                message: `${req.user.name} resubmitted "${homework.title}" for review`,
+                type: "homework",
+            });
+            res.status(200).json({
+                success: true,
+                message: "Homework resubmitted for teacher review",
+                data: {
+                    homeworkId: id,
+                    submission: {
+                        student: req.user._id,
+                        submittedAt: new Date(),
+                        content: trimmedContent,
+                        status: "pending_review",
+                        grade: null,
+                        feedback: null,
+                    },
+                },
             });
             return;
         }
         const newSubmission = {
             student: req.user._id,
             submittedAt: new Date(),
-            content: content.trim(),
+            content: trimmedContent,
+            status: "pending_review",
         };
         await Homework_1.Homework.findByIdAndUpdate(id, {
             $push: { submissions: newSubmission },
         });
-        await Notification_1.Notification.create({
-            user: homework.teacher,
-            title: "New Homework Submission",
-            message: `${req.user.name} submitted "${homework.title}"`,
+        await (0, notificationService_1.createUserNotification)({
+            userId: homework.teacher,
+            title: "Homework Awaiting Review",
+            message: `${req.user.name} submitted "${homework.title}" for your review`,
             type: "homework",
         });
         res.status(201).json({
             success: true,
-            message: "Homework submitted successfully",
+            message: "Homework sent for teacher review",
             data: {
                 homeworkId: id,
                 submission: {
                     student: req.user._id,
                     submittedAt: newSubmission.submittedAt,
                     content: newSubmission.content,
+                    status: "pending_review",
                     grade: null,
                     feedback: null,
                 },

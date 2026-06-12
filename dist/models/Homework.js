@@ -34,6 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Homework = void 0;
+exports.resolveSubmissionStatus = resolveSubmissionStatus;
+exports.isSubmissionAccepted = isSubmissionAccepted;
 const mongoose_1 = __importStar(require("mongoose"));
 const submissionSchema = new mongoose_1.Schema({
     student: {
@@ -46,6 +48,16 @@ const submissionSchema = new mongoose_1.Schema({
     },
     content: {
         type: String,
+    },
+    status: {
+        type: String,
+        enum: ["pending_review", "approved", "returned", "graded"],
+    },
+    reviewFeedback: {
+        type: String,
+    },
+    reviewedAt: {
+        type: Date,
     },
     grade: {
         type: String,
@@ -79,6 +91,30 @@ const homeworkSchema = new mongoose_1.Schema({
         type: Date,
         required: true,
     },
+    curriculumProgram: {
+        type: String,
+        trim: true,
+    },
+    curriculumUnit: {
+        type: String,
+        trim: true,
+    },
+    curriculumTopic: {
+        type: String,
+        trim: true,
+    },
     submissions: [submissionSchema],
 }, { timestamps: true });
 exports.Homework = mongoose_1.default.model("Homework", homeworkSchema);
+function resolveSubmissionStatus(submission) {
+    if (!submission?.submittedAt)
+        return null;
+    if (submission.status)
+        return submission.status;
+    if (submission.grade)
+        return "graded";
+    return "approved";
+}
+function isSubmissionAccepted(status) {
+    return status === "approved" || status === "graded";
+}

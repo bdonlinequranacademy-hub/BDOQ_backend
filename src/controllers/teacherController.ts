@@ -4,6 +4,7 @@ import { Class } from "../models/Class";
 import { Attendance, AttendanceStatus } from "../models/Attendance";
 import { Homework, resolveSubmissionStatus } from "../models/Homework";
 import { Progress } from "../models/Progress";
+import { createUserNotification, createUserNotifications } from "../services/notificationService";
 import { Notification } from "../models/Notification";
 import { User } from "../models/User";
 import {
@@ -425,8 +426,8 @@ export const markAttendance = async (
       );
 
       if (status === "absent") {
-        await Notification.create({
-          user: studentId,
+        await createUserNotification({
+          userId: studentId,
           title: "Attendance Update",
           message: `You were marked absent for ${classDoc.title} on ${attendanceDate.toLocaleDateString()}`,
           type: "attendance",
@@ -517,7 +518,14 @@ export const createHomework = async (
     }));
 
     if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
+      await createUserNotifications(
+        notifications.map((n) => ({
+          userId: n.user,
+          title: n.title,
+          message: n.message,
+          type: n.type,
+        }))
+      );
     }
 
     res.status(201).json({
@@ -760,8 +768,8 @@ export const reviewHomeworkSubmission = async (
       }
     );
 
-    await Notification.create({
-      user: studentId,
+    await createUserNotification({
+      userId: studentId,
       title:
         action === "approve"
           ? "Homework submission accepted"

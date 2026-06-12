@@ -1,5 +1,6 @@
 import { TrialBooking, type ITrialBooking, type TrialBookingStatus } from "../models/TrialBooking";
 import { sendEmail } from "./emailService";
+import { signalAdminPending } from "./notificationService";
 
 export type { TrialBookingStatus };
 
@@ -130,6 +131,8 @@ export async function createTrialBooking(
     console.log(formatBookingText(booking));
     console.log("---\n");
   }
+
+  signalAdminPending("trial-booking");
 
   return { booking };
 }

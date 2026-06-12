@@ -1,5 +1,6 @@
 import "./config/loadEnv";
 import "./types/express";
+import http from "http";
 import express from "express";
 import cors from "cors";
 import passport from "passport";
@@ -68,8 +69,12 @@ const startServer = async (): Promise<void> => {
   const { startSessionStatusCron } = await import("./jobs/sessionCron");
   startSessionStatusCron();
 
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  const { initSocketServer } = await import("./realtime/socketServer");
+  const httpServer = http.createServer(app);
+  initSocketServer(httpServer);
+
+  httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} (HTTP + Socket.IO)`);
   });
 };
 

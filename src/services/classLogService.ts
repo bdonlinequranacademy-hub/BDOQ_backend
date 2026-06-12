@@ -1,9 +1,8 @@
 import type { Types } from "mongoose";
 import { Class } from "../models/Class";
 import { ClassLog, IClassLog, ClassLogStatus } from "../models/ClassLog";
-import { Notification } from "../models/Notification";
+import { createUserNotification, notifyAdmins as notifyAdminsRealtime } from "./notificationService";
 import { SessionSlot } from "../models/SessionSlot";
-import { User } from "../models/User";
 import { computeEarningsOnApproval } from "./earningsService";
 import {
   ACADEMY_TIMEZONE,
@@ -140,16 +139,7 @@ async function mapLogs(logs: IClassLog[]): Promise<ClassLogView[]> {
 }
 
 async function notifyAdmins(title: string, message: string): Promise<void> {
-  const admins = await User.find({ role: "admin", isActive: true }).select("_id");
-  if (admins.length === 0) return;
-  await Notification.insertMany(
-    admins.map((admin) => ({
-      user: admin._id,
-      title,
-      message,
-      type: "class" as const,
-    }))
-  );
+  await notifyAdminsRealtime(title, message, "class");
 }
 
 export async function createClassLog(input: {
@@ -313,8 +303,8 @@ export async function approveClassLog(
 
   if (!log) return null;
 
-  await Notification.create({
-    user: log.teacher,
+  await createUserNotification({
+    userId: log.teacher,
     title: "Class log approved",
     message: `Your class log for ${(log.student as unknown as PopulatedUser).name} on ${log.sessionDate} was approved.`,
     type: "class",
@@ -349,8 +339,8 @@ export async function rejectClassLog(
 
   if (!log) return null;
 
-  await Notification.create({
-    user: log.teacher,
+  await createUserNotification({
+    userId: log.teacher,
     title: "Class log rejected",
     message: `Your class log for ${(log.student as unknown as PopulatedUser).name} on ${log.sessionDate} needs revision.`,
     type: "class",

@@ -4,6 +4,7 @@ import { Class } from "../models/Class";
 import { Homework, isSubmissionAccepted, resolveSubmissionStatus } from "../models/Homework";
 import { Attendance } from "../models/Attendance";
 import { Progress } from "../models/Progress";
+import { createUserNotification } from "../services/notificationService";
 import { Notification } from "../models/Notification";
 import { getStudentTodaySchedule } from "../services/scheduleService";
 import { getTodayScheduleDay } from "../utils/scheduleUtils";
@@ -373,8 +374,8 @@ export const submitHomework = async (
         }
       );
 
-      await Notification.create({
-        user: homework.teacher,
+      await createUserNotification({
+        userId: homework.teacher,
         title: "Homework Resubmitted",
         message: `${req.user!.name} resubmitted "${homework.title}" for review`,
         type: "homework",
@@ -409,8 +410,8 @@ export const submitHomework = async (
       $push: { submissions: newSubmission },
     });
 
-    await Notification.create({
-      user: homework.teacher,
+    await createUserNotification({
+      userId: homework.teacher,
       title: "Homework Awaiting Review",
       message: `${req.user!.name} submitted "${homework.title}" for your review`,
       type: "homework",

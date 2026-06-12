@@ -83,6 +83,11 @@ const sessionSlotSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    sessionPhase: {
+        type: String,
+        enum: ["upcoming", "live", "completed"],
+        default: "upcoming",
+    },
 }, { timestamps: true });
 sessionSlotSchema.index({ teacher: 1, day: 1, isActive: 1 });
 sessionSlotSchema.index({ student: 1, day: 1, isActive: 1 });

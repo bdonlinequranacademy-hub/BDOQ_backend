@@ -5,8 +5,7 @@ import {
   ConcernCategory,
   ConcernReportStatus,
 } from "../models/ConcernReport";
-import { Notification } from "../models/Notification";
-import { User } from "../models/User";
+import { notifyAdmins as notifyAdminsRealtime } from "../services/notificationService";
 import {
   assessLogQuality,
   scanComplianceText,
@@ -32,16 +31,7 @@ function formatReport(doc: InstanceType<typeof ConcernReport>) {
 }
 
 async function notifyAdmins(title: string, message: string) {
-  const admins = await User.find({ role: "admin", isActive: true }).select("_id");
-  if (admins.length === 0) return;
-  await Notification.insertMany(
-    admins.map((admin) => ({
-      user: admin._id,
-      title,
-      message,
-      type: "system" as const,
-    }))
-  );
+  await notifyAdminsRealtime(title, message, "general");
 }
 
 export const createConcernReport = async (

@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncSlotsFromClass = syncSlotsFromClass;
 exports.getTeacherTodaySchedule = getTeacherTodaySchedule;
@@ -13,6 +46,9 @@ function formatSlot(slot, student, teacher, classDoc) {
     const studentTz = student.timezone || "UTC";
     const teacherTz = teacher.timezone || scheduleUtils_1.ACADEMY_TIMEZONE;
     const day = slot.day;
+    const startsAt = (0, scheduleUtils_1.getSessionInstant)(day, slot.startTime) ?? new Date();
+    const endsAt = new Date(startsAt.getTime() + slot.durationMinutes * 60000);
+    const sessionPhase = (0, scheduleUtils_1.getSessionPhase)(startsAt, slot.durationMinutes);
     return {
         _id: slot._id.toString(),
         classId: classDoc._id.toString(),
@@ -32,6 +68,7 @@ function formatSlot(slot, student, teacher, classDoc) {
         teacher: {
             _id: teacher._id.toString(),
             name: teacher.name,
+            country: teacher.country ?? undefined,
             timezone: teacherTz,
         },
         times: {
@@ -51,6 +88,9 @@ function formatSlot(slot, student, teacher, classDoc) {
                 timezone: studentTz,
             },
         },
+        sessionPhase,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
     };
 }
 async function syncSlotsFromClass(classDoc) {
@@ -69,6 +109,8 @@ async function syncSlotsFromClass(classDoc) {
             isActive: true,
         }, { upsert: true, new: true });
     }
+    const { refreshSessionPhaseForClass } = await Promise.resolve().then(() => __importStar(require("./sessionStatusService")));
+    await refreshSessionPhaseForClass(classDoc._id.toString()).catch(() => undefined);
 }
 async function getTeacherTodaySchedule(teacherId) {
     const today = (0, scheduleUtils_1.getTodayScheduleDay)();
@@ -78,7 +120,7 @@ async function getTeacherTodaySchedule(teacherId) {
         isActive: true,
     })
         .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
+        .populate("teacher", "name timezone country")
         .populate("class", "title meetingLink")
         .sort({ startTime: 1 });
     return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
@@ -89,7 +131,7 @@ async function getTeacherWeeklyRoutine(teacherId) {
         isActive: true,
     })
         .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
+        .populate("teacher", "name timezone country")
         .populate("class", "title meetingLink")
         .sort({ day: 1, startTime: 1 });
     return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
@@ -102,7 +144,7 @@ async function getStudentTodaySchedule(studentId) {
         isActive: true,
     })
         .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
+        .populate("teacher", "name timezone country")
         .populate("class", "title meetingLink")
         .sort({ startTime: 1 });
     return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
@@ -114,7 +156,7 @@ async function getAcademyWeeklyRoutine(teacherId) {
     }
     const slots = await SessionSlot_1.SessionSlot.find(filter)
         .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
+        .populate("teacher", "name timezone country")
         .populate("class", "title meetingLink")
         .sort({ day: 1, startTime: 1 });
     return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));

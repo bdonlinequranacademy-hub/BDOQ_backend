@@ -6,7 +6,7 @@ import { Class, ScheduleDay } from "../models/Class";
 import { Homework } from "../models/Homework";
 import { Attendance } from "../models/Attendance";
 import { Progress } from "../models/Progress";
-import { Notification } from "../models/Notification";
+import { createUserNotification, createUserNotifications } from "../services/notificationService";
 import { ClassLog } from "../models/ClassLog";
 import { TrialBooking } from "../models/TrialBooking";
 import { ContactMessage } from "../models/ContactMessage";
@@ -564,15 +564,14 @@ export const createClass = async (
     const students = studentIds || [];
 
     if (students.length > 0) {
-      const notifications = students.map(
-        (studentId: mongoose.Types.ObjectId) => ({
-          user: studentId,
+      await createUserNotifications(
+        students.map((studentId: mongoose.Types.ObjectId) => ({
+          userId: studentId,
           title: "Class Enrollment",
           message: `You have been enrolled in ${title}`,
           type: "class" as const,
-        })
+        }))
       );
-      await Notification.insertMany(notifications);
     }
 
     await syncSlotsFromClass(classDoc);
@@ -1034,8 +1033,8 @@ export const assignStudentToClass = async (
       return;
     }
 
-    await Notification.create({
-      user: studentId,
+    await createUserNotification({
+      userId: studentId,
       title: "Class Enrollment",
       message: `You have been enrolled in ${classDoc.title}`,
       type: "class",

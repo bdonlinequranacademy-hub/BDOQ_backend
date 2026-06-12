@@ -3,15 +3,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markNotificationRead = exports.getMyNotifications = exports.getWeeklyRoutine = exports.getTodaySchedule = exports.getAttendanceReport = exports.updateProgress = exports.gradeSubmission = exports.getHomeworkDetail = exports.getClassHomework = exports.createHomework = exports.markAttendance = exports.getMyClasses = exports.getStudentProgress = exports.getMyStudents = exports.getClassById = void 0;
+exports.markNotificationRead = exports.getMyNotifications = exports.getWeeklyRoutine = exports.getTodaySchedule = exports.getAttendanceReport = exports.updateProgress = exports.gradeSubmission = exports.reviewHomeworkSubmission = exports.getHomeworkDetail = exports.getClassHomework = exports.createHomework = exports.markAttendance = exports.getClassAttendanceForDate = exports.getMyClasses = exports.getStudentProgress = exports.toggleStudentCurriculumComplete = exports.getMyStudents = exports.getClassById = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const Class_1 = require("../models/Class");
 const Attendance_1 = require("../models/Attendance");
 const Homework_1 = require("../models/Homework");
 const Progress_1 = require("../models/Progress");
+const notificationService_1 = require("../services/notificationService");
 const Notification_1 = require("../models/Notification");
+const User_1 = require("../models/User");
 const scheduleService_1 = require("../services/scheduleService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
+const complianceScanService_1 = require("../services/complianceScanService");
+const curriculumService_1 = require("../services/curriculumService");
 const VALID_STATUSES = ["present", "absent", "late"];
 const getTeacherClass = async (classId, teacherId) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(classId)) {
@@ -57,7 +61,7 @@ const getClassById = async (req, res) => {
 exports.getClassById = getClassById;
 const getMyStudents = async (req, res) => {
     try {
-        const classes = await Class_1.Class.find({ teacher: req.user._id }).populate("students", "name email studentId country timezone");
+        const classes = await Class_1.Class.find({ teacher: req.user._id }).populate("students", "name email studentId country timezone curriculumAssignments");
         const studentMap = new Map();
         for (const cls of classes) {
             for (const student of cls.students) {
@@ -70,6 +74,7 @@ const getMyStudents = async (req, res) => {
                         studentId: student.studentId,
                         country: student.country,
                         timezone: student.timezone,
+                        curriculumAssignments: (0, curriculumService_1.mapAssignmentLabels)(student.curriculumAssignments),
                         classes: [],
                     });
                 }
@@ -91,6 +96,71 @@ const getMyStudents = async (req, res) => {
     }
 };
 exports.getMyStudents = getMyStudents;
+const toggleStudentCurriculumComplete = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { programId, unitId, topicId, completed } = req.body;
+        if (!mongoose_1.default.Types.ObjectId.isValid(studentId) || !programId) {
+            res.status(400).json({
+                success: false,
+                message: "studentId and programId are required",
+                data: null,
+            });
+            return;
+        }
+        const inClass = await Class_1.Class.exists({
+            teacher: req.user._id,
+            students: studentId,
+        });
+        if (!inClass) {
+            res.status(403).json({
+                success: false,
+                message: "Access denied for this student",
+                data: null,
+            });
+            return;
+        }
+        const student = await User_1.User.findOne({ _id: studentId, role: "student" });
+        if (!student) {
+            res.status(404).json({
+                success: false,
+                message: "Student not found",
+                data: null,
+            });
+            return;
+        }
+        const assignments = student.curriculumAssignments ?? [];
+        const idx = assignments.findIndex((a) => a.programId === programId &&
+            (a.unitId ?? "") === (unitId ?? "") &&
+            (a.topicId ?? "") === (topicId ?? ""));
+        if (idx === -1) {
+            res.status(400).json({
+                success: false,
+                message: "This curriculum item is not assigned to the student",
+                data: null,
+            });
+            return;
+        }
+        const isComplete = completed !== false;
+        assignments[idx].completed = isComplete;
+        assignments[idx].completedAt = isComplete ? new Date() : undefined;
+        student.curriculumAssignments = assignments;
+        await student.save();
+        res.status(200).json({
+            success: true,
+            message: isComplete ? "Marked as completed" : "Marked as in progress",
+            data: (0, curriculumService_1.mapAssignmentLabels)(student.curriculumAssignments),
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to update curriculum completion",
+            data: null,
+        });
+    }
+};
+exports.toggleStudentCurriculumComplete = toggleStudentCurriculumComplete;
 const getStudentProgress = async (req, res) => {
     try {
         const { studentId } = req.params;
@@ -126,7 +196,7 @@ const getStudentProgress = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Student progress fetched successfully",
-            data: progress,
+            data: (0, curriculumService_1.mapProgressDocsWithLabels)(progress),
         });
     }
     catch {
@@ -141,7 +211,7 @@ exports.getStudentProgress = getStudentProgress;
 const getMyClasses = async (req, res) => {
     try {
         const classes = await Class_1.Class.find({ teacher: req.user._id })
-            .populate("students", "name")
+            .populate("students", "name country timezone studentId")
             .sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
@@ -158,6 +228,57 @@ const getMyClasses = async (req, res) => {
     }
 };
 exports.getMyClasses = getMyClasses;
+const getClassAttendanceForDate = async (req, res) => {
+    try {
+        const { classId, date } = req.query;
+        if (!classId || typeof classId !== "string" || !date || typeof date !== "string") {
+            res.status(400).json({
+                success: false,
+                message: "Please provide classId and date query parameters",
+                data: null,
+            });
+            return;
+        }
+        const classDoc = await getTeacherClass(classId, req.user._id);
+        if (!classDoc) {
+            res.status(404).json({
+                success: false,
+                message: "Class not found or access denied",
+                data: null,
+            });
+            return;
+        }
+        const attendanceDate = new Date(date);
+        attendanceDate.setHours(0, 0, 0, 0);
+        const nextDay = new Date(attendanceDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const records = await Attendance_1.Attendance.find({
+            class: classId,
+            date: { $gte: attendanceDate, $lt: nextDay },
+        }).populate("student", "name");
+        res.status(200).json({
+            success: true,
+            message: "Attendance fetched successfully",
+            data: records.map((record) => {
+                const student = record.student;
+                return {
+                    studentId: student._id.toString(),
+                    studentName: student.name,
+                    status: record.status,
+                    date,
+                };
+            }),
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch attendance",
+            data: null,
+        });
+    }
+};
+exports.getClassAttendanceForDate = getClassAttendanceForDate;
 const markAttendance = async (req, res) => {
     try {
         const { classId, date, attendances } = req.body;
@@ -209,8 +330,8 @@ const markAttendance = async (req, res) => {
             }
             await Attendance_1.Attendance.findOneAndUpdate({ class: classId, student: studentId, date: attendanceDate }, { status, markedBy: req.user._id }, { upsert: true, new: true });
             if (status === "absent") {
-                await Notification_1.Notification.create({
-                    user: studentId,
+                await (0, notificationService_1.createUserNotification)({
+                    userId: studentId,
                     title: "Attendance Update",
                     message: `You were marked absent for ${classDoc.title} on ${attendanceDate.toLocaleDateString()}`,
                     type: "attendance",
@@ -234,11 +355,11 @@ const markAttendance = async (req, res) => {
 exports.markAttendance = markAttendance;
 const createHomework = async (req, res) => {
     try {
-        const { title, description, classId, dueDate } = req.body;
-        if (!title || !classId || !dueDate) {
+        const { title, description, classId, dueDate, curriculumProgram, curriculumUnit, curriculumTopic, } = req.body;
+        if (!title || !classId || !dueDate || !curriculumProgram) {
             res.status(400).json({
                 success: false,
-                message: "Please provide title, classId, and dueDate",
+                message: "Please provide title, classId, dueDate, and curriculumProgram",
                 data: null,
             });
             return;
@@ -252,12 +373,24 @@ const createHomework = async (req, res) => {
             });
             return;
         }
+        const curriculumValid = await (0, curriculumService_1.validateHomeworkCurriculumForClass)(classId, curriculumProgram, curriculumUnit, curriculumTopic);
+        if (!curriculumValid) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid curriculum selection for this class",
+                data: null,
+            });
+            return;
+        }
         const homework = await Homework_1.Homework.create({
             title,
             description: description?.trim() || "",
             class: classId,
             teacher: req.user._id,
             dueDate: new Date(dueDate),
+            curriculumProgram,
+            curriculumUnit: curriculumUnit || undefined,
+            curriculumTopic: curriculumTopic || undefined,
         });
         const notifications = classDoc.students.map((studentId) => ({
             user: studentId,
@@ -266,7 +399,12 @@ const createHomework = async (req, res) => {
             type: "homework",
         }));
         if (notifications.length > 0) {
-            await Notification_1.Notification.insertMany(notifications);
+            await (0, notificationService_1.createUserNotifications)(notifications.map((n) => ({
+                userId: n.user,
+                title: n.title,
+                message: n.message,
+                type: n.type,
+            })));
         }
         res.status(201).json({
             success: true,
@@ -293,17 +431,29 @@ const getClassHomework = async (req, res) => {
         })
             .populate("class", "title")
             .sort({ dueDate: -1 });
-        const homeworkWithCounts = homework.map((hw) => ({
-            _id: hw._id,
-            title: hw.title,
-            description: hw.description,
-            class: hw.class,
-            teacher: hw.teacher,
-            dueDate: hw.dueDate,
-            submissionCount: hw.submissions.length,
-            createdAt: hw.createdAt,
-            updatedAt: hw.updatedAt,
-        }));
+        const homeworkWithCounts = homework.map((hw) => {
+            const pendingReviewCount = hw.submissions.filter((s) => (0, Homework_1.resolveSubmissionStatus)(s) === "pending_review").length;
+            const approvedCount = hw.submissions.filter((s) => {
+                const st = (0, Homework_1.resolveSubmissionStatus)(s);
+                return st === "approved" || st === "graded";
+            }).length;
+            return {
+                _id: hw._id,
+                title: hw.title,
+                description: hw.description,
+                class: hw.class,
+                teacher: hw.teacher,
+                dueDate: hw.dueDate,
+                curriculumProgram: hw.curriculumProgram,
+                curriculumUnit: hw.curriculumUnit,
+                curriculumTopic: hw.curriculumTopic,
+                curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(hw.curriculumProgram, hw.curriculumUnit, hw.curriculumTopic),
+                submissionCount: approvedCount,
+                pendingReviewCount,
+                createdAt: hw.createdAt,
+                updatedAt: hw.updatedAt,
+            };
+        });
         res.status(200).json({
             success: true,
             message: "Homework fetched successfully",
@@ -352,7 +502,21 @@ const getHomeworkDetail = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Homework fetched successfully",
-            data: homework,
+            data: {
+                ...homework.toObject(),
+                curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(homework.curriculumProgram, homework.curriculumUnit, homework.curriculumTopic),
+                submissions: homework.submissions.map((s) => ({
+                    _id: s._id,
+                    student: s.student,
+                    content: s.content,
+                    submittedAt: s.submittedAt,
+                    status: (0, Homework_1.resolveSubmissionStatus)(s),
+                    reviewFeedback: s.reviewFeedback,
+                    reviewedAt: s.reviewedAt,
+                    grade: s.grade,
+                    feedback: s.feedback,
+                })),
+            },
         });
     }
     catch {
@@ -364,6 +528,107 @@ const getHomeworkDetail = async (req, res) => {
     }
 };
 exports.getHomeworkDetail = getHomeworkDetail;
+const reviewHomeworkSubmission = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { studentId, action, feedback } = req.body;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid homework ID",
+                data: null,
+            });
+            return;
+        }
+        if (!studentId || !mongoose_1.default.Types.ObjectId.isValid(studentId)) {
+            res.status(400).json({
+                success: false,
+                message: "Please provide a valid studentId",
+                data: null,
+            });
+            return;
+        }
+        if (action !== "approve" && action !== "return") {
+            res.status(400).json({
+                success: false,
+                message: "action must be approve or return",
+                data: null,
+            });
+            return;
+        }
+        const homework = await Homework_1.Homework.findById(id);
+        if (!homework) {
+            res.status(404).json({
+                success: false,
+                message: "Homework not found",
+                data: null,
+            });
+            return;
+        }
+        if (!homework.teacher.equals(req.user._id)) {
+            res.status(403).json({
+                success: false,
+                message: "Access denied",
+                data: null,
+            });
+            return;
+        }
+        const submission = homework.submissions.find((s) => s.student.equals(studentId));
+        if (!submission) {
+            res.status(404).json({
+                success: false,
+                message: "No submission found for this student",
+                data: null,
+            });
+            return;
+        }
+        const status = (0, Homework_1.resolveSubmissionStatus)(submission);
+        if (status !== "pending_review") {
+            res.status(400).json({
+                success: false,
+                message: "Only submissions under review can be approved or returned",
+                data: null,
+            });
+            return;
+        }
+        const nextStatus = action === "approve" ? "approved" : "returned";
+        const reviewFeedback = typeof feedback === "string" ? feedback.trim() : undefined;
+        await Homework_1.Homework.findOneAndUpdate({ _id: id }, {
+            $set: {
+                "submissions.$[elem].status": nextStatus,
+                "submissions.$[elem].reviewedAt": new Date(),
+                "submissions.$[elem].reviewFeedback": action === "return" ? reviewFeedback || "Please revise and resubmit." : null,
+            },
+        }, {
+            arrayFilters: [{ "elem.student": new mongoose_1.default.Types.ObjectId(studentId) }],
+        });
+        await (0, notificationService_1.createUserNotification)({
+            userId: studentId,
+            title: action === "approve"
+                ? "Homework submission accepted"
+                : "Homework returned for revision",
+            message: action === "approve"
+                ? `Your teacher accepted your submission for "${homework.title}".`
+                : `Your teacher returned "${homework.title}" for revision.`,
+            type: "homework",
+        });
+        res.status(200).json({
+            success: true,
+            message: action === "approve"
+                ? "Submission approved"
+                : "Submission returned to student",
+            data: { homeworkId: id, studentId, status: nextStatus },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to review submission",
+            data: null,
+        });
+    }
+};
+exports.reviewHomeworkSubmission = reviewHomeworkSubmission;
 const gradeSubmission = async (req, res) => {
     try {
         const { id } = req.params;
@@ -392,6 +657,17 @@ const gradeSubmission = async (req, res) => {
             });
             return;
         }
+        if (feedback && typeof feedback === "string" && feedback.trim()) {
+            const compliance = (0, complianceScanService_1.scanComplianceText)(feedback.trim());
+            if (!compliance.passed) {
+                res.status(400).json({
+                    success: false,
+                    message: compliance.message,
+                    data: null,
+                });
+                return;
+            }
+        }
         const homework = await Homework_1.Homework.findById(id);
         if (!homework) {
             res.status(404).json({
@@ -409,11 +685,20 @@ const gradeSubmission = async (req, res) => {
             });
             return;
         }
-        const submissionExists = homework.submissions.some((s) => s.student.equals(studentId));
-        if (!submissionExists) {
+        const submission = homework.submissions.find((s) => s.student.equals(studentId));
+        if (!submission) {
             res.status(404).json({
                 success: false,
                 message: "No submission found for this student",
+                data: null,
+            });
+            return;
+        }
+        const status = (0, Homework_1.resolveSubmissionStatus)(submission);
+        if (status !== "approved" && status !== "graded") {
+            res.status(400).json({
+                success: false,
+                message: "Approve the submission before grading",
                 data: null,
             });
             return;
@@ -422,6 +707,7 @@ const gradeSubmission = async (req, res) => {
             $set: {
                 "submissions.$[elem].grade": grade.trim(),
                 "submissions.$[elem].feedback": feedback?.trim() ?? null,
+                "submissions.$[elem].status": "graded",
             },
         }, {
             arrayFilters: [{ "elem.student": new mongoose_1.default.Types.ObjectId(studentId) }],
@@ -449,11 +735,11 @@ const gradeSubmission = async (req, res) => {
 exports.gradeSubmission = gradeSubmission;
 const updateProgress = async (req, res) => {
     try {
-        const { studentId, classId, surahsCompleted, tajweedScore, memorizedAyahs, notes, } = req.body;
-        if (!studentId || !classId) {
+        const { studentId, classId, surahsCompleted, tajweedScore, memorizedAyahs, notes, curriculumProgram, curriculumUnit, curriculumTopic, } = req.body;
+        if (!studentId || !classId || !curriculumProgram) {
             res.status(400).json({
                 success: false,
-                message: "Please provide studentId and classId",
+                message: "Please provide studentId, classId, and curriculumProgram",
                 data: null,
             });
             return;
@@ -475,8 +761,20 @@ const updateProgress = async (req, res) => {
             });
             return;
         }
+        const curriculumOk = await (0, curriculumService_1.validateCurriculumForStudent)(studentId, curriculumProgram, curriculumUnit, curriculumTopic);
+        if (!curriculumOk) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid curriculum selection for this student",
+                data: null,
+            });
+            return;
+        }
         const updateData = {
             updatedBy: req.user._id,
+            curriculumProgram,
+            curriculumUnit: curriculumUnit || undefined,
+            curriculumTopic: curriculumTopic || undefined,
         };
         if (surahsCompleted !== undefined)
             updateData.surahsCompleted = surahsCompleted;

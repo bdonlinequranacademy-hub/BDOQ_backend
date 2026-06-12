@@ -4,9 +4,9 @@ exports.createStudentRequest = createStudentRequest;
 exports.listTeacherStudentRequests = listTeacherStudentRequests;
 exports.listAdminStudentRequests = listAdminStudentRequests;
 exports.resolveStudentRequest = resolveStudentRequest;
-const Notification_1 = require("../models/Notification");
 const StudentRequest_1 = require("../models/StudentRequest");
 const User_1 = require("../models/User");
+const notificationService_1 = require("./notificationService");
 function formatRequest(doc) {
     const teacher = doc.teacher;
     return {
@@ -25,15 +25,7 @@ function formatRequest(doc) {
     };
 }
 async function notifyAdmins(title, message) {
-    const admins = await User_1.User.find({ role: "admin", isActive: true }).select("_id");
-    if (admins.length === 0)
-        return;
-    await Notification_1.Notification.insertMany(admins.map((admin) => ({
-        user: admin._id,
-        title,
-        message,
-        type: "general",
-    })));
+    await (0, notificationService_1.notifyAdmins)(title, message, "general");
 }
 async function createStudentRequest(teacherId, message, preferredCourseType) {
     const teacher = await User_1.User.findById(teacherId).select("name");
@@ -71,8 +63,8 @@ async function resolveStudentRequest(requestId, adminId, status, adminNote) {
     }, { new: true }).populate("teacher", "name email");
     if (!doc)
         return null;
-    await Notification_1.Notification.create({
-        user: doc.teacher,
+    await (0, notificationService_1.createUserNotification)({
+        userId: doc.teacher,
         title: status === "approved"
             ? "Student request approved"
             : "Student request declined",

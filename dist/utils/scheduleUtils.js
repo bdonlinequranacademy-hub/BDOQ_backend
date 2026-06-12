@@ -5,6 +5,8 @@ exports.getOrderedDays = getOrderedDays;
 exports.getTodayScheduleDay = getTodayScheduleDay;
 exports.formatWeeklyTime = formatWeeklyTime;
 exports.formatDuration = formatDuration;
+exports.getSessionInstant = getSessionInstant;
+exports.getSessionPhase = getSessionPhase;
 exports.ACADEMY_TIMEZONE = process.env.ACADEMY_TIMEZONE?.trim() || "Asia/Dhaka";
 const DAY_INDEX = {
     Sunday: 0,
@@ -90,4 +92,24 @@ function formatWeeklyTime(day, time24, targetTimeZone, sourceTimeZone = exports.
 }
 function formatDuration(minutes) {
     return `${minutes}m`;
+}
+function getSessionInstant(day, time24, sourceTimeZone = exports.ACADEMY_TIMEZONE) {
+    const [hours, minutes] = time24.split(":").map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes))
+        return null;
+    const ref = getDateForWeekday(day, sourceTimeZone);
+    const y = ref.getUTCFullYear();
+    const mo = ref.getUTCMonth();
+    const d = ref.getUTCDate();
+    const utcGuess = Date.UTC(y, mo, d, hours, minutes, 0, 0);
+    const sourceOffset = getTimeZoneOffsetMinutes(sourceTimeZone, new Date(utcGuess));
+    return new Date(utcGuess - sourceOffset * 60000);
+}
+function getSessionPhase(startsAt, durationMinutes, now = new Date()) {
+    const endsAt = new Date(startsAt.getTime() + durationMinutes * 60000);
+    if (now < startsAt)
+        return "upcoming";
+    if (now < endsAt)
+        return "live";
+    return "completed";
 }

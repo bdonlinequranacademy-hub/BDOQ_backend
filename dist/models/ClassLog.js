@@ -84,6 +84,18 @@ const classLogSchema = new mongoose_1.Schema({
         type: [String],
         default: [],
     },
+    curriculumProgram: {
+        type: String,
+        trim: true,
+    },
+    curriculumUnit: {
+        type: String,
+        trim: true,
+    },
+    curriculumTopic: {
+        type: String,
+        trim: true,
+    },
     status: {
         type: String,
         enum: ["pending", "approved", "rejected"],

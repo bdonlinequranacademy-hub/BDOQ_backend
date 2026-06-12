@@ -11,6 +11,7 @@ const Homework_1 = require("../models/Homework");
 const Attendance_1 = require("../models/Attendance");
 const Progress_1 = require("../models/Progress");
 const Notification_1 = require("../models/Notification");
+const curriculumService_1 = require("../services/curriculumService");
 async function assertChildAccess(req, res, childId) {
     if (!mongoose_1.default.Types.ObjectId.isValid(childId)) {
         res.status(400).json({
@@ -189,7 +190,7 @@ const getChildProgress = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Progress fetched successfully",
-            data: progress,
+            data: (0, curriculumService_1.mapProgressDocsWithLabels)(progress),
         });
     }
     catch {

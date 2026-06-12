@@ -9,6 +9,9 @@ const earningsController_1 = require("../controllers/earningsController");
 const monthlyProgressController_1 = require("../controllers/monthlyProgressController");
 const studentRequestController_1 = require("../controllers/studentRequestController");
 const trialBookingController_1 = require("../controllers/trialBookingController");
+const contactMessageController_1 = require("../controllers/contactMessageController");
+const concernReportController_1 = require("../controllers/concernReportController");
+const curriculumAdminController_1 = require("../controllers/curriculumAdminController");
 const adminScheduleController_1 = require("../controllers/adminScheduleController");
 const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("admin"));
@@ -38,6 +41,13 @@ router.patch("/student-requests/:id/approve", studentRequestController_1.approve
 router.patch("/student-requests/:id/reject", studentRequestController_1.rejectStudentRequest);
 router.get("/trial-bookings", trialBookingController_1.listAdminTrialBookings);
 router.patch("/trial-bookings/:id/status", trialBookingController_1.patchAdminTrialBookingStatus);
+router.get("/contact-messages", contactMessageController_1.listAdminContactMessages);
+router.patch("/contact-messages/:id/status", contactMessageController_1.patchAdminContactMessageStatus);
+router.get("/concern-reports", concernReportController_1.listAdminConcernReports);
+router.patch("/concern-reports/:id/status", concernReportController_1.updateConcernReportStatus);
+router.get("/curriculum", curriculumAdminController_1.getAdminCurriculumTree);
+router.put("/curriculum", curriculumAdminController_1.updateAdminCurriculumTree);
+router.post("/curriculum/reset", curriculumAdminController_1.resetAdminCurriculumTree);
 router.get("/schedule/routine", adminScheduleController_1.getAdminWeeklyRoutine);
 router.post("/schedule/resync", adminScheduleController_1.resyncAdminSchedule);
 /** Blog CMS — admin role only (router-level guard above). */

@@ -6,6 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.rejectAdminClassLog = exports.approveAdminClassLog = exports.listAdminClassLogs = exports.getTeacherClassLogStats = exports.getTeacherClassLog = exports.listTeacherClassLogs = exports.createTeacherClassLog = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const classLogService_1 = require("../services/classLogService");
+const ClassLog_1 = require("../models/ClassLog");
+const complianceScanService_1 = require("../services/complianceScanService");
+const SessionSlot_1 = require("../models/SessionSlot");
+const curriculumService_1 = require("../services/curriculumService");
 function parseStatus(value) {
     if (value === "pending" || value === "approved" || value === "rejected") {
         return value;
@@ -14,11 +18,11 @@ function parseStatus(value) {
 }
 const createTeacherClassLog = async (req, res) => {
     try {
-        const { sessionSlotId, sessionDate, lessonReport, topicsCovered } = req.body;
-        if (!sessionSlotId || !lessonReport?.trim()) {
+        const { sessionSlotId, sessionDate, lessonReport, topicsCovered, curriculumProgram, curriculumUnit, curriculumTopic, } = req.body;
+        if (!sessionSlotId || !lessonReport?.trim() || !curriculumProgram) {
             res.status(400).json({
                 success: false,
-                message: "sessionSlotId and lessonReport are required",
+                message: "sessionSlotId, curriculumProgram, and lessonReport are required",
                 data: null,
             });
             return;
@@ -34,17 +38,71 @@ const createTeacherClassLog = async (req, res) => {
         const date = typeof sessionDate === "string" && sessionDate
             ? sessionDate
             : new Date().toISOString().split("T")[0];
+        const trimmedReport = String(lessonReport).trim();
+        const compliance = (0, complianceScanService_1.scanComplianceText)(trimmedReport);
+        if (!compliance.passed) {
+            res.status(400).json({
+                success: false,
+                message: compliance.message,
+                data: { compliance },
+            });
+            return;
+        }
+        const previous = await ClassLog_1.ClassLog.findOne({
+            sessionSlot: sessionSlotId,
+            teacher: req.user._id,
+        })
+            .sort({ createdAt: -1 })
+            .select("lessonReport");
+        const quality = (0, complianceScanService_1.assessLogQuality)(trimmedReport, {
+            previousReport: previous?.lessonReport ?? null,
+        });
+        if (!quality.passed) {
+            res.status(400).json({
+                success: false,
+                message: quality.message,
+                data: { quality },
+            });
+            return;
+        }
+        const warnings = (0, complianceScanService_1.combineScanWarnings)(compliance, quality);
+        const slot = await SessionSlot_1.SessionSlot.findOne({
+            _id: sessionSlotId,
+            teacher: req.user._id,
+            isActive: true,
+        }).select("student");
+        if (!slot) {
+            res.status(404).json({
+                success: false,
+                message: "Session slot not found",
+                data: null,
+            });
+            return;
+        }
+        const curriculumOk = await (0, curriculumService_1.validateCurriculumForStudent)(slot.student.toString(), curriculumProgram, curriculumUnit, curriculumTopic);
+        if (!curriculumOk) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid curriculum selection for this student",
+                data: null,
+            });
+            return;
+        }
         const log = await (0, classLogService_1.createClassLog)({
             teacherId: req.user._id,
             sessionSlotId,
             sessionDate: date,
-            lessonReport,
+            lessonReport: trimmedReport,
             topicsCovered: Array.isArray(topicsCovered) ? topicsCovered : undefined,
+            curriculumProgram,
+            curriculumUnit,
+            curriculumTopic,
         });
         res.status(201).json({
             success: true,
             message: "Class log submitted for approval",
             data: log,
+            warnings: warnings.length > 0 ? warnings : undefined,
         });
     }
     catch (err) {

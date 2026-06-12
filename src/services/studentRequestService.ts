@@ -1,10 +1,13 @@
 import type { Types } from "mongoose";
-import { Notification } from "../models/Notification";
 import {
   StudentRequest,
   StudentRequestStatus,
 } from "../models/StudentRequest";
 import { User } from "../models/User";
+import {
+  createUserNotification,
+  notifyAdmins as notifyAdminsRealtime,
+} from "./notificationService";
 
 export interface StudentRequestView {
   _id: string;
@@ -40,16 +43,7 @@ function formatRequest(doc: InstanceType<typeof StudentRequest>): StudentRequest
 }
 
 async function notifyAdmins(title: string, message: string) {
-  const admins = await User.find({ role: "admin", isActive: true }).select("_id");
-  if (admins.length === 0) return;
-  await Notification.insertMany(
-    admins.map((admin) => ({
-      user: admin._id,
-      title,
-      message,
-      type: "general" as const,
-    }))
-  );
+  await notifyAdminsRealtime(title, message, "general");
 }
 
 export async function createStudentRequest(
@@ -117,8 +111,8 @@ export async function resolveStudentRequest(
 
   if (!doc) return null;
 
-  await Notification.create({
-    user: doc.teacher,
+  await createUserNotification({
+    userId: doc.teacher,
     title:
       status === "approved"
         ? "Student request approved"

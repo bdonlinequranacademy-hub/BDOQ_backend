@@ -4,6 +4,7 @@ import {
   type ContactMessageStatus,
 } from "../models/ContactMessage";
 import { sendEmail } from "./emailService";
+import { signalAdminPending } from "./notificationService";
 
 export type { ContactMessageStatus };
 
@@ -96,6 +97,8 @@ export async function createContactMessage(
     console.log(formatMessageText(message));
     console.log("---\n");
   }
+
+  signalAdminPending("contact-message");
 
   return { message };
 }

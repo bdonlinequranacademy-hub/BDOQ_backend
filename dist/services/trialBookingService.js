@@ -7,6 +7,7 @@ exports.updateTrialBookingStatus = updateTrialBookingStatus;
 exports.countTrialBookingsByStatus = countTrialBookingsByStatus;
 const TrialBooking_1 = require("../models/TrialBooking");
 const emailService_1 = require("./emailService");
+const notificationService_1 = require("./notificationService");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function notifyEmail() {
     const to = process.env.TRIAL_NOTIFY_EMAIL?.trim() ||
@@ -104,6 +105,7 @@ async function createTrialBooking(input) {
         console.log(formatBookingText(booking));
         console.log("---\n");
     }
+    (0, notificationService_1.signalAdminPending)("trial-booking");
     return { booking };
 }
 async function listTrialBookings(status, limit = 100) {

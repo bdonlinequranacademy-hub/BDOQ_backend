@@ -11,9 +11,14 @@ const Class_1 = require("../models/Class");
 const Homework_1 = require("../models/Homework");
 const Attendance_1 = require("../models/Attendance");
 const Progress_1 = require("../models/Progress");
-const Notification_1 = require("../models/Notification");
+const notificationService_1 = require("../services/notificationService");
+const ClassLog_1 = require("../models/ClassLog");
+const TrialBooking_1 = require("../models/TrialBooking");
+const ContactMessage_1 = require("../models/ContactMessage");
+const ConcernReport_1 = require("../models/ConcernReport");
 const studentId_1 = require("../utils/studentId");
 const scheduleService_1 = require("../services/scheduleService");
+const curriculumService_1 = require("../services/curriculumService");
 const DAY_NAMES = [
     "Sunday",
     "Monday",
@@ -32,13 +37,15 @@ const formatUser = (user) => ({
     isActive: user.isActive,
     children: user.children?.map((id) => id.toString()) ?? [],
     studentId: user.studentId ?? undefined,
+    gender: user.gender ?? undefined,
     timezone: user.timezone ?? "Asia/Dhaka",
     country: user.country ?? undefined,
+    curriculumAssignments: user.curriculumAssignments ?? [],
     createdAt: user.createdAt,
 });
 const getAllUsers = async (req, res) => {
     try {
-        const { role } = req.query;
+        const { role, gender } = req.query;
         const filter = {};
         if (role) {
             if (role === "parent") {
@@ -58,6 +65,9 @@ const getAllUsers = async (req, res) => {
                 return;
             }
             filter.role = role;
+        }
+        if (gender === "male" || gender === "female") {
+            filter.gender = gender;
         }
         const users = await User_1.User.find(filter).select("-password").sort({
             createdAt: -1,
@@ -114,7 +124,7 @@ const getUserById = async (req, res) => {
 exports.getUserById = getUserById;
 const createUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, gender, timezone, country, curriculumAssignments } = req.body;
         if (!name || !email || !password) {
             res.status(400).json({
                 success: false,
@@ -157,9 +167,38 @@ const createUser = async (req, res) => {
             role: assignRole,
             emailVerified: true,
         };
+        if (assignRole === "student" || assignRole === "teacher") {
+            if (typeof country !== "string" || !country.trim()) {
+                res.status(400).json({
+                    success: false,
+                    message: "Country is required for students and teachers",
+                    data: null,
+                });
+                return;
+            }
+            userPayload.country = country.trim();
+        }
         if (assignRole === "student") {
             userPayload.studentId = await (0, studentId_1.generateStudentId)();
-            userPayload.timezone = "Asia/Dhaka";
+            userPayload.timezone =
+                typeof timezone === "string" && timezone.trim()
+                    ? timezone.trim()
+                    : "Asia/Dhaka";
+            const parsedCurriculum = (0, curriculumService_1.parseCurriculumAssignments)(curriculumAssignments);
+            if (parsedCurriculum) {
+                userPayload.curriculumAssignments = parsedCurriculum;
+            }
+        }
+        if (assignRole === "teacher" && gender) {
+            if (gender !== "male" && gender !== "female") {
+                res.status(400).json({
+                    success: false,
+                    message: "Teacher gender must be male or female",
+                    data: null,
+                });
+                return;
+            }
+            userPayload.gender = gender;
         }
         const user = await User_1.User.create(userPayload);
         res.status(201).json({
@@ -168,7 +207,8 @@ const createUser = async (req, res) => {
             data: formatUser(user),
         });
     }
-    catch {
+    catch (err) {
+        console.error("[admin] createUser failed:", err);
         res.status(500).json({
             success: false,
             message: "Failed to create user",
@@ -180,7 +220,7 @@ exports.createUser = createUser;
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role, isActive, children } = req.body;
+        const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
@@ -255,6 +295,7 @@ const updateUser = async (req, res) => {
             }
         }
         const updateData = {};
+        const unsetData = {};
         if (name !== undefined)
             updateData.name = name;
         if (email !== undefined)
@@ -265,7 +306,59 @@ const updateUser = async (req, res) => {
             updateData.isActive = isActive;
         if (children !== undefined)
             updateData.children = children;
-        const user = await User_1.User.findByIdAndUpdate(id, updateData, {
+        if (gender !== undefined) {
+            if (gender === null || gender === "") {
+                unsetData.gender = 1;
+            }
+            else if (gender === "male" || gender === "female") {
+                updateData.gender = gender;
+            }
+            else {
+                res.status(400).json({
+                    success: false,
+                    message: "Gender must be male or female",
+                    data: null,
+                });
+                return;
+            }
+        }
+        if (timezone !== undefined) {
+            updateData.timezone =
+                typeof timezone === "string" && timezone.trim()
+                    ? timezone.trim()
+                    : "Asia/Dhaka";
+        }
+        if (country !== undefined) {
+            const trimmed = typeof country === "string" ? country.trim() : "";
+            const targetRole = role;
+            if (!trimmed &&
+                (targetRole === "student" || targetRole === "teacher")) {
+                res.status(400).json({
+                    success: false,
+                    message: "Country is required for students and teachers",
+                    data: null,
+                });
+                return;
+            }
+            updateData.country = trimmed;
+        }
+        if (curriculumAssignments !== undefined) {
+            const parsed = (0, curriculumService_1.parseCurriculumAssignments)(curriculumAssignments);
+            if (parsed === null) {
+                res.status(400).json({
+                    success: false,
+                    message: "curriculumAssignments must be an array",
+                    data: null,
+                });
+                return;
+            }
+            updateData.curriculumAssignments = parsed;
+        }
+        const mongoUpdate = { ...updateData };
+        if (Object.keys(unsetData).length > 0) {
+            mongoUpdate.$unset = unsetData;
+        }
+        const user = await User_1.User.findByIdAndUpdate(id, mongoUpdate, {
             new: true,
             runValidators: true,
         }).select("-password");
@@ -384,7 +477,9 @@ const createClass = async (req, res) => {
         }
         const classDoc = await Class_1.Class.create({
             title,
-            description,
+            description: typeof description === "string" && description.trim()
+                ? description.trim()
+                : undefined,
             teacher: teacherId,
             students: studentIds || [],
             schedule,
@@ -393,13 +488,12 @@ const createClass = async (req, res) => {
         });
         const students = studentIds || [];
         if (students.length > 0) {
-            const notifications = students.map((studentId) => ({
-                user: studentId,
+            await (0, notificationService_1.createUserNotifications)(students.map((studentId) => ({
+                userId: studentId,
                 title: "Class Enrollment",
                 message: `You have been enrolled in ${title}`,
                 type: "class",
-            }));
-            await Notification_1.Notification.insertMany(notifications);
+            })));
         }
         await (0, scheduleService_1.syncSlotsFromClass)(classDoc);
         res.status(201).json({
@@ -548,7 +642,7 @@ exports.getAllClasses = getAllClasses;
 const getDashboardStats = async (_req, res) => {
     try {
         const today = DAY_NAMES[new Date().getDay()];
-        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses,] = await Promise.all([
+        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, pendingClassLogs, newConcernReports,] = await Promise.all([
             User_1.User.countDocuments({ role: "student" }),
             User_1.User.countDocuments({ role: "teacher" }),
             Class_1.Class.countDocuments(),
@@ -556,6 +650,10 @@ const getDashboardStats = async (_req, res) => {
             Class_1.Class.find({ "schedule.day": today })
                 .populate("teacher", "name")
                 .populate("students", "name"),
+            TrialBooking_1.TrialBooking.countDocuments({ status: "new" }),
+            ContactMessage_1.ContactMessage.countDocuments({ status: "new" }),
+            ClassLog_1.ClassLog.countDocuments({ status: "pending" }),
+            ConcernReport_1.ConcernReport.countDocuments({ status: "new" }),
         ]);
         res.status(200).json({
             success: true,
@@ -566,6 +664,12 @@ const getDashboardStats = async (_req, res) => {
                 totalClasses,
                 activeClasses,
                 todaysClasses,
+                pendingActions: {
+                    newTrials,
+                    newContacts,
+                    pendingClassLogs,
+                    newConcernReports,
+                },
             },
         });
     }
@@ -581,20 +685,33 @@ exports.getDashboardStats = getDashboardStats;
 const getAllHomework = async (_req, res) => {
     try {
         const homework = await Homework_1.Homework.find()
-            .populate("class", "title")
+            .populate("class", "title students")
             .populate("teacher", "name")
             .sort({ dueDate: -1 });
-        const homeworkWithCounts = homework.map((hw) => ({
-            _id: hw._id,
-            title: hw.title,
-            description: hw.description,
-            class: hw.class,
-            teacher: hw.teacher,
-            dueDate: hw.dueDate,
-            submissionCount: hw.submissions.length,
-            createdAt: hw.createdAt,
-            updatedAt: hw.updatedAt,
-        }));
+        const homeworkWithCounts = homework.map((hw) => {
+            const classDoc = hw.class;
+            const totalStudents = classDoc?.students?.length ?? 0;
+            const gradedCount = hw.submissions.filter((s) => s.grade).length;
+            const pendingGradeCount = hw.submissions.filter((s) => s.submittedAt && !s.grade).length;
+            return {
+                _id: hw._id,
+                title: hw.title,
+                description: hw.description,
+                class: classDoc,
+                teacher: hw.teacher,
+                dueDate: hw.dueDate,
+                curriculumProgram: hw.curriculumProgram,
+                curriculumUnit: hw.curriculumUnit,
+                curriculumTopic: hw.curriculumTopic,
+                curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(hw.curriculumProgram, hw.curriculumUnit, hw.curriculumTopic),
+                submissionCount: hw.submissions.filter((s) => s.submittedAt).length,
+                totalStudents,
+                gradedCount,
+                pendingGradeCount,
+                createdAt: hw.createdAt,
+                updatedAt: hw.updatedAt,
+            };
+        });
         res.status(200).json({
             success: true,
             message: "Homework fetched successfully",
@@ -693,7 +810,7 @@ const getAllProgress = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Progress fetched successfully",
-            data: progress,
+            data: (0, curriculumService_1.mapProgressDocsWithLabels)(progress),
         });
     }
     catch {
@@ -745,8 +862,8 @@ const assignStudentToClass = async (req, res) => {
             });
             return;
         }
-        await Notification_1.Notification.create({
-            user: studentId,
+        await (0, notificationService_1.createUserNotification)({
+            userId: studentId,
             title: "Class Enrollment",
             message: `You have been enrolled in ${classDoc.title}`,
             type: "class",
