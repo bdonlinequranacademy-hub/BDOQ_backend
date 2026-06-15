@@ -4,6 +4,13 @@ import { Strategy as FacebookStrategy } from "passport-facebook";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { IUser, User, AuthProvider } from "../models/User";
+import {
+  OAuthAccountRequiredError,
+  OAuthPortalMismatchError,
+  parsePortalIntent,
+  PortalIntent,
+  roleMatchesPortal,
+} from "../lib/portalAuth";
 
 const getCallbackBase = (): string => {
   const port = process.env.PORT || "5000";
@@ -17,6 +24,7 @@ const findOrCreateOAuthUser = async (
   email: string,
   name: string,
   provider: AuthProvider,
+  portal: PortalIntent,
   providerId?: string
 ): Promise<IUser> => {
   const normalizedEmail = email.toLowerCase();
@@ -26,6 +34,9 @@ const findOrCreateOAuthUser = async (
     if (!user.isActive) {
       throw new Error("Account is deactivated");
     }
+    if (!roleMatchesPortal(user.role, portal)) {
+      throw new OAuthPortalMismatchError(portal, user.role);
+    }
     if (!user.emailVerified) {
       user.emailVerified = true;
       user.emailVerificationToken = null;
@@ -33,6 +44,10 @@ const findOrCreateOAuthUser = async (
       await user.save();
     }
     return user;
+  }
+
+  if (portal !== "student") {
+    throw new OAuthAccountRequiredError(portal);
   }
 
   const randomPassword = crypto.randomBytes(32).toString("hex");
@@ -60,19 +75,22 @@ if (isConfigured(process.env.GOOGLE_CLIENT_ID) && isConfigured(process.env.GOOGL
         clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
         callbackURL: `${getCallbackBase()}/api/auth/google/callback`,
         scope: ["profile", "email"],
+        passReqToCallback: true,
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      async (req, _accessToken, _refreshToken, profile, done) => {
         try {
           const email = profile.emails?.[0]?.value;
           if (!email) {
             return done(null, false);
           }
 
+          const portal = parsePortalIntent(req.query.state);
           const name = profile.displayName || email;
           const user = await findOrCreateOAuthUser(
             email,
             name,
             "google",
+            portal,
             profile.id
           );
           return done(null, user);
@@ -94,14 +112,16 @@ if (isConfigured(process.env.FACEBOOK_APP_ID) && isConfigured(process.env.FACEBO
         clientSecret: process.env.FACEBOOK_APP_SECRET as string,
         callbackURL: `${getCallbackBase()}/api/auth/facebook/callback`,
         profileFields: ["id", "emails", "name"],
+        passReqToCallback: true,
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      async (req, _accessToken, _refreshToken, profile, done) => {
         try {
           const email = profile.emails?.[0]?.value;
           if (!email) {
             return done(null, false);
           }
 
+          const portal = parsePortalIntent(req.query.state);
           const givenName = profile.name?.givenName ?? "";
           const familyName = profile.name?.familyName ?? "";
           const name =
@@ -111,6 +131,7 @@ if (isConfigured(process.env.FACEBOOK_APP_ID) && isConfigured(process.env.FACEBO
             email,
             name,
             "facebook",
+            portal,
             profile.id
           );
           return done(null, user);

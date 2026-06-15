@@ -15,6 +15,7 @@ import {
   portalBaseUrl,
 } from "../services/verificationTokens";
 import { generateStudentId } from "../utils/studentId";
+import { parsePortalIntent, roleMatchesPortal } from "../lib/portalAuth";
 
 const VALID_ROLES: UserRole[] = ["student", "teacher", "admin", "parent"];
 
@@ -384,24 +385,31 @@ export const resetPassword = async (
 export const oauthSuccess = (req: Request, res: Response): void => {
   try {
     const user = req.user as IUser | undefined;
+    const portal = parsePortalIntent(req.query.state);
 
     if (!user) {
-      res.redirect(`${portalBaseUrl()}/login?error=oauth`);
+      res.redirect(`${portalBaseUrl()}/login?portal=${portal}&error=oauth`);
       return;
     }
 
     if (!user.isActive) {
-      res.redirect(`${portalBaseUrl()}/login?error=deactivated`);
+      res.redirect(`${portalBaseUrl()}/login?portal=${portal}&error=deactivated`);
+      return;
+    }
+
+    if (!roleMatchesPortal(user.role, portal)) {
+      res.redirect(`${portalBaseUrl()}/login?portal=${portal}&error=oauth_role`);
       return;
     }
 
     if (!process.env.JWT_SECRET) {
-      res.redirect(`${portalBaseUrl()}/login?error=oauth`);
+      res.redirect(`${portalBaseUrl()}/login?portal=${portal}&error=oauth`);
       return;
     }
 
     const token = signToken(user._id.toString());
     const callbackUrl = new URL("/auth/callback", portalBaseUrl());
+    callbackUrl.searchParams.set("portal", portal);
     callbackUrl.hash = `token=${encodeURIComponent(token)}`;
     res.redirect(callbackUrl.toString());
   } catch {

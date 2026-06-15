@@ -10,6 +10,7 @@ const User_1 = require("../models/User");
 const emailService_1 = require("../services/emailService");
 const verificationTokens_1 = require("../services/verificationTokens");
 const studentId_1 = require("../utils/studentId");
+const portalAuth_1 = require("../lib/portalAuth");
 const VALID_ROLES = ["student", "teacher", "admin", "parent"];
 const formatUser = (user) => ({
     id: user._id,
@@ -324,20 +325,26 @@ exports.resetPassword = resetPassword;
 const oauthSuccess = (req, res) => {
     try {
         const user = req.user;
+        const portal = (0, portalAuth_1.parsePortalIntent)(req.query.state);
         if (!user) {
-            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=oauth`);
+            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?portal=${portal}&error=oauth`);
             return;
         }
         if (!user.isActive) {
-            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=deactivated`);
+            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?portal=${portal}&error=deactivated`);
+            return;
+        }
+        if (!(0, portalAuth_1.roleMatchesPortal)(user.role, portal)) {
+            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?portal=${portal}&error=oauth_role`);
             return;
         }
         if (!process.env.JWT_SECRET) {
-            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=oauth`);
+            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?portal=${portal}&error=oauth`);
             return;
         }
         const token = signToken(user._id.toString());
         const callbackUrl = new URL("/auth/callback", (0, verificationTokens_1.portalBaseUrl)());
+        callbackUrl.searchParams.set("portal", portal);
         callbackUrl.hash = `token=${encodeURIComponent(token)}`;
         res.redirect(callbackUrl.toString());
     }
