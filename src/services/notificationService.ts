@@ -79,7 +79,10 @@ export async function notifyAdmins(
   message: string,
   type: NotificationType = "general"
 ): Promise<void> {
-  const admins = await User.find({ role: "admin", isActive: true }).select("_id");
+  const admins = await User.find({
+    role: { $in: ["admin", "super_admin"] },
+    isActive: true,
+  }).select("_id");
   if (admins.length > 0) {
     await createUserNotifications(
       admins.map((admin) => ({

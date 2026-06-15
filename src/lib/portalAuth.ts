@@ -13,6 +13,7 @@ export function parsePortalIntent(value: unknown): PortalIntent {
 
 export function roleMatchesPortal(userRole: IUser["role"], portal: PortalIntent): boolean {
   if (portal === "student") return userRole === "student" || userRole === "parent";
+  if (portal === "admin") return userRole === "admin" || userRole === "super_admin";
   return userRole === portal;
 }
 

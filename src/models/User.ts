@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
-export type UserRole = "student" | "teacher" | "admin" | "parent";
+export type UserRole = "student" | "teacher" | "admin" | "super_admin" | "parent";
 export type AuthProvider = "local" | "google" | "facebook";
 export type UserGender = "male" | "female";
 
@@ -59,7 +59,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["student", "teacher", "admin", "parent"],
+      enum: ["student", "teacher", "admin", "super_admin", "parent"],
       default: "student",
     },
     isActive: {

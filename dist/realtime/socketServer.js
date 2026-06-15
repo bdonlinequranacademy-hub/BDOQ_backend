@@ -47,7 +47,7 @@ function initSocketServer(httpServer) {
         const userId = socket.data.userId;
         const role = socket.data.role;
         socket.join(`user:${userId}`);
-        if (role === "admin") {
+        if (role === "admin" || role === "super_admin") {
             socket.join("role:admin");
         }
     });

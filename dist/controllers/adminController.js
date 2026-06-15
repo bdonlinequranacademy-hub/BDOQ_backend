@@ -19,6 +19,7 @@ const ConcernReport_1 = require("../models/ConcernReport");
 const studentId_1 = require("../utils/studentId");
 const scheduleService_1 = require("../services/scheduleService");
 const curriculumService_1 = require("../services/curriculumService");
+const adminRoles_1 = require("../lib/adminRoles");
 const DAY_NAMES = [
     "Sunday",
     "Monday",
@@ -28,7 +29,8 @@ const DAY_NAMES = [
     "Friday",
     "Saturday",
 ];
-const ASSIGNABLE_ROLES = ["student", "teacher", "admin"];
+const ASSIGNABLE_ROLES = ["student", "teacher", "admin", "super_admin"];
+const getActor = (req) => req.user;
 const formatUser = (user) => ({
     id: user._id,
     name: user.name,
@@ -45,13 +47,22 @@ const formatUser = (user) => ({
 });
 const getAllUsers = async (req, res) => {
     try {
+        const actor = getActor(req);
         const { role, gender } = req.query;
-        const filter = {};
+        const filter = { ...(0, adminRoles_1.usersListFilterFor)(actor) };
         if (role) {
             if (role === "parent") {
                 res.status(400).json({
                     success: false,
                     message: "Parent role is no longer used. Use student.",
+                    data: null,
+                });
+                return;
+            }
+            if (role === "super_admin" && !(0, adminRoles_1.isSuperAdmin)(actor.role)) {
+                res.status(403).json({
+                    success: false,
+                    message: "Only the super admin can filter super admin accounts",
                     data: null,
                 });
                 return;
@@ -107,6 +118,15 @@ const getUserById = async (req, res) => {
             });
             return;
         }
+        const actor = getActor(req);
+        if (!(0, adminRoles_1.canManageUser)(actor, user) && user.role !== actor.role) {
+            res.status(403).json({
+                success: false,
+                message: "You cannot view this user account",
+                data: null,
+            });
+            return;
+        }
         res.status(200).json({
             success: true,
             message: "User fetched successfully",
@@ -124,6 +144,7 @@ const getUserById = async (req, res) => {
 exports.getUserById = getUserById;
 const createUser = async (req, res) => {
     try {
+        const actor = getActor(req);
         const { name, email, password, role, gender, timezone, country, curriculumAssignments } = req.body;
         if (!name || !email || !password) {
             res.status(400).json({
@@ -149,6 +170,23 @@ const createUser = async (req, res) => {
             });
             return;
         }
+        const assignRole = (role || "student");
+        if (assignRole === "super_admin") {
+            res.status(403).json({
+                success: false,
+                message: "Super admin accounts cannot be created from the portal",
+                data: null,
+            });
+            return;
+        }
+        if (!(0, adminRoles_1.canAssignRole)(actor, assignRole)) {
+            res.status(403).json({
+                success: false,
+                message: "You are not allowed to create this role",
+                data: null,
+            });
+            return;
+        }
         const existingUser = await User_1.User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             res.status(400).json({
@@ -159,7 +197,6 @@ const createUser = async (req, res) => {
             return;
         }
         const hashedPassword = await bcryptjs_1.default.hash(password, 10);
-        const assignRole = (role || "student");
         const userPayload = {
             name,
             email,
@@ -219,6 +256,7 @@ const createUser = async (req, res) => {
 exports.createUser = createUser;
 const updateUser = async (req, res) => {
     try {
+        const actor = getActor(req);
         const { id } = req.params;
         const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
@@ -241,6 +279,39 @@ const updateUser = async (req, res) => {
             res.status(400).json({
                 success: false,
                 message: "Invalid role",
+                data: null,
+            });
+            return;
+        }
+        if (role === "super_admin") {
+            res.status(403).json({
+                success: false,
+                message: "Super admin role cannot be assigned from the portal",
+                data: null,
+            });
+            return;
+        }
+        const target = await User_1.User.findById(id);
+        if (!target) {
+            res.status(404).json({
+                success: false,
+                message: "User not found",
+                data: null,
+            });
+            return;
+        }
+        if (!(0, adminRoles_1.canManageUser)(actor, target)) {
+            res.status(403).json({
+                success: false,
+                message: "You are not allowed to update this user",
+                data: null,
+            });
+            return;
+        }
+        if (role !== undefined && !(0, adminRoles_1.canAssignRole)(actor, role)) {
+            res.status(403).json({
+                success: false,
+                message: "You are not allowed to assign this role",
                 data: null,
             });
             return;
@@ -387,11 +458,29 @@ const updateUser = async (req, res) => {
 exports.updateUser = updateUser;
 const deleteUser = async (req, res) => {
     try {
+        const actor = getActor(req);
         const { id } = req.params;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
                 message: "Invalid user ID",
+                data: null,
+            });
+            return;
+        }
+        const target = await User_1.User.findById(id);
+        if (!target) {
+            res.status(404).json({
+                success: false,
+                message: "User not found",
+                data: null,
+            });
+            return;
+        }
+        if (!(0, adminRoles_1.canManageUser)(actor, target)) {
+            res.status(403).json({
+                success: false,
+                message: "You are not allowed to deactivate this user",
                 data: null,
             });
             return;

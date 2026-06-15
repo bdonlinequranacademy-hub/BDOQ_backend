@@ -49,7 +49,7 @@ export function initSocketServer(httpServer: HttpServer): Server {
     const role = socket.data.role as string;
 
     socket.join(`user:${userId}`);
-    if (role === "admin") {
+    if (role === "admin" || role === "super_admin") {
       socket.join("role:admin");
     }
   });

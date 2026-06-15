@@ -13,6 +13,8 @@ function parsePortalIntent(value) {
 function roleMatchesPortal(userRole, portal) {
     if (portal === "student")
         return userRole === "student" || userRole === "parent";
+    if (portal === "admin")
+        return userRole === "admin" || userRole === "super_admin";
     return userRole === portal;
 }
 class OAuthPortalMismatchError extends Error {

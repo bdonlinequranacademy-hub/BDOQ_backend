@@ -58,7 +58,7 @@ import {
 
 const router = Router();
 
-router.use(auth, checkRole("admin"));
+router.use(auth, checkRole("admin", "super_admin"));
 
 router.get("/users", getAllUsers);
 router.get("/users/:id", getUserById);

@@ -46,7 +46,10 @@ async function createUserNotifications(inputs) {
 }
 /** In-app notifications for all active admins + realtime badge refresh. */
 async function notifyAdmins(title, message, type = "general") {
-    const admins = await User_1.User.find({ role: "admin", isActive: true }).select("_id");
+    const admins = await User_1.User.find({
+        role: { $in: ["admin", "super_admin"] },
+        isActive: true,
+    }).select("_id");
     if (admins.length > 0) {
         await createUserNotifications(admins.map((admin) => ({
             userId: admin._id,

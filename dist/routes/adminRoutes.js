@@ -14,7 +14,7 @@ const concernReportController_1 = require("../controllers/concernReportControlle
 const curriculumAdminController_1 = require("../controllers/curriculumAdminController");
 const adminScheduleController_1 = require("../controllers/adminScheduleController");
 const router = (0, express_1.Router)();
-router.use(auth_1.auth, (0, auth_1.checkRole)("admin"));
+router.use(auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin"));
 router.get("/users", adminController_1.getAllUsers);
 router.get("/users/:id", adminController_1.getUserById);
 router.post("/users", adminController_1.createUser);
