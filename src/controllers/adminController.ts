@@ -920,7 +920,11 @@ export const getAllHomework = async (
         _id: mongoose.Types.ObjectId;
         title: string;
         students?: mongoose.Types.ObjectId[];
-      };
+      } | null;
+      const teacherDoc = hw.teacher as unknown as {
+        _id: mongoose.Types.ObjectId;
+        name: string;
+      } | null;
       const totalStudents = classDoc?.students?.length ?? 0;
       const gradedCount = hw.submissions.filter((s) => s.grade).length;
       const pendingGradeCount = hw.submissions.filter(
@@ -932,7 +936,7 @@ export const getAllHomework = async (
         title: hw.title,
         description: hw.description,
         class: classDoc,
-        teacher: hw.teacher,
+        teacher: teacherDoc,
         dueDate: hw.dueDate,
         curriculumProgram: hw.curriculumProgram,
         curriculumUnit: hw.curriculumUnit,

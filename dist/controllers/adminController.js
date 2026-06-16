@@ -782,6 +782,7 @@ const getAllHomework = async (_req, res) => {
             .sort({ dueDate: -1 });
         const homeworkWithCounts = homework.map((hw) => {
             const classDoc = hw.class;
+            const teacherDoc = hw.teacher;
             const totalStudents = classDoc?.students?.length ?? 0;
             const gradedCount = hw.submissions.filter((s) => s.grade).length;
             const pendingGradeCount = hw.submissions.filter((s) => s.submittedAt && !s.grade).length;
@@ -790,7 +791,7 @@ const getAllHomework = async (_req, res) => {
                 title: hw.title,
                 description: hw.description,
                 class: classDoc,
-                teacher: hw.teacher,
+                teacher: teacherDoc,
                 dueDate: hw.dueDate,
                 curriculumProgram: hw.curriculumProgram,
                 curriculumUnit: hw.curriculumUnit,
