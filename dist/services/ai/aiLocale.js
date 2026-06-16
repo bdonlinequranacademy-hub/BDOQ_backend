@@ -9,9 +9,9 @@ function parseAiLocale(value) {
 }
 function languageRule(locale) {
     if (locale === "en") {
-        return "Write ALL content in clear, professional English for parents and teachers.";
+        return "Write ALL content in clear, professional English only. Do NOT use Bengali script, Banglish, or Romanized Bengali (e.g. avoid phrases like 'dui maasher advance'). Use standard English for parents and teachers.";
     }
-    return "সম্পূর্ণ বিষয়বস্তু সুন্দর, সহজ বাংলায় লিখবে (parents ও teachers এর জন্য উপযুক্ত)।";
+    return "Write ALL content in clear, professional English only. Do NOT use Bengali script, Banglish, or Romanized Bengali.";
 }
 function markdownFormatRule() {
     return `Format the response as clean Markdown:
@@ -24,8 +24,5 @@ function markdownFormatRule() {
 Do NOT wrap the response in a code block.`;
 }
 function greetingRule(locale) {
-    if (locale === "en") {
-        return 'Open with "Assalamu Alaikum," then continue in English.';
-    }
-    return "শুরু করবে 'আস-সালামু আলাইকুম,' দিয়ে, তারপর বাংলায় চালিয়ে যাবে।";
+    return 'Open with "Assalamu Alaikum," then continue in English.';
 }

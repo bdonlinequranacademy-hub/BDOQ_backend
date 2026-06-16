@@ -818,7 +818,7 @@ This post is under review before publishing. It will include Ramadan schedules a
     reference: `${SEED_PAYMENT_REF}BKASH-2MO-17K`,
     status: "pending",
     paymentDaysAgo: 1,
-    note: "Two months advance payment — pending verification",
+    note: "Two months prepaid — pending verification",
   });
 
   await insertPayment({

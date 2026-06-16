@@ -6,9 +6,9 @@ export function parseAiLocale(value: unknown): AiLocale {
 
 export function languageRule(locale: AiLocale): string {
   if (locale === "en") {
-    return "Write ALL content in clear, professional English for parents and teachers.";
+    return "Write ALL content in clear, professional English only. Do NOT use Bengali script, Banglish, or Romanized Bengali (e.g. avoid phrases like 'dui maasher advance'). Use standard English for parents and teachers.";
   }
-  return "সম্পূর্ণ বিষয়বস্তু সুন্দর, সহজ বাংলায় লিখবে (parents ও teachers এর জন্য উপযুক্ত)।";
+  return "Write ALL content in clear, professional English only. Do NOT use Bengali script, Banglish, or Romanized Bengali.";
 }
 
 export function markdownFormatRule(): string {
@@ -23,8 +23,5 @@ Do NOT wrap the response in a code block.`;
 }
 
 export function greetingRule(locale: AiLocale): string {
-  if (locale === "en") {
-    return 'Open with "Assalamu Alaikum," then continue in English.';
-  }
-  return "শুরু করবে 'আস-সালামু আলাইকুম,' দিয়ে, তারপর বাংলায় চালিয়ে যাবে।";
+  return 'Open with "Assalamu Alaikum," then continue in English.';
 }
