@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "verify-users": "ts-node scripts/verify-all-users.ts",
     "test-email": "ts-node scripts/test-smtp.ts",
-    "seed:super-admin": "ts-node scripts/seed-super-admin.ts"
+    "seed:super-admin": "ts-node scripts/seed-super-admin.ts",
+    "seed:academy-demo": "ts-node scripts/seed-academy-demo.ts"
   },
   "keywords": [],
   "author": "",
