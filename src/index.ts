@@ -58,9 +58,11 @@ const startServer = async (): Promise<void> => {
     console.warn("Non-student studentId cleanup skipped:", err);
   });
   await verifySmtpConnection();
-  await resyncAllClasses().catch((err) => {
-    console.warn("Schedule resync skipped:", err);
-  });
+  if (process.env.SCHEDULE_RESYNC_ON_BOOT === "true") {
+    await resyncAllClasses().catch((err) => {
+      console.warn("Schedule resync skipped:", err);
+    });
+  }
   const { refreshCurriculumTree } = await import("./services/curriculumStore");
   await refreshCurriculumTree().catch((err) => {
     console.warn("Curriculum seed skipped:", err);

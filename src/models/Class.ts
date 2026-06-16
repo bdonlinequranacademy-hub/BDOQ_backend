@@ -95,4 +95,8 @@ const classSchema = new Schema<IClass>(
   { timestamps: true }
 );
 
+classSchema.index({ teacher: 1, isActive: 1 });
+classSchema.index({ students: 1 });
+classSchema.index({ "schedule.day": 1, isActive: 1 });
+
 export const Class = mongoose.model<IClass>("Class", classSchema);

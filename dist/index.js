@@ -91,9 +91,11 @@ const startServer = async () => {
         console.warn("Non-student studentId cleanup skipped:", err);
     });
     await (0, emailService_1.verifySmtpConnection)();
-    await (0, scheduleService_1.resyncAllClasses)().catch((err) => {
-        console.warn("Schedule resync skipped:", err);
-    });
+    if (process.env.SCHEDULE_RESYNC_ON_BOOT === "true") {
+        await (0, scheduleService_1.resyncAllClasses)().catch((err) => {
+            console.warn("Schedule resync skipped:", err);
+        });
+    }
     const { refreshCurriculumTree } = await Promise.resolve().then(() => __importStar(require("./services/curriculumStore")));
     await refreshCurriculumTree().catch((err) => {
         console.warn("Curriculum seed skipped:", err);

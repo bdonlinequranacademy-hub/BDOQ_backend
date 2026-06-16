@@ -150,4 +150,6 @@ const userSchema = new mongoose_1.Schema({
 }, {
     timestamps: { createdAt: true, updatedAt: false },
 });
+userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ role: 1, "curriculumAssignments.0": 1 });
 exports.User = mongoose_1.default.model("User", userSchema);

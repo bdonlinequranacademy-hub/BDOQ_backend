@@ -60,4 +60,7 @@ const attendanceSchema = new mongoose_1.Schema({
         ref: "User",
     },
 }, { timestamps: true });
+attendanceSchema.index({ student: 1, date: -1 });
+attendanceSchema.index({ class: 1, date: -1 });
+attendanceSchema.index({ student: 1, class: 1, date: -1 });
 exports.Attendance = mongoose_1.default.model("Attendance", attendanceSchema);

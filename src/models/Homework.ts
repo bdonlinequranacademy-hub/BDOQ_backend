@@ -108,6 +108,9 @@ const homeworkSchema = new Schema<IHomework>(
   { timestamps: true }
 );
 
+homeworkSchema.index({ class: 1, dueDate: -1 });
+homeworkSchema.index({ teacher: 1, dueDate: -1 });
+
 export const Homework = mongoose.model<IHomework>("Homework", homeworkSchema);
 
 export function resolveSubmissionStatus(

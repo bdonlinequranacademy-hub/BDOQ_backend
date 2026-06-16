@@ -15,6 +15,8 @@ const aiLocale_1 = require("../services/ai/aiLocale");
 const aiErrors_1 = require("../services/ai/aiErrors");
 const aiContextService_1 = require("../services/aiContextService");
 const SessionSlot_1 = require("../models/SessionSlot");
+const AT_RISK_CACHE_TTL_MS = 5 * 60000;
+const atRiskCache = new Map();
 const getLast30DaysRange = () => {
     const end = new Date();
     const start = new Date();
@@ -261,53 +263,52 @@ exports.generateParentSummary = generateParentSummary;
 const getAtRiskStudents = async (req, res) => {
     try {
         const locale = (0, aiLocale_1.parseAiLocale)(req.query.locale);
+        const cacheKey = `${req.user.role}:${req.user._id.toString()}:${locale}`;
+        const cached = atRiskCache.get(cacheKey);
+        if (cached && cached.expires > Date.now()) {
+            res.status(200).json({
+                success: true,
+                message: "At-risk students fetched successfully",
+                data: cached.data,
+            });
+            return;
+        }
         const classFilter = req.user.role === "teacher" ? { teacher: req.user._id } : {};
-        const classes = await Class_1.Class.find(classFilter).populate("students", "name email role");
+        const classes = await Class_1.Class.find(classFilter)
+            .select("students teacher")
+            .populate("students", "name email role")
+            .lean();
         const studentMap = new Map();
+        const studentClassMap = new Map();
         for (const cls of classes) {
             for (const student of cls.students) {
                 if (!student || student.role !== "student")
                     continue;
-                studentMap.set(student._id.toString(), student);
+                const studentId = student._id.toString();
+                studentMap.set(studentId, student);
+                const classIds = studentClassMap.get(studentId) ?? [];
+                classIds.push(cls._id);
+                studentClassMap.set(studentId, classIds);
             }
         }
         const { start, end } = getLast30DaysRange();
+        const studentIds = [...studentMap.keys()];
+        const teacherSlotFilter = req.user.role === "teacher" ? { teacher: req.user._id } : {};
+        const riskInputs = await (0, aiContextService_1.loadStudentRiskInputsBatch)(studentIds, studentClassMap, start, end, teacherSlotFilter);
         const atRiskProfiles = [];
         for (const [studentId, student] of studentMap) {
-            const enrolledClasses = await Class_1.Class.find({
-                students: studentId,
-                ...classFilter,
-            }).select("_id");
-            const classIds = enrolledClasses.map((c) => c._id);
-            const attendanceRecords = await Attendance_1.Attendance.find({
-                student: studentId,
-                class: { $in: classIds },
-                date: { $gte: start, $lte: end },
-            }).sort({ date: -1 });
-            const totalClasses = attendanceRecords.length;
-            const missedClasses = attendanceRecords.filter((r) => r.status === "absent").length;
-            const lastPresent = attendanceRecords.find((r) => r.status === "present" || r.status === "late");
-            const homeworkList = await Homework_1.Homework.find({
-                class: { $in: classIds },
-            });
-            const totalHomework = homeworkList.length;
-            const homeworkSubmitted = homeworkList.filter((hw) => hw.submissions.some((s) => s.student.toString() === studentId)).length;
+            const inputs = riskInputs.get(studentId);
+            if (!inputs)
+                continue;
+            const { missedClasses, totalClasses, homeworkSubmitted, totalHomework, minTajweed, tajweedScores, lastPresent, logApproved, logRejected, weeklySlots, } = inputs;
             const homeworkMissed = totalHomework - homeworkSubmitted;
             const submissionRate = totalHomework > 0 ? homeworkSubmitted / totalHomework : 1;
-            const progressRecords = await Progress_1.Progress.find({
-                student: studentId,
-                class: { $in: classIds },
-            }).sort({ updatedAt: 1 });
-            const tajweedScores = progressRecords.map((p) => p.tajweedScore);
-            const minTajweed = tajweedScores.length > 0 ? Math.min(...tajweedScores) : 100;
             const reasons = [];
             const hasAttendanceRisk = missedClasses >= 3;
             const hasHomeworkRisk = totalHomework > 0 && submissionRate < 0.5;
             const hasScoreRisk = tajweedScores.length > 0 && minTajweed < 50;
-            const logStats = await (0, aiContextService_1.getStudentClassLogStats)(studentId, classIds, start, end);
-            const weeklySlots = await (0, aiContextService_1.countExpectedWeeklySessions)(studentId, req.user.role === "teacher" ? { teacher: req.user._id } : {});
-            const hasRejectedLogRisk = logStats.rejected >= 2;
-            const hasMissingLogRisk = weeklySlots > 0 && logStats.approved === 0;
+            const hasRejectedLogRisk = logRejected >= 2;
+            const hasMissingLogRisk = weeklySlots > 0 && logApproved === 0;
             if (hasAttendanceRisk) {
                 reasons.push(`Missed ${missedClasses} classes in the last 30 days`);
             }
@@ -318,7 +319,7 @@ const getAtRiskStudents = async (req, res) => {
                 reasons.push(`Tajweed score below 50 (${minTajweed}/100)`);
             }
             if (hasRejectedLogRisk) {
-                reasons.push(`${logStats.rejected} rejected session logs in the last 30 days`);
+                reasons.push(`${logRejected} rejected session logs in the last 30 days`);
             }
             if (hasMissingLogRisk) {
                 reasons.push("No verified session logs in the last 30 days despite active schedule");
@@ -338,11 +339,11 @@ const getAtRiskStudents = async (req, res) => {
                 homeworkMissed,
                 totalHomework,
                 tajweedScoreTrend: buildTajweedTrend(tajweedScores),
-                lastAttendance: lastPresent?.date ?? null,
+                lastAttendance: lastPresent,
                 reasons,
                 riskLevel,
-                verifiedSessions: logStats.approved,
-                rejectedLogs: logStats.rejected,
+                verifiedSessions: logApproved,
+                rejectedLogs: logRejected,
             });
         }
         const results = atRiskProfiles.map((profile) => {
@@ -383,6 +384,10 @@ const getAtRiskStudents = async (req, res) => {
         results.sort((a, b) => {
             const order = { high: 0, medium: 1, low: 2 };
             return order[a.riskLevel] - order[b.riskLevel];
+        });
+        atRiskCache.set(cacheKey, {
+            expires: Date.now() + AT_RISK_CACHE_TTL_MS,
+            data: results,
         });
         res.status(200).json({
             success: true,

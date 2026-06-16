@@ -41,6 +41,10 @@ const attendanceSchema = new Schema<IAttendance>(
   { timestamps: true }
 );
 
+attendanceSchema.index({ student: 1, date: -1 });
+attendanceSchema.index({ class: 1, date: -1 });
+attendanceSchema.index({ student: 1, class: 1, date: -1 });
+
 export const Attendance = mongoose.model<IAttendance>(
   "Attendance",
   attendanceSchema

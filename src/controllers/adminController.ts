@@ -11,6 +11,7 @@ import { ClassLog } from "../models/ClassLog";
 import { TrialBooking } from "../models/TrialBooking";
 import { ContactMessage } from "../models/ContactMessage";
 import { ConcernReport } from "../models/ConcernReport";
+import { StudentRequest } from "../models/StudentRequest";
 import { countPendingPayments } from "../services/paymentReminderService";
 import { generateStudentId } from "../utils/studentId";
 import { syncSlotsFromClass } from "../services/scheduleService";
@@ -863,19 +864,43 @@ export const getDashboardStats = async (
       pendingClassLogs,
       newConcernReports,
       pendingPayments,
+      pendingStudentRequests,
+      studentsWithPrograms,
+      progressMissingProgram,
+      logsMissingProgram,
     ] = await Promise.all([
       User.countDocuments({ role: "student" }),
       User.countDocuments({ role: "teacher" }),
       Class.countDocuments(),
       Class.countDocuments({ isActive: true }),
-      Class.find({ "schedule.day": today })
+      Class.find({ "schedule.day": today, isActive: true })
+        .select("title teacher students schedule meetingLink")
         .populate("teacher", "name")
-        .populate("students", "name"),
+        .lean(),
       TrialBooking.countDocuments({ status: "new" }),
       ContactMessage.countDocuments({ status: "new" }),
       ClassLog.countDocuments({ status: "pending" }),
       ConcernReport.countDocuments({ status: "new" }),
       countPendingPayments(),
+      StudentRequest.countDocuments({ status: "pending" }),
+      User.countDocuments({
+        role: "student",
+        "curriculumAssignments.0": { $exists: true },
+      }),
+      Progress.countDocuments({
+        $or: [
+          { curriculumProgram: { $exists: false } },
+          { curriculumProgram: null },
+          { curriculumProgram: "" },
+        ],
+      }),
+      ClassLog.countDocuments({
+        $or: [
+          { curriculumProgram: { $exists: false } },
+          { curriculumProgram: null },
+          { curriculumProgram: "" },
+        ],
+      }),
     ]);
 
     res.status(200).json({
@@ -893,6 +918,13 @@ export const getDashboardStats = async (
           pendingClassLogs,
           newConcernReports,
           pendingPayments,
+          pendingStudentRequests,
+        },
+        curriculumCoverage: {
+          studentsWithPrograms,
+          totalStudents,
+          progressMissingProgram,
+          logsMissingProgram,
         },
       },
     });

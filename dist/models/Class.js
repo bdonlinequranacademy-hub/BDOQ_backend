@@ -94,4 +94,7 @@ const classSchema = new mongoose_1.Schema({
         default: true,
     },
 }, { timestamps: true });
+classSchema.index({ teacher: 1, isActive: 1 });
+classSchema.index({ students: 1 });
+classSchema.index({ "schedule.day": 1, isActive: 1 });
 exports.Class = mongoose_1.default.model("Class", classSchema);

@@ -129,7 +129,8 @@ const classLogSchema = new Schema<IClassLog>(
   { timestamps: true }
 );
 
-classLogSchema.index({ teacher: 1, sessionDate: -1 });
+classLogSchema.index({ student: 1, sessionDate: -1 });
+classLogSchema.index({ sessionDate: 1, status: 1 });
 classLogSchema.index({ status: 1, createdAt: -1 });
 classLogSchema.index({ sessionSlot: 1, sessionDate: 1 }, { unique: true });
 

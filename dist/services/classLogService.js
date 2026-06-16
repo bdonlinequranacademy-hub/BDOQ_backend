@@ -195,7 +195,9 @@ async function getAdminClassLogs(status) {
     const filter = {};
     if (status)
         filter.status = status;
-    const logs = await ClassLog_1.ClassLog.find(filter).sort({ createdAt: -1 });
+    const logs = await ClassLog_1.ClassLog.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(300);
     return mapLogs(logs);
 }
 async function approveClassLog(logId, adminId) {

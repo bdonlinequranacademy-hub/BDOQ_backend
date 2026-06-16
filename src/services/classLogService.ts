@@ -298,7 +298,9 @@ export async function getAdminClassLogs(
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
 
-  const logs = await ClassLog.find(filter).sort({ createdAt: -1 });
+  const logs = await ClassLog.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(300);
 
   return mapLogs(logs);
 }

@@ -105,6 +105,8 @@ const homeworkSchema = new mongoose_1.Schema({
     },
     submissions: [submissionSchema],
 }, { timestamps: true });
+homeworkSchema.index({ class: 1, dueDate: -1 });
+homeworkSchema.index({ teacher: 1, dueDate: -1 });
 exports.Homework = mongoose_1.default.model("Homework", homeworkSchema);
 function resolveSubmissionStatus(submission) {
     if (!submission?.submittedAt)

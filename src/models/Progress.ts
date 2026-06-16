@@ -66,4 +66,7 @@ const progressSchema = new Schema<IProgress>(
   { timestamps: true }
 );
 
+progressSchema.index({ student: 1, class: 1 });
+progressSchema.index({ class: 1, updatedAt: -1 });
+
 export const Progress = mongoose.model<IProgress>("Progress", progressSchema);
