@@ -4,6 +4,7 @@ export type NotificationType =
   | "class"
   | "homework"
   | "attendance"
+  | "payment"
   | "general";
 
 export interface INotification extends Document {
@@ -35,7 +36,7 @@ const notificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["class", "homework", "attendance", "general"],
+      enum: ["class", "homework", "attendance", "payment", "general"],
     },
     isRead: {
       type: Boolean,

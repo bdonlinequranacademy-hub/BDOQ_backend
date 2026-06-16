@@ -11,10 +11,16 @@ import { User } from "../src/models/User";
 
 dotenv.config();
 
+function cleanEnv(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value.trim().replace(/^["']|["']$/g, "").replace(/;+$/, "");
+}
+
 async function main(): Promise<void> {
-  const name = process.env.SUPER_ADMIN_NAME?.trim();
-  const email = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.SUPER_ADMIN_PASSWORD;
+  const name = cleanEnv(process.env.SUPER_ADMIN_NAME);
+  const email = cleanEnv(process.env.SUPER_ADMIN_EMAIL)?.toLowerCase();
+  const password = cleanEnv(process.env.SUPER_ADMIN_PASSWORD);
+  const resetPassword = cleanEnv(process.env.SUPER_ADMIN_RESET_PASSWORD) === "true";
 
   if (!name || !email || !password) {
     console.error(
@@ -31,8 +37,31 @@ async function main(): Promise<void> {
   await mongoose.connect(process.env.MONGO_URI);
 
   const existingSuper = await User.findOne({ role: "super_admin" });
+
+  if (resetPassword && password && password.length >= 6 && email) {
+    const target =
+      (await User.findOne({ email })) ??
+      existingSuper;
+
+    if (!target) {
+      console.error(`No user found for ${email}`);
+      process.exit(1);
+    }
+
+    target.role = "super_admin";
+    target.emailVerified = true;
+    target.isActive = true;
+    target.password = await bcrypt.hash(password, 10);
+    if (name) target.name = name;
+    await target.save();
+    console.log(`Super admin password reset for: ${target.email}`);
+    await mongoose.disconnect();
+    return;
+  }
+
   if (existingSuper) {
     console.log(`Super admin already exists: ${existingSuper.email}`);
+    console.log("To reset password, set SUPER_ADMIN_RESET_PASSWORD=true and run again.");
     await mongoose.disconnect();
     return;
   }

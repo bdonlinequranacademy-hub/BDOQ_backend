@@ -20,6 +20,12 @@ import {
   getStudentProfile,
   updateStudentProfile,
 } from "../controllers/studentProfileController";
+import { paymentProofUpload } from "../middleware/uploadPaymentProof";
+import {
+  getStudentPaymentStatus,
+  listStudentPayments,
+  submitStudentPayment,
+} from "../controllers/paymentController";
 
 const router = Router();
 
@@ -41,5 +47,18 @@ router.patch("/notifications/:id/read", markAsRead);
 router.get("/profile", getStudentProfile);
 router.patch("/profile", updateStudentProfile);
 router.patch("/profile/password", changeStudentPassword);
+
+router.get("/payments/status", getStudentPaymentStatus);
+router.get("/payments", listStudentPayments);
+router.post("/payments", (req, res, next) => {
+  paymentProofUpload(req, res, (err: unknown) => {
+    if (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      res.status(400).json({ success: false, message, data: null });
+      return;
+    }
+    next();
+  });
+}, submitStudentPayment);
 
 export default router;

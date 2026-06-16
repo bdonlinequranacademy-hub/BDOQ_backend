@@ -16,6 +16,7 @@ const ClassLog_1 = require("../models/ClassLog");
 const TrialBooking_1 = require("../models/TrialBooking");
 const ContactMessage_1 = require("../models/ContactMessage");
 const ConcernReport_1 = require("../models/ConcernReport");
+const paymentReminderService_1 = require("../services/paymentReminderService");
 const studentId_1 = require("../utils/studentId");
 const scheduleService_1 = require("../services/scheduleService");
 const curriculumService_1 = require("../services/curriculumService");
@@ -731,7 +732,7 @@ exports.getAllClasses = getAllClasses;
 const getDashboardStats = async (_req, res) => {
     try {
         const today = DAY_NAMES[new Date().getDay()];
-        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, pendingClassLogs, newConcernReports,] = await Promise.all([
+        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, pendingClassLogs, newConcernReports, pendingPayments,] = await Promise.all([
             User_1.User.countDocuments({ role: "student" }),
             User_1.User.countDocuments({ role: "teacher" }),
             Class_1.Class.countDocuments(),
@@ -743,6 +744,7 @@ const getDashboardStats = async (_req, res) => {
             ContactMessage_1.ContactMessage.countDocuments({ status: "new" }),
             ClassLog_1.ClassLog.countDocuments({ status: "pending" }),
             ConcernReport_1.ConcernReport.countDocuments({ status: "new" }),
+            (0, paymentReminderService_1.countPendingPayments)(),
         ]);
         res.status(200).json({
             success: true,
@@ -758,6 +760,7 @@ const getDashboardStats = async (_req, res) => {
                     newContacts,
                     pendingClassLogs,
                     newConcernReports,
+                    pendingPayments,
                 },
             },
         });

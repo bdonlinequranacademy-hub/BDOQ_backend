@@ -55,6 +55,14 @@ import {
   getAdminWeeklyRoutine,
   resyncAdminSchedule,
 } from "../controllers/adminScheduleController";
+import {
+  approvePayment,
+  getStudentBilling,
+  listAdminPayments,
+  listOverdueBillings,
+  rejectPayment,
+  upsertStudentBilling,
+} from "../controllers/paymentController";
 
 const router = Router();
 
@@ -65,6 +73,13 @@ router.get("/users/:id", getUserById);
 router.post("/users", createUser);
 router.put("/users/:id", updateUser);
 router.delete("/users/:id", deleteUser);
+
+router.get("/payments", listAdminPayments);
+router.get("/payments/overdue", listOverdueBillings);
+router.patch("/payments/:id/approve", approvePayment);
+router.patch("/payments/:id/reject", rejectPayment);
+router.get("/students/:studentId/billing", getStudentBilling);
+router.put("/students/:studentId/billing", upsertStudentBilling);
 
 router.get("/stats", getDashboardStats);
 router.get("/homework", getAllHomework);

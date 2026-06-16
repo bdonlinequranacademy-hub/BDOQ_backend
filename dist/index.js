@@ -100,6 +100,8 @@ const startServer = async () => {
     });
     const { startSessionStatusCron } = await Promise.resolve().then(() => __importStar(require("./jobs/sessionCron")));
     startSessionStatusCron();
+    const { startPaymentReminderCron } = await Promise.resolve().then(() => __importStar(require("./jobs/paymentReminderCron")));
+    startPaymentReminderCron();
     const { initSocketServer } = await Promise.resolve().then(() => __importStar(require("./realtime/socketServer")));
     const httpServer = http_1.default.createServer(app);
     initSocketServer(httpServer);

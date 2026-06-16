@@ -29,6 +29,10 @@ export function validateEnv(): void {
     console.warn("[env] Google OAuth is disabled — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
   }
 
+  if (!isSet(process.env.CLOUDINARY_CLOUD_NAME)) {
+    console.warn("[env] CLOUDINARY_* is not set — payment screenshot upload will fail.");
+  }
+
   if (!isSet(process.env.API_BASE_URL) && process.env.NODE_ENV === "production") {
     console.warn(
       "[env] API_BASE_URL is not set — OAuth callbacks will use http://localhost:PORT. Set API_BASE_URL to your public API URL."

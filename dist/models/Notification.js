@@ -53,7 +53,7 @@ const notificationSchema = new mongoose_1.Schema({
     },
     type: {
         type: String,
-        enum: ["class", "homework", "attendance", "general"],
+        enum: ["class", "homework", "attendance", "payment", "general"],
     },
     isRead: {
         type: Boolean,

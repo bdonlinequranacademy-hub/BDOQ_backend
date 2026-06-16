@@ -11,6 +11,7 @@ import { ClassLog } from "../models/ClassLog";
 import { TrialBooking } from "../models/TrialBooking";
 import { ContactMessage } from "../models/ContactMessage";
 import { ConcernReport } from "../models/ConcernReport";
+import { countPendingPayments } from "../services/paymentReminderService";
 import { generateStudentId } from "../utils/studentId";
 import { syncSlotsFromClass } from "../services/scheduleService";
 import { parseCurriculumAssignments, mapProgressDocsWithLabels, resolveCurriculumLabels } from "../services/curriculumService";
@@ -861,6 +862,7 @@ export const getDashboardStats = async (
       newContacts,
       pendingClassLogs,
       newConcernReports,
+      pendingPayments,
     ] = await Promise.all([
       User.countDocuments({ role: "student" }),
       User.countDocuments({ role: "teacher" }),
@@ -873,6 +875,7 @@ export const getDashboardStats = async (
       ContactMessage.countDocuments({ status: "new" }),
       ClassLog.countDocuments({ status: "pending" }),
       ConcernReport.countDocuments({ status: "new" }),
+      countPendingPayments(),
     ]);
 
     res.status(200).json({
@@ -889,6 +892,7 @@ export const getDashboardStats = async (
           newContacts,
           pendingClassLogs,
           newConcernReports,
+          pendingPayments,
         },
       },
     });

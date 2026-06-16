@@ -7,6 +7,8 @@ const monthlyProgressController_1 = require("../controllers/monthlyProgressContr
 const weeklyReportController_1 = require("../controllers/weeklyReportController");
 const concernReportController_1 = require("../controllers/concernReportController");
 const studentProfileController_1 = require("../controllers/studentProfileController");
+const uploadPaymentProof_1 = require("../middleware/uploadPaymentProof");
+const paymentController_1 = require("../controllers/paymentController");
 const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("student"));
 router.get("/classes", studentController_1.getMyClasses);
@@ -25,4 +27,16 @@ router.patch("/notifications/:id/read", studentController_1.markAsRead);
 router.get("/profile", studentProfileController_1.getStudentProfile);
 router.patch("/profile", studentProfileController_1.updateStudentProfile);
 router.patch("/profile/password", studentProfileController_1.changeStudentPassword);
+router.get("/payments/status", paymentController_1.getStudentPaymentStatus);
+router.get("/payments", paymentController_1.listStudentPayments);
+router.post("/payments", (req, res, next) => {
+    (0, uploadPaymentProof_1.paymentProofUpload)(req, res, (err) => {
+        if (err) {
+            const message = err instanceof Error ? err.message : "Upload failed";
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, paymentController_1.submitStudentPayment);
 exports.default = router;
