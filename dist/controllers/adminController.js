@@ -646,7 +646,7 @@ const updateClass = async (req, res) => {
             runValidators: true,
         })
             .populate("teacher", "name email")
-            .populate("students", "name email");
+            .populate("students", "name email country studentId timezone");
         if (!classDoc) {
             res.status(404).json({
                 success: false,
@@ -684,7 +684,7 @@ const getClassById = async (req, res) => {
         }
         const classDoc = await Class_1.Class.findById(id)
             .populate("teacher", "name email")
-            .populate("students", "name email");
+            .populate("students", "name email country studentId timezone");
         if (!classDoc) {
             res.status(404).json({
                 success: false,
@@ -945,7 +945,7 @@ const assignStudentToClass = async (req, res) => {
         }
         const classDoc = await Class_1.Class.findByIdAndUpdate(classId, { $addToSet: { students: studentId } }, { new: true })
             .populate("teacher", "name email")
-            .populate("students", "name email");
+            .populate("students", "name email country studentId timezone");
         if (!classDoc) {
             res.status(404).json({
                 success: false,
@@ -989,7 +989,7 @@ const removeStudentFromClass = async (req, res) => {
         }
         const classDoc = await Class_1.Class.findByIdAndUpdate(classId, { $pull: { students: studentId } }, { new: true })
             .populate("teacher", "name email")
-            .populate("students", "name email");
+            .populate("students", "name email country studentId timezone");
         if (!classDoc) {
             res.status(404).json({
                 success: false,
