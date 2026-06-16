@@ -379,10 +379,9 @@ export const getAtRiskStudents = async (
     const studentMap = new Map<string, IUser>();
 
     for (const cls of classes) {
-      for (const student of cls.students as unknown as IUser[]) {
-        if (student.role === "student") {
-          studentMap.set(student._id.toString(), student);
-        }
+      for (const student of cls.students as unknown as (IUser | null)[]) {
+        if (!student || student.role !== "student") continue;
+        studentMap.set(student._id.toString(), student);
       }
     }
 

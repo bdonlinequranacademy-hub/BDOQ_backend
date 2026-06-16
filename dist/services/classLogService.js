@@ -13,7 +13,46 @@ const SessionSlot_1 = require("../models/SessionSlot");
 const earningsService_1 = require("./earningsService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const curriculumService_1 = require("./curriculumService");
-function formatLog(log, student, teacher, classDoc) {
+const LOG_POPULATE = [
+    { path: "student", select: "name timezone country studentId" },
+    { path: "teacher", select: "name timezone" },
+    { path: "class", select: "title meetingLink" },
+];
+function snapshotRefs(log) {
+    return {
+        student: log.get("student"),
+        teacher: log.get("teacher"),
+        class: log.get("class"),
+    };
+}
+function resolvePopulatedUser(ref, populated, fallbackName) {
+    const user = populated;
+    if (user?._id)
+        return user;
+    return {
+        _id: ref,
+        name: fallbackName,
+        timezone: "UTC",
+    };
+}
+function resolvePopulatedClass(ref, populated) {
+    const classDoc = populated;
+    if (classDoc?._id)
+        return classDoc;
+    return {
+        _id: ref,
+        title: "Deleted class",
+    };
+}
+function formatLog(log, refs) {
+    const student = resolvePopulatedUser(refs.student, log.student, "Deleted student");
+    const teacher = resolvePopulatedUser(refs.teacher, log.teacher, "Deleted teacher");
+    const classDoc = resolvePopulatedClass(refs.class, log.class);
+    const times = log.times ?? {
+        academy: { time: "—", timezone: scheduleUtils_1.ACADEMY_TIMEZONE },
+        teacher: { time: "—", timezone: scheduleUtils_1.ACADEMY_TIMEZONE },
+        student: { time: "—", timezone: "UTC" },
+    };
     return {
         _id: log._id.toString(),
         sessionSlotId: log.sessionSlot.toString(),
@@ -49,24 +88,28 @@ function formatLog(log, student, teacher, classDoc) {
         times: {
             academy: {
                 label: "BD",
-                time: log.times.academy.time,
-                timezone: log.times.academy.timezone,
+                time: times.academy.time,
+                timezone: times.academy.timezone,
             },
             teacher: {
                 label: "Tea",
-                time: log.times.teacher.time,
-                timezone: log.times.teacher.timezone,
+                time: times.teacher.time,
+                timezone: times.teacher.timezone,
             },
             student: {
                 label: "Stu",
-                time: log.times.student.time,
-                timezone: log.times.student.timezone,
+                time: times.student.time,
+                timezone: times.student.timezone,
             },
         },
     };
 }
 async function mapLogs(logs) {
-    return logs.map((log) => formatLog(log, log.student, log.teacher, log.class));
+    if (logs.length === 0)
+        return [];
+    const refs = logs.map(snapshotRefs);
+    await ClassLog_1.ClassLog.populate(logs, [...LOG_POPULATE]);
+    return logs.map((log, index) => formatLog(log, refs[index]));
 }
 async function notifyAdmins(title, message) {
     await (0, notificationService_1.notifyAdmins)(title, message, "class");
@@ -126,41 +169,33 @@ async function createClassLog(input) {
         },
     });
     await notifyAdmins("Class log pending approval", `${teacher.name} submitted a class log for ${student.name} (${input.sessionDate}).`);
-    const populated = await ClassLog_1.ClassLog.findById(log._id)
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
-        .populate("class", "title meetingLink");
-    return formatLog(populated, populated.student, populated.teacher, populated.class);
+    const populated = await ClassLog_1.ClassLog.findById(log._id);
+    if (!populated)
+        throw new Error("LOG_CREATE_FAILED");
+    const refs = snapshotRefs(populated);
+    await populated.populate([...LOG_POPULATE]);
+    return formatLog(populated, refs);
 }
 async function getTeacherClassLogs(teacherId, status) {
     const filter = { teacher: teacherId };
     if (status)
         filter.status = status;
-    const logs = await ClassLog_1.ClassLog.find(filter)
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
-        .populate("class", "title meetingLink")
-        .sort({ sessionDate: -1, createdAt: -1 });
+    const logs = await ClassLog_1.ClassLog.find(filter).sort({ sessionDate: -1, createdAt: -1 });
     return mapLogs(logs);
 }
 async function getTeacherClassLogById(teacherId, logId) {
-    const log = await ClassLog_1.ClassLog.findOne({ _id: logId, teacher: teacherId })
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
-        .populate("class", "title meetingLink");
+    const log = await ClassLog_1.ClassLog.findOne({ _id: logId, teacher: teacherId });
     if (!log)
         return null;
-    return formatLog(log, log.student, log.teacher, log.class);
+    const refs = snapshotRefs(log);
+    await log.populate([...LOG_POPULATE]);
+    return formatLog(log, refs);
 }
 async function getAdminClassLogs(status) {
     const filter = {};
     if (status)
         filter.status = status;
-    const logs = await ClassLog_1.ClassLog.find(filter)
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
-        .populate("class", "title meetingLink")
-        .sort({ createdAt: -1 });
+    const logs = await ClassLog_1.ClassLog.find(filter).sort({ createdAt: -1 });
     return mapLogs(logs);
 }
 async function approveClassLog(logId, adminId) {
@@ -174,19 +209,19 @@ async function approveClassLog(logId, adminId) {
         approvedAt: new Date(),
         adminNote: undefined,
         earningsBdt,
-    }, { new: true })
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
-        .populate("class", "title meetingLink");
+    }, { new: true });
     if (!log)
         return null;
+    const refs = snapshotRefs(log);
+    await log.populate([...LOG_POPULATE]);
+    const view = formatLog(log, refs);
     await (0, notificationService_1.createUserNotification)({
         userId: log.teacher,
         title: "Class log approved",
-        message: `Your class log for ${log.student.name} on ${log.sessionDate} was approved.`,
+        message: `Your class log for ${view.student.name} on ${log.sessionDate} was approved.`,
         type: "class",
     });
-    return formatLog(log, log.student, log.teacher, log.class);
+    return view;
 }
 async function rejectClassLog(logId, adminId, adminNote) {
     const log = await ClassLog_1.ClassLog.findByIdAndUpdate(logId, {
@@ -194,19 +229,19 @@ async function rejectClassLog(logId, adminId, adminNote) {
         approvedBy: adminId,
         approvedAt: new Date(),
         adminNote: adminNote?.trim() || "Rejected by admin",
-    }, { new: true })
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone")
-        .populate("class", "title meetingLink");
+    }, { new: true });
     if (!log)
         return null;
+    const refs = snapshotRefs(log);
+    await log.populate([...LOG_POPULATE]);
+    const view = formatLog(log, refs);
     await (0, notificationService_1.createUserNotification)({
         userId: log.teacher,
         title: "Class log rejected",
-        message: `Your class log for ${log.student.name} on ${log.sessionDate} needs revision.`,
+        message: `Your class log for ${view.student.name} on ${log.sessionDate} needs revision.`,
         type: "class",
     });
-    return formatLog(log, log.student, log.teacher, log.class);
+    return view;
 }
 async function getTeacherLogStats(teacherId) {
     const [pending, approved, rejected] = await Promise.all([

@@ -65,12 +65,62 @@ export interface ClassLogView {
   };
 }
 
-function formatLog(
-  log: IClassLog,
-  student: PopulatedUser,
-  teacher: PopulatedUser,
-  classDoc: PopulatedClass
-): ClassLogView {
+type LogRefs = {
+  student: Types.ObjectId;
+  teacher: Types.ObjectId;
+  class: Types.ObjectId;
+};
+
+const LOG_POPULATE = [
+  { path: "student", select: "name timezone country studentId" },
+  { path: "teacher", select: "name timezone" },
+  { path: "class", select: "title meetingLink" },
+] as const;
+
+function snapshotRefs(log: IClassLog): LogRefs {
+  return {
+    student: log.get("student") as Types.ObjectId,
+    teacher: log.get("teacher") as Types.ObjectId,
+    class: log.get("class") as Types.ObjectId,
+  };
+}
+
+function resolvePopulatedUser(
+  ref: Types.ObjectId,
+  populated: unknown,
+  fallbackName: string
+): PopulatedUser {
+  const user = populated as PopulatedUser | null;
+  if (user?._id) return user;
+  return {
+    _id: ref,
+    name: fallbackName,
+    timezone: "UTC",
+  };
+}
+
+function resolvePopulatedClass(
+  ref: Types.ObjectId,
+  populated: unknown
+): PopulatedClass {
+  const classDoc = populated as PopulatedClass | null;
+  if (classDoc?._id) return classDoc;
+  return {
+    _id: ref,
+    title: "Deleted class",
+  };
+}
+
+function formatLog(log: IClassLog, refs: LogRefs): ClassLogView {
+  const student = resolvePopulatedUser(refs.student, log.student, "Deleted student");
+  const teacher = resolvePopulatedUser(refs.teacher, log.teacher, "Deleted teacher");
+  const classDoc = resolvePopulatedClass(refs.class, log.class);
+  const times = log.times ?? {
+    academy: { time: "—", timezone: ACADEMY_TIMEZONE },
+    teacher: { time: "—", timezone: ACADEMY_TIMEZONE },
+    student: { time: "—", timezone: "UTC" },
+  };
+
   return {
     _id: log._id.toString(),
     sessionSlotId: log.sessionSlot.toString(),
@@ -110,32 +160,28 @@ function formatLog(
     times: {
       academy: {
         label: "BD",
-        time: log.times.academy.time,
-        timezone: log.times.academy.timezone,
+        time: times.academy.time,
+        timezone: times.academy.timezone,
       },
       teacher: {
         label: "Tea",
-        time: log.times.teacher.time,
-        timezone: log.times.teacher.timezone,
+        time: times.teacher.time,
+        timezone: times.teacher.timezone,
       },
       student: {
         label: "Stu",
-        time: log.times.student.time,
-        timezone: log.times.student.timezone,
+        time: times.student.time,
+        timezone: times.student.timezone,
       },
     },
   };
 }
 
 async function mapLogs(logs: IClassLog[]): Promise<ClassLogView[]> {
-  return logs.map((log) =>
-    formatLog(
-      log,
-      log.student as unknown as PopulatedUser,
-      log.teacher as unknown as PopulatedUser,
-      log.class as unknown as PopulatedClass
-    )
-  );
+  if (logs.length === 0) return [];
+  const refs = logs.map(snapshotRefs);
+  await ClassLog.populate(logs, [...LOG_POPULATE]);
+  return logs.map((log, index) => formatLog(log, refs[index]!));
 }
 
 async function notifyAdmins(title: string, message: string): Promise<void> {
@@ -215,17 +261,11 @@ export async function createClassLog(input: {
     `${teacher.name} submitted a class log for ${student.name} (${input.sessionDate}).`
   );
 
-  const populated = await ClassLog.findById(log._id)
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone")
-    .populate("class", "title meetingLink");
-
-  return formatLog(
-    populated!,
-    populated!.student as unknown as PopulatedUser,
-    populated!.teacher as unknown as PopulatedUser,
-    populated!.class as unknown as PopulatedClass
-  );
+  const populated = await ClassLog.findById(log._id);
+  if (!populated) throw new Error("LOG_CREATE_FAILED");
+  const refs = snapshotRefs(populated);
+  await populated.populate([...LOG_POPULATE]);
+  return formatLog(populated, refs);
 }
 
 export async function getTeacherClassLogs(
@@ -235,11 +275,7 @@ export async function getTeacherClassLogs(
   const filter: Record<string, unknown> = { teacher: teacherId };
   if (status) filter.status = status;
 
-  const logs = await ClassLog.find(filter)
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone")
-    .populate("class", "title meetingLink")
-    .sort({ sessionDate: -1, createdAt: -1 });
+  const logs = await ClassLog.find(filter).sort({ sessionDate: -1, createdAt: -1 });
 
   return mapLogs(logs);
 }
@@ -248,18 +284,12 @@ export async function getTeacherClassLogById(
   teacherId: Types.ObjectId,
   logId: string
 ): Promise<ClassLogView | null> {
-  const log = await ClassLog.findOne({ _id: logId, teacher: teacherId })
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone")
-    .populate("class", "title meetingLink");
+  const log = await ClassLog.findOne({ _id: logId, teacher: teacherId });
 
   if (!log) return null;
-  return formatLog(
-    log,
-    log.student as unknown as PopulatedUser,
-    log.teacher as unknown as PopulatedUser,
-    log.class as unknown as PopulatedClass
-  );
+  const refs = snapshotRefs(log);
+  await log.populate([...LOG_POPULATE]);
+  return formatLog(log, refs);
 }
 
 export async function getAdminClassLogs(
@@ -268,11 +298,7 @@ export async function getAdminClassLogs(
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
 
-  const logs = await ClassLog.find(filter)
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone")
-    .populate("class", "title meetingLink")
-    .sort({ createdAt: -1 });
+  const logs = await ClassLog.find(filter).sort({ createdAt: -1 });
 
   return mapLogs(logs);
 }
@@ -296,26 +322,22 @@ export async function approveClassLog(
       earningsBdt,
     },
     { new: true }
-  )
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone")
-    .populate("class", "title meetingLink");
+  );
 
   if (!log) return null;
+
+  const refs = snapshotRefs(log);
+  await log.populate([...LOG_POPULATE]);
+  const view = formatLog(log, refs);
 
   await createUserNotification({
     userId: log.teacher,
     title: "Class log approved",
-    message: `Your class log for ${(log.student as unknown as PopulatedUser).name} on ${log.sessionDate} was approved.`,
+    message: `Your class log for ${view.student.name} on ${log.sessionDate} was approved.`,
     type: "class",
   });
 
-  return formatLog(
-    log,
-    log.student as unknown as PopulatedUser,
-    log.teacher as unknown as PopulatedUser,
-    log.class as unknown as PopulatedClass
-  );
+  return view;
 }
 
 export async function rejectClassLog(
@@ -332,26 +354,22 @@ export async function rejectClassLog(
       adminNote: adminNote?.trim() || "Rejected by admin",
     },
     { new: true }
-  )
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone")
-    .populate("class", "title meetingLink");
+  );
 
   if (!log) return null;
+
+  const refs = snapshotRefs(log);
+  await log.populate([...LOG_POPULATE]);
+  const view = formatLog(log, refs);
 
   await createUserNotification({
     userId: log.teacher,
     title: "Class log rejected",
-    message: `Your class log for ${(log.student as unknown as PopulatedUser).name} on ${log.sessionDate} needs revision.`,
+    message: `Your class log for ${view.student.name} on ${log.sessionDate} needs revision.`,
     type: "class",
   });
 
-  return formatLog(
-    log,
-    log.student as unknown as PopulatedUser,
-    log.teacher as unknown as PopulatedUser,
-    log.class as unknown as PopulatedClass
-  );
+  return view;
 }
 
 export async function getTeacherLogStats(teacherId: Types.ObjectId) {

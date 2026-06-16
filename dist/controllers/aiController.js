@@ -266,9 +266,9 @@ const getAtRiskStudents = async (req, res) => {
         const studentMap = new Map();
         for (const cls of classes) {
             for (const student of cls.students) {
-                if (student.role === "student") {
-                    studentMap.set(student._id.toString(), student);
-                }
+                if (!student || student.role !== "student")
+                    continue;
+                studentMap.set(student._id.toString(), student);
             }
         }
         const { start, end } = getLast30DaysRange();
