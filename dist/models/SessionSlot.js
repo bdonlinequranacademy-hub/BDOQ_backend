@@ -91,5 +91,8 @@ const sessionSlotSchema = new mongoose_1.Schema({
 }, { timestamps: true });
 sessionSlotSchema.index({ teacher: 1, day: 1, isActive: 1 });
 sessionSlotSchema.index({ student: 1, day: 1, isActive: 1 });
+sessionSlotSchema.index({ student: 1, isActive: 1 });
+sessionSlotSchema.index({ day: 1, isActive: 1 });
+sessionSlotSchema.index({ class: 1, day: 1, isActive: 1 });
 sessionSlotSchema.index({ class: 1, student: 1 }, { unique: true });
 exports.SessionSlot = mongoose_1.default.model("SessionSlot", sessionSlotSchema);

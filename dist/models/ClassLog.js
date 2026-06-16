@@ -123,7 +123,11 @@ const classLogSchema = new mongoose_1.Schema({
     },
 }, { timestamps: true });
 classLogSchema.index({ student: 1, sessionDate: -1 });
+classLogSchema.index({ student: 1, class: 1, sessionDate: -1 });
+classLogSchema.index({ teacher: 1, status: 1, sessionDate: -1 });
+classLogSchema.index({ teacher: 1, sessionDate: -1 });
 classLogSchema.index({ sessionDate: 1, status: 1 });
 classLogSchema.index({ status: 1, createdAt: -1 });
+classLogSchema.index({ sessionSlot: 1, status: 1, sessionDate: -1 });
 classLogSchema.index({ sessionSlot: 1, sessionDate: 1 }, { unique: true });
 exports.ClassLog = mongoose_1.default.model("ClassLog", classLogSchema);

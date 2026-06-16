@@ -76,4 +76,5 @@ const studentBillingSchema = new mongoose_1.Schema({
         default: true,
     },
 }, { timestamps: true });
+studentBillingSchema.index({ isActive: 1, paidUntil: 1 });
 exports.StudentBilling = mongoose_1.default.model("StudentBilling", studentBillingSchema);

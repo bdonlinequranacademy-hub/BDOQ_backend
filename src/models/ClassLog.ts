@@ -130,8 +130,12 @@ const classLogSchema = new Schema<IClassLog>(
 );
 
 classLogSchema.index({ student: 1, sessionDate: -1 });
+classLogSchema.index({ student: 1, class: 1, sessionDate: -1 });
+classLogSchema.index({ teacher: 1, status: 1, sessionDate: -1 });
+classLogSchema.index({ teacher: 1, sessionDate: -1 });
 classLogSchema.index({ sessionDate: 1, status: 1 });
 classLogSchema.index({ status: 1, createdAt: -1 });
+classLogSchema.index({ sessionSlot: 1, status: 1, sessionDate: -1 });
 classLogSchema.index({ sessionSlot: 1, sessionDate: 1 }, { unique: true });
 
 export const ClassLog = mongoose.model<IClassLog>("ClassLog", classLogSchema);

@@ -60,4 +60,6 @@ const notificationSchema = new mongoose_1.Schema({
         default: false,
     },
 }, { timestamps: true });
+notificationSchema.index({ user: 1, createdAt: -1 });
+notificationSchema.index({ user: 1, isRead: 1 });
 exports.Notification = mongoose_1.default.model("Notification", notificationSchema);
