@@ -42,7 +42,41 @@ exports.resyncAllClasses = resyncAllClasses;
 const Class_1 = require("../models/Class");
 const SessionSlot_1 = require("../models/SessionSlot");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
-function formatSlot(slot, student, teacher, classDoc) {
+const SLOT_POPULATE = [
+    { path: "student", select: "name timezone country studentId" },
+    { path: "teacher", select: "name timezone country" },
+    { path: "class", select: "title meetingLink" },
+];
+function snapshotSlotRefs(slot) {
+    return {
+        student: slot.get("student"),
+        teacher: slot.get("teacher"),
+        class: slot.get("class"),
+    };
+}
+function resolvePopulatedUser(ref, populated, fallbackName) {
+    const user = populated;
+    if (user?._id)
+        return user;
+    return {
+        _id: ref,
+        name: fallbackName,
+        timezone: "UTC",
+    };
+}
+function resolvePopulatedClass(ref, populated) {
+    const classDoc = populated;
+    if (classDoc?._id)
+        return classDoc;
+    return {
+        _id: ref,
+        title: "Deleted class",
+    };
+}
+function formatSlot(slot, refs) {
+    const student = resolvePopulatedUser(refs.student, slot.student, "Deleted student");
+    const teacher = resolvePopulatedUser(refs.teacher, slot.teacher, "Deleted teacher");
+    const classDoc = resolvePopulatedClass(refs.class, slot.class);
     const studentTz = student.timezone || "UTC";
     const teacherTz = teacher.timezone || scheduleUtils_1.ACADEMY_TIMEZONE;
     const day = slot.day;
@@ -93,6 +127,13 @@ function formatSlot(slot, student, teacher, classDoc) {
         endsAt: endsAt.toISOString(),
     };
 }
+async function mapFormattedSlots(slots) {
+    if (slots.length === 0)
+        return [];
+    const refs = slots.map(snapshotSlotRefs);
+    await SessionSlot_1.SessionSlot.populate(slots, [...SLOT_POPULATE]);
+    return slots.map((slot, index) => formatSlot(slot, refs[index]));
+}
 async function syncSlotsFromClass(classDoc) {
     if (!classDoc.schedule || classDoc.isActive === false) {
         await SessionSlot_1.SessionSlot.updateMany({ class: classDoc._id }, { isActive: false });
@@ -118,23 +159,15 @@ async function getTeacherTodaySchedule(teacherId) {
         teacher: teacherId,
         day: today,
         isActive: true,
-    })
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone country")
-        .populate("class", "title meetingLink")
-        .sort({ startTime: 1 });
-    return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
+    }).sort({ startTime: 1 });
+    return mapFormattedSlots(slots);
 }
 async function getTeacherWeeklyRoutine(teacherId) {
     const slots = await SessionSlot_1.SessionSlot.find({
         teacher: teacherId,
         isActive: true,
-    })
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone country")
-        .populate("class", "title meetingLink")
-        .sort({ day: 1, startTime: 1 });
-    return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
+    }).sort({ day: 1, startTime: 1 });
+    return mapFormattedSlots(slots);
 }
 async function getStudentTodaySchedule(studentId) {
     const today = (0, scheduleUtils_1.getTodayScheduleDay)();
@@ -142,24 +175,16 @@ async function getStudentTodaySchedule(studentId) {
         student: studentId,
         day: today,
         isActive: true,
-    })
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone country")
-        .populate("class", "title meetingLink")
-        .sort({ startTime: 1 });
-    return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
+    }).sort({ startTime: 1 });
+    return mapFormattedSlots(slots);
 }
 async function getAcademyWeeklyRoutine(teacherId) {
     const filter = { isActive: true };
     if (teacherId) {
         filter.teacher = teacherId;
     }
-    const slots = await SessionSlot_1.SessionSlot.find(filter)
-        .populate("student", "name timezone country studentId")
-        .populate("teacher", "name timezone country")
-        .populate("class", "title meetingLink")
-        .sort({ day: 1, startTime: 1 });
-    return slots.map((slot) => formatSlot(slot, slot.student, slot.teacher, slot.class));
+    const slots = await SessionSlot_1.SessionSlot.find(filter).sort({ day: 1, startTime: 1 });
+    return mapFormattedSlots(slots);
 }
 async function resyncAllClasses() {
     const classes = await Class_1.Class.find({ isActive: true });

@@ -161,7 +161,6 @@ async function main(): Promise<void> {
     isActive: true,
   });
 
-  const todayDay = DAY_NAMES[new Date().getDay()];
   const today = startOfDay(new Date());
 
   const teacherDefs = [
@@ -240,6 +239,7 @@ async function main(): Promise<void> {
       title: "Tajweed Foundations",
       teacher: teachers[0],
       studentIndexes: [0, 1, 2, 3],
+      day: "Saturday" as ScheduleDay,
       time: "10:00",
       duration: 60,
       rate: 500,
@@ -248,6 +248,7 @@ async function main(): Promise<void> {
       title: "Hifz Evening Programme",
       teacher: teachers[1],
       studentIndexes: [4, 5, 6, 7],
+      day: "Monday" as ScheduleDay,
       time: "15:00",
       duration: 45,
       rate: 550,
@@ -256,6 +257,7 @@ async function main(): Promise<void> {
       title: "Quran Recitation",
       teacher: teachers[0],
       studentIndexes: [4, 5],
+      day: "Wednesday" as ScheduleDay,
       time: "18:30",
       duration: 60,
       rate: 500,
@@ -279,7 +281,7 @@ async function main(): Promise<void> {
       description: "Live Quran class with tajweed focus — Al Bayaan Academy.",
       teacher: def.teacher._id,
       students: classStudents,
-      schedule: { day: todayDay, time: def.time, duration: def.duration },
+      schedule: { day: def.day, time: def.time, duration: def.duration },
       meetingLink: "https://meet.google.com/albayaan-class",
       sessionRateBdt: def.rate,
       isActive: true,
@@ -292,7 +294,7 @@ async function main(): Promise<void> {
         class: classDoc._id,
         teacher: def.teacher._id,
         student: student._id,
-        day: todayDay,
+        day: def.day,
         startTime: def.time,
         durationMinutes: def.duration,
         courseType: "Quran",
@@ -304,7 +306,7 @@ async function main(): Promise<void> {
         classDoc,
         student,
         teacher: def.teacher,
-        day: todayDay,
+        day: def.day,
         time: def.time,
       });
     }
@@ -890,7 +892,7 @@ This post is under review before publishing. It will include Ramadan schedules a
   console.log("Created:");
   console.log(`  • ${teachers.length} teachers`);
   console.log(`  • ${students.length} students`);
-  console.log(`  • ${classes.length} classes (scheduled for today: ${todayDay})`);
+  console.log(`  • ${classes.length} classes (Sat / Mon / Wed routine)`);
   console.log("  • 5 class logs (3 pending, 2 approved)");
   console.log("  • 2 homework assignments with submissions");
   console.log("  • Attendance, progress, trials, contacts, payments");

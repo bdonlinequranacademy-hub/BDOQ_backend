@@ -1,6 +1,6 @@
 import type { Types } from "mongoose";
 import { Class, IClass } from "../models/Class";
-import { SessionSlot } from "../models/SessionSlot";
+import { SessionSlot, ISessionSlot } from "../models/SessionSlot";
 import { IUser } from "../models/User";
 import {
   ACADEMY_TIMEZONE,
@@ -21,6 +21,52 @@ type PopulatedClass = {
   title: string;
   meetingLink?: string;
 };
+
+type SlotRefs = {
+  student: Types.ObjectId;
+  teacher: Types.ObjectId;
+  class: Types.ObjectId;
+};
+
+const SLOT_POPULATE = [
+  { path: "student", select: "name timezone country studentId" },
+  { path: "teacher", select: "name timezone country" },
+  { path: "class", select: "title meetingLink" },
+] as const;
+
+function snapshotSlotRefs(slot: { get: (key: string) => unknown }): SlotRefs {
+  return {
+    student: slot.get("student") as Types.ObjectId,
+    teacher: slot.get("teacher") as Types.ObjectId,
+    class: slot.get("class") as Types.ObjectId,
+  };
+}
+
+function resolvePopulatedUser(
+  ref: Types.ObjectId,
+  populated: unknown,
+  fallbackName: string
+): PopulatedUser {
+  const user = populated as PopulatedUser | null;
+  if (user?._id) return user;
+  return {
+    _id: ref,
+    name: fallbackName,
+    timezone: "UTC",
+  };
+}
+
+function resolvePopulatedClass(
+  ref: Types.ObjectId,
+  populated: unknown
+): PopulatedClass {
+  const classDoc = populated as PopulatedClass | null;
+  if (classDoc?._id) return classDoc;
+  return {
+    _id: ref,
+    title: "Deleted class",
+  };
+}
 
 export interface FormattedSessionSlot {
   _id: string;
@@ -61,11 +107,15 @@ function formatSlot(
     startTime: string;
     durationMinutes: number;
     courseType: string;
+    student: unknown;
+    teacher: unknown;
+    class: unknown;
   },
-  student: PopulatedUser,
-  teacher: PopulatedUser,
-  classDoc: PopulatedClass
+  refs: SlotRefs
 ): FormattedSessionSlot {
+  const student = resolvePopulatedUser(refs.student, slot.student, "Deleted student");
+  const teacher = resolvePopulatedUser(refs.teacher, slot.teacher, "Deleted teacher");
+  const classDoc = resolvePopulatedClass(refs.class, slot.class);
   const studentTz = student.timezone || "UTC";
   const teacherTz = teacher.timezone || ACADEMY_TIMEZONE;
   const day = slot.day as Parameters<typeof formatWeeklyTime>[0];
@@ -118,6 +168,13 @@ function formatSlot(
   };
 }
 
+async function mapFormattedSlots(slots: ISessionSlot[]) {
+  if (slots.length === 0) return [];
+  const refs = slots.map(snapshotSlotRefs);
+  await SessionSlot.populate(slots, [...SLOT_POPULATE]);
+  return slots.map((slot, index) => formatSlot(slot, refs[index]!));
+}
+
 export async function syncSlotsFromClass(classDoc: IClass): Promise<void> {
   if (!classDoc.schedule || classDoc.isActive === false) {
     await SessionSlot.updateMany({ class: classDoc._id }, { isActive: false });
@@ -154,40 +211,18 @@ export async function getTeacherTodaySchedule(teacherId: Types.ObjectId) {
     teacher: teacherId,
     day: today,
     isActive: true,
-  })
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone country")
-    .populate("class", "title meetingLink")
-    .sort({ startTime: 1 });
+  }).sort({ startTime: 1 });
 
-  return slots.map((slot) =>
-    formatSlot(
-      slot,
-      slot.student as unknown as PopulatedUser,
-      slot.teacher as unknown as PopulatedUser,
-      slot.class as unknown as PopulatedClass
-    )
-  );
+  return mapFormattedSlots(slots);
 }
 
 export async function getTeacherWeeklyRoutine(teacherId: Types.ObjectId) {
   const slots = await SessionSlot.find({
     teacher: teacherId,
     isActive: true,
-  })
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone country")
-    .populate("class", "title meetingLink")
-    .sort({ day: 1, startTime: 1 });
+  }).sort({ day: 1, startTime: 1 });
 
-  return slots.map((slot) =>
-    formatSlot(
-      slot,
-      slot.student as unknown as PopulatedUser,
-      slot.teacher as unknown as PopulatedUser,
-      slot.class as unknown as PopulatedClass
-    )
-  );
+  return mapFormattedSlots(slots);
 }
 
 export async function getStudentTodaySchedule(studentId: Types.ObjectId) {
@@ -196,20 +231,9 @@ export async function getStudentTodaySchedule(studentId: Types.ObjectId) {
     student: studentId,
     day: today,
     isActive: true,
-  })
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone country")
-    .populate("class", "title meetingLink")
-    .sort({ startTime: 1 });
+  }).sort({ startTime: 1 });
 
-  return slots.map((slot) =>
-    formatSlot(
-      slot,
-      slot.student as unknown as PopulatedUser,
-      slot.teacher as unknown as PopulatedUser,
-      slot.class as unknown as PopulatedClass
-    )
-  );
+  return mapFormattedSlots(slots);
 }
 
 export async function getAcademyWeeklyRoutine(teacherId?: Types.ObjectId) {
@@ -218,20 +242,9 @@ export async function getAcademyWeeklyRoutine(teacherId?: Types.ObjectId) {
     filter.teacher = teacherId;
   }
 
-  const slots = await SessionSlot.find(filter)
-    .populate("student", "name timezone country studentId")
-    .populate("teacher", "name timezone country")
-    .populate("class", "title meetingLink")
-    .sort({ day: 1, startTime: 1 });
+  const slots = await SessionSlot.find(filter).sort({ day: 1, startTime: 1 });
 
-  return slots.map((slot) =>
-    formatSlot(
-      slot,
-      slot.student as unknown as PopulatedUser,
-      slot.teacher as unknown as PopulatedUser,
-      slot.class as unknown as PopulatedClass
-    )
-  );
+  return mapFormattedSlots(slots);
 }
 
 export async function resyncAllClasses(): Promise<number> {
