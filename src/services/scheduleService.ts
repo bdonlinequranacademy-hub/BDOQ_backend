@@ -2,12 +2,10 @@ import type { Types } from "mongoose";
 import { Class, IClass } from "../models/Class";
 import { SessionSlot, ISessionSlot } from "../models/SessionSlot";
 import { IUser } from "../models/User";
-import type { ScheduleDay } from "../models/Class";
 import {
   ACADEMY_TIMEZONE,
   formatDuration,
   formatWeeklyTime,
-  getOrderedDays,
   getSessionInstant,
   getSessionPhase,
   getTodayScheduleDay,
@@ -183,6 +181,24 @@ async function mapFormattedSlots(slots: ISessionSlot[]) {
   return slots.map((slot, index) => formatSlot(slot, refs[index]!));
 }
 
+export async function migrateScheduleRepeatField(): Promise<void> {
+  await Class.updateMany(
+    { "schedule.repeatDaily": { $exists: true } },
+    {
+      $set: { "schedule.repeatWeekly": true },
+      $unset: { "schedule.repeatDaily": "" },
+    }
+  );
+
+  await Class.updateMany(
+    {
+      schedule: { $exists: true, $ne: null },
+      "schedule.repeatWeekly": { $exists: false },
+    },
+    { $set: { "schedule.repeatWeekly": true } }
+  );
+}
+
 export async function migrateSessionSlotIndexes(): Promise<void> {
   const collection = SessionSlot.collection;
   const indexes = await collection.indexes();
@@ -218,32 +234,30 @@ export async function syncSlotsFromClass(classDoc: IClass): Promise<void> {
   const slotTime =
     normalizeScheduleTime(classDoc.schedule.time) ?? classDoc.schedule.time;
   const durationMinutes = classDoc.schedule.duration || 60;
-  const repeatDaily = classDoc.schedule.repeatDaily === true;
-  const targetDays: ScheduleDay[] = repeatDaily
-    ? getOrderedDays()
-    : [classDoc.schedule.day];
+  const repeatWeekly = classDoc.schedule.repeatWeekly !== false;
+  const targetDay = classDoc.schedule.day;
 
   for (const studentId of classDoc.students) {
-    for (const day of targetDays) {
-      await SessionSlot.findOneAndUpdate(
-        { class: classDoc._id, student: studentId, day },
-        {
-          teacher: classDoc.teacher,
-          day,
-          startTime: slotTime,
-          durationMinutes,
-          courseType: classDoc.title,
-          isActive: true,
-        },
-        { upsert: true, new: true }
-      );
-    }
+    await SessionSlot.findOneAndUpdate(
+      { class: classDoc._id, student: studentId, day: targetDay },
+      {
+        teacher: classDoc.teacher,
+        day: targetDay,
+        startTime: slotTime,
+        durationMinutes,
+        courseType: classDoc.title,
+        repeatWeekly,
+        isActive: true,
+        ...(repeatWeekly ? {} : { sessionPhase: "upcoming" }),
+      },
+      { upsert: true, new: true }
+    );
 
     await SessionSlot.updateMany(
       {
         class: classDoc._id,
         student: studentId,
-        day: { $nin: targetDays },
+        day: { $ne: targetDay },
       },
       { isActive: false }
     );

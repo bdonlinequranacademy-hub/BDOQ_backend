@@ -16,6 +16,16 @@ async function refreshTodaySessionPhases() {
         const phase = (0, scheduleUtils_1.getSessionPhase)(startsAt, slot.durationMinutes, now);
         if (slot.sessionPhase !== phase) {
             slot.sessionPhase = phase;
+            if (phase === "completed" && slot.repeatWeekly === false) {
+                slot.isActive = false;
+            }
+            await slot.save();
+            updated += 1;
+        }
+        else if (phase === "completed" &&
+            slot.repeatWeekly === false &&
+            slot.isActive) {
+            slot.isActive = false;
             await slot.save();
             updated += 1;
         }
@@ -35,6 +45,9 @@ async function refreshSessionPhaseForClass(classId) {
         if (!startsAt)
             continue;
         slot.sessionPhase = (0, scheduleUtils_1.getSessionPhase)(startsAt, slot.durationMinutes, now);
+        if (slot.sessionPhase === "completed" && slot.repeatWeekly === false) {
+            slot.isActive = false;
+        }
         await slot.save();
     }
 }

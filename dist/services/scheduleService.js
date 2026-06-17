@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.migrateScheduleRepeatField = migrateScheduleRepeatField;
 exports.migrateSessionSlotIndexes = migrateSessionSlotIndexes;
 exports.syncSlotsFromClass = syncSlotsFromClass;
 exports.getTeacherTodaySchedule = getTeacherTodaySchedule;
@@ -139,6 +140,16 @@ async function mapFormattedSlots(slots) {
     await SessionSlot_1.SessionSlot.populate(slots, [...SLOT_POPULATE]);
     return slots.map((slot, index) => formatSlot(slot, refs[index]));
 }
+async function migrateScheduleRepeatField() {
+    await Class_1.Class.updateMany({ "schedule.repeatDaily": { $exists: true } }, {
+        $set: { "schedule.repeatWeekly": true },
+        $unset: { "schedule.repeatDaily": "" },
+    });
+    await Class_1.Class.updateMany({
+        schedule: { $exists: true, $ne: null },
+        "schedule.repeatWeekly": { $exists: false },
+    }, { $set: { "schedule.repeatWeekly": true } });
+}
 async function migrateSessionSlotIndexes() {
     const collection = SessionSlot_1.SessionSlot.collection;
     const indexes = await collection.indexes();
@@ -160,25 +171,23 @@ async function syncSlotsFromClass(classDoc) {
     await SessionSlot_1.SessionSlot.updateMany({ class: classDoc._id, student: { $nin: classDoc.students } }, { isActive: false });
     const slotTime = (0, scheduleUtils_1.normalizeScheduleTime)(classDoc.schedule.time) ?? classDoc.schedule.time;
     const durationMinutes = classDoc.schedule.duration || 60;
-    const repeatDaily = classDoc.schedule.repeatDaily === true;
-    const targetDays = repeatDaily
-        ? (0, scheduleUtils_1.getOrderedDays)()
-        : [classDoc.schedule.day];
+    const repeatWeekly = classDoc.schedule.repeatWeekly !== false;
+    const targetDay = classDoc.schedule.day;
     for (const studentId of classDoc.students) {
-        for (const day of targetDays) {
-            await SessionSlot_1.SessionSlot.findOneAndUpdate({ class: classDoc._id, student: studentId, day }, {
-                teacher: classDoc.teacher,
-                day,
-                startTime: slotTime,
-                durationMinutes,
-                courseType: classDoc.title,
-                isActive: true,
-            }, { upsert: true, new: true });
-        }
+        await SessionSlot_1.SessionSlot.findOneAndUpdate({ class: classDoc._id, student: studentId, day: targetDay }, {
+            teacher: classDoc.teacher,
+            day: targetDay,
+            startTime: slotTime,
+            durationMinutes,
+            courseType: classDoc.title,
+            repeatWeekly,
+            isActive: true,
+            ...(repeatWeekly ? {} : { sessionPhase: "upcoming" }),
+        }, { upsert: true, new: true });
         await SessionSlot_1.SessionSlot.updateMany({
             class: classDoc._id,
             student: studentId,
-            day: { $nin: targetDays },
+            day: { $ne: targetDay },
         }, { isActive: false });
     }
     const { refreshSessionPhaseForClass } = await Promise.resolve().then(() => __importStar(require("./sessionStatusService")));

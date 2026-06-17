@@ -83,6 +83,10 @@ const sessionSlotSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    repeatWeekly: {
+        type: Boolean,
+        default: true,
+    },
     sessionPhase: {
         type: String,
         enum: ["upcoming", "live", "completed"],

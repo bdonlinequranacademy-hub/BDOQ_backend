@@ -84,6 +84,9 @@ app.use("/api/public", publicRoutes_1.default);
 app.use("/api/curriculum", curriculumRoutes_1.default);
 const startServer = async () => {
     await (0, db_1.default)();
+    await (0, scheduleService_1.migrateScheduleRepeatField)().catch((err) => {
+        console.warn("Schedule repeat field migration skipped:", err);
+    });
     await (0, scheduleService_1.migrateSessionSlotIndexes)().catch((err) => {
         console.warn("SessionSlot index migration skipped:", err);
     });

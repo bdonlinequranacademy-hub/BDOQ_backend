@@ -151,7 +151,7 @@ export function parseClassSchedule(input: unknown): {
   day: ScheduleDay;
   time: string;
   duration: number;
-  repeatDaily?: boolean;
+  repeatWeekly: boolean;
 } | null {
   if (!input || typeof input !== "object") return null;
 
@@ -169,13 +169,19 @@ export function parseClassSchedule(input: unknown): {
     duration = Math.min(180, Math.max(15, Math.round(obj.duration)));
   }
 
-  const repeatDaily = obj.repeatDaily === true;
+  let repeatWeekly = true;
+  if (typeof obj.repeatWeekly === "boolean") {
+    repeatWeekly = obj.repeatWeekly;
+  } else if (obj.repeatDaily === true) {
+    // Legacy daily flag — treat as weekly on the selected day.
+    repeatWeekly = true;
+  }
 
   return {
     day: obj.day as ScheduleDay,
     time,
     duration,
-    repeatDaily,
+    repeatWeekly,
   };
 }
 

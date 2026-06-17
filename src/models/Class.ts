@@ -13,8 +13,8 @@ export interface ISchedule {
   day: ScheduleDay;
   time: string;
   duration: number;
-  /** When true, one session every day at `time` (BD); `day` is ignored for slots. */
-  repeatDaily?: boolean;
+  /** When true (default), repeats every week on `day`. When false, one session only on the next `day`. */
+  repeatWeekly?: boolean;
 }
 
 export interface IClass extends Document {
@@ -53,9 +53,9 @@ const scheduleSchema = new Schema<ISchedule>(
       type: Number,
       default: 60,
     },
-    repeatDaily: {
+    repeatWeekly: {
       type: Boolean,
-      default: false,
+      default: true,
     },
   },
   { _id: false }

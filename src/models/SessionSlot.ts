@@ -12,6 +12,8 @@ export interface ISessionSlot extends Document {
   durationMinutes: number;
   courseType: string;
   isActive: boolean;
+  /** When false, slot is removed after the session completes. */
+  repeatWeekly?: boolean;
   sessionPhase?: SessionPhase;
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +65,10 @@ const sessionSlotSchema = new Schema<ISessionSlot>(
       default: "Quran",
     },
     isActive: {
+      type: Boolean,
+      default: true,
+    },
+    repeatWeekly: {
       type: Boolean,
       default: true,
     },

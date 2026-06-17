@@ -10,6 +10,7 @@ import { createCorsOptions } from "./config/cors";
 import { validateEnv } from "./config/env";
 import { verifySmtpConnection } from "./services/emailService";
 import {
+  migrateScheduleRepeatField,
   migrateSessionSlotIndexes,
   resyncAllClasses,
 } from "./services/scheduleService";
@@ -54,6 +55,9 @@ app.use("/api/curriculum", curriculumRoutes);
 
 const startServer = async (): Promise<void> => {
   await connectDB();
+  await migrateScheduleRepeatField().catch((err) => {
+    console.warn("Schedule repeat field migration skipped:", err);
+  });
   await migrateSessionSlotIndexes().catch((err) => {
     console.warn("SessionSlot index migration skipped:", err);
   });

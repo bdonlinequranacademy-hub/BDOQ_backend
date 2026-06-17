@@ -134,12 +134,19 @@ function parseClassSchedule(input) {
     if (typeof obj.duration === "number" && !Number.isNaN(obj.duration)) {
         duration = Math.min(180, Math.max(15, Math.round(obj.duration)));
     }
-    const repeatDaily = obj.repeatDaily === true;
+    let repeatWeekly = true;
+    if (typeof obj.repeatWeekly === "boolean") {
+        repeatWeekly = obj.repeatWeekly;
+    }
+    else if (obj.repeatDaily === true) {
+        // Legacy daily flag — treat as weekly on the selected day.
+        repeatWeekly = true;
+    }
     return {
         day: obj.day,
         time,
         duration,
-        repeatDaily,
+        repeatWeekly,
     };
 }
 function getSessionInstant(day, time24, sourceTimeZone = exports.ACADEMY_TIMEZONE) {
