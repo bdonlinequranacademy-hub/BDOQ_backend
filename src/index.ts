@@ -9,7 +9,10 @@ import connectDB from "./config/db";
 import { createCorsOptions } from "./config/cors";
 import { validateEnv } from "./config/env";
 import { verifySmtpConnection } from "./services/emailService";
-import { resyncAllClasses } from "./services/scheduleService";
+import {
+  migrateSessionSlotIndexes,
+  resyncAllClasses,
+} from "./services/scheduleService";
 import authRoutes from "./routes/authRoutes";
 import studentRoutes from "./routes/studentRoutes";
 import teacherRoutes from "./routes/teacherRoutes";
@@ -51,6 +54,9 @@ app.use("/api/curriculum", curriculumRoutes);
 
 const startServer = async (): Promise<void> => {
   await connectDB();
+  await migrateSessionSlotIndexes().catch((err) => {
+    console.warn("SessionSlot index migration skipped:", err);
+  });
   await migrateParentAccountsToStudent().catch((err) => {
     console.warn("Parent→student migration skipped:", err);
   });

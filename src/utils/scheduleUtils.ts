@@ -151,6 +151,7 @@ export function parseClassSchedule(input: unknown): {
   day: ScheduleDay;
   time: string;
   duration: number;
+  repeatDaily?: boolean;
 } | null {
   if (!input || typeof input !== "object") return null;
 
@@ -168,10 +169,13 @@ export function parseClassSchedule(input: unknown): {
     duration = Math.min(180, Math.max(15, Math.round(obj.duration)));
   }
 
+  const repeatDaily = obj.repeatDaily === true;
+
   return {
     day: obj.day as ScheduleDay,
     time,
     duration,
+    repeatDaily,
   };
 }
 

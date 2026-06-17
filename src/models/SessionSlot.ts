@@ -80,7 +80,7 @@ sessionSlotSchema.index({ student: 1, day: 1, isActive: 1 });
 sessionSlotSchema.index({ student: 1, isActive: 1 });
 sessionSlotSchema.index({ day: 1, isActive: 1 });
 sessionSlotSchema.index({ class: 1, day: 1, isActive: 1 });
-sessionSlotSchema.index({ class: 1, student: 1 }, { unique: true });
+sessionSlotSchema.index({ class: 1, student: 1, day: 1 }, { unique: true });
 
 export const SessionSlot = mongoose.model<ISessionSlot>(
   "SessionSlot",

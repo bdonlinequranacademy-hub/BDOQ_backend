@@ -134,10 +134,12 @@ function parseClassSchedule(input) {
     if (typeof obj.duration === "number" && !Number.isNaN(obj.duration)) {
         duration = Math.min(180, Math.max(15, Math.round(obj.duration)));
     }
+    const repeatDaily = obj.repeatDaily === true;
     return {
         day: obj.day,
         time,
         duration,
+        repeatDaily,
     };
 }
 function getSessionInstant(day, time24, sourceTimeZone = exports.ACADEMY_TIMEZONE) {

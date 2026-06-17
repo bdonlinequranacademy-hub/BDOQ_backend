@@ -57,6 +57,10 @@ const scheduleSchema = new mongoose_1.Schema({
         type: Number,
         default: 60,
     },
+    repeatDaily: {
+        type: Boolean,
+        default: false,
+    },
 }, { _id: false });
 const classSchema = new mongoose_1.Schema({
     title: {
