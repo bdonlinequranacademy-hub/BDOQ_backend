@@ -2,12 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
-const aiController_1 = require("../controllers/aiController");
+const studentCareController_1 = require("../controllers/studentCareController");
 const router = (0, express_1.Router)();
-router.post("/parent-summary", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher", "parent", "student"), aiController_1.generateParentSummary);
-router.get("/at-risk-students", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher"), aiController_1.getAtRiskStudents);
-router.post("/early-warning", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher"), aiController_1.generateEarlyWarningHandler);
-router.post("/progress-report", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher"), aiController_1.generateProgressReport);
-router.post("/study-plan", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher", "student"), aiController_1.generateStudyPlan);
-router.post("/class-log-draft", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher"), aiController_1.generateClassLogDraftHandler);
+/** Rule-based student care alerts (no generative AI). */
+router.get("/at-risk-students", auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin", "teacher"), studentCareController_1.getAtRiskStudents);
 exports.default = router;

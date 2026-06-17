@@ -83,30 +83,36 @@ async function gatherAttendanceStats(studentId, classIds, start, end) {
 function buildReportText(input) {
     const topics = input.topicsCovered.length > 0
         ? input.topicsCovered.join(", ")
-        : "No topics logged yet this week.";
+        : "None logged this week.";
     const highlights = input.sessionHighlights.length > 0
-        ? input.sessionHighlights.map((h, i) => `${i + 1}. ${h}`).join("\n")
-        : "No session notes recorded yet.";
+        ? input.sessionHighlights
+            .map((h, i) => `${i + 1}. ${h.replace(/\s+/g, " ").trim()}`)
+            .join("\n")
+        : "No approved session notes for this week.";
     const missing = input.homework.missingTitles.length > 0
         ? input.homework.missingTitles.join(", ")
-        : "All assigned homework submitted.";
+        : "None — all assigned work submitted.";
     return `Assalamu Alaikum,
 
-Weekly update for ${input.studentName}
+Weekly progress update — ${input.studentName}
 Week: ${input.weekLabel}
+Prepared by: ${input.teacherName}, Al Bayaan Academy
 
-Classes held (verified): ${input.sessionsHeld}
-Topics covered: ${topics}
+VERIFIED SESSIONS (admin-approved class logs): ${input.sessionsHeld}
 
-Session highlights:
+Topics from approved logs:
+${topics}
+
+Session notes (from approved logs):
 ${highlights}
 
-Attendance: ${input.attendance.present} present, ${input.attendance.late} late, ${input.attendance.absent} absent (${input.attendance.total} marked)
+Attendance this week: ${input.attendance.present} present · ${input.attendance.late} late · ${input.attendance.absent} absent (${input.attendance.total} sessions marked)
 
-Homework: ${input.homework.submitted}/${input.homework.assigned} submitted · ${input.homework.graded} graded
+Homework: ${input.homework.submitted} of ${input.homework.assigned} submitted · ${input.homework.graded} graded
 Still pending: ${missing}
 
-This report is prepared by ${input.teacherName} through Al Bayaan Academy.
+---
+This message is built only from portal records (approved logs, attendance, homework). It is not AI-generated.
 
 JazakAllahu Khair.`;
 }

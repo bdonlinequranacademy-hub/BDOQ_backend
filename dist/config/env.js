@@ -18,9 +18,6 @@ function validateEnv() {
     if (process.env.JWT_SECRET.length < 16) {
         console.warn("[env] JWT_SECRET should be at least 16 characters for production.");
     }
-    if (!isSet(process.env.GEMINI_API_KEY)) {
-        console.warn("[env] GEMINI_API_KEY is not set — AI features will fail.");
-    }
     if (!isSet(process.env.GOOGLE_CLIENT_ID) || !isSet(process.env.GOOGLE_CLIENT_SECRET)) {
         console.warn("[env] Google OAuth is disabled — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
     }
