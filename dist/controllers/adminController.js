@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeStudentFromClass = exports.assignStudentToClass = exports.getAllProgress = exports.getAttendanceOverview = exports.getAllHomework = exports.getDashboardStats = exports.getAllClasses = exports.getClassById = exports.updateClass = exports.createClass = exports.deleteClass = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllUsers = void 0;
+exports.removeStudentFromClass = exports.assignStudentToClass = exports.getAllProgress = exports.getAttendanceOverview = exports.deleteAdminHomework = exports.getAllHomework = exports.getDashboardStats = exports.getAllClasses = exports.getClassById = exports.updateClass = exports.createClass = exports.deleteClass = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllUsers = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const User_1 = require("../models/User");
@@ -869,6 +869,42 @@ const getAllHomework = async (_req, res) => {
     }
 };
 exports.getAllHomework = getAllHomework;
+const deleteAdminHomework = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid homework ID",
+                data: null,
+            });
+            return;
+        }
+        const homework = await Homework_1.Homework.findById(id);
+        if (!homework) {
+            res.status(404).json({
+                success: false,
+                message: "Homework not found",
+                data: null,
+            });
+            return;
+        }
+        await homework.deleteOne();
+        res.status(200).json({
+            success: true,
+            message: "Homework deleted successfully",
+            data: { homeworkId: id },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete homework",
+            data: null,
+        });
+    }
+};
+exports.deleteAdminHomework = deleteAdminHomework;
 const getAttendanceOverview = async (req, res) => {
     try {
         const { classId } = req.query;

@@ -11,6 +11,9 @@ export interface ISubmission {
   student: Types.ObjectId;
   submittedAt?: Date;
   content?: string;
+  curriculumProgram?: string;
+  curriculumUnit?: string;
+  curriculumTopic?: string;
   status?: HomeworkSubmissionStatus;
   reviewFeedback?: string;
   reviewedAt?: Date;
@@ -44,6 +47,18 @@ const submissionSchema = new Schema<ISubmission>(
     },
     content: {
       type: String,
+    },
+    curriculumProgram: {
+      type: String,
+      trim: true,
+    },
+    curriculumUnit: {
+      type: String,
+      trim: true,
+    },
+    curriculumTopic: {
+      type: String,
+      trim: true,
     },
     status: {
       type: String,

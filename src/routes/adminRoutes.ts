@@ -8,6 +8,7 @@ import {
   deleteUser,
   getAllClasses,
   getAllHomework,
+  deleteAdminHomework,
   getAllProgress,
   getAllUsers,
   getAttendanceOverview,
@@ -83,6 +84,7 @@ router.put("/students/:studentId/billing", upsertStudentBilling);
 
 router.get("/stats", getDashboardStats);
 router.get("/homework", getAllHomework);
+router.delete("/homework/:id", deleteAdminHomework);
 router.get("/attendance", getAttendanceOverview);
 router.get("/progress", getAllProgress);
 

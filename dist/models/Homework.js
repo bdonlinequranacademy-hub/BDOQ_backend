@@ -49,6 +49,18 @@ const submissionSchema = new mongoose_1.Schema({
     content: {
         type: String,
     },
+    curriculumProgram: {
+        type: String,
+        trim: true,
+    },
+    curriculumUnit: {
+        type: String,
+        trim: true,
+    },
+    curriculumTopic: {
+        type: String,
+        trim: true,
+    },
     status: {
         type: String,
         enum: ["pending_review", "approved", "returned", "graded"],

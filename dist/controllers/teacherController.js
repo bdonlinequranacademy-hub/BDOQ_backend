@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markNotificationRead = exports.getMyNotifications = exports.getWeeklyRoutine = exports.getTodaySchedule = exports.getAttendanceReport = exports.updateProgress = exports.gradeSubmission = exports.reviewHomeworkSubmission = exports.getHomeworkDetail = exports.getClassHomework = exports.createHomework = exports.markAttendance = exports.getClassAttendanceForDate = exports.getMyClasses = exports.getStudentProgress = exports.toggleStudentCurriculumComplete = exports.getMyStudents = exports.getClassById = void 0;
+exports.markNotificationRead = exports.getMyNotifications = exports.getWeeklyRoutine = exports.getTodaySchedule = exports.getAttendanceReport = exports.updateProgress = exports.gradeSubmission = exports.reviewHomeworkSubmission = exports.getHomeworkDetail = exports.getClassHomework = exports.deleteHomework = exports.updateHomework = exports.createHomework = exports.markAttendance = exports.getClassAttendanceForDate = exports.getMyClasses = exports.getStudentProgress = exports.toggleStudentCurriculumComplete = exports.getMyStudents = exports.getClassById = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const Class_1 = require("../models/Class");
 const Attendance_1 = require("../models/Attendance");
@@ -421,6 +421,135 @@ const createHomework = async (req, res) => {
     }
 };
 exports.createHomework = createHomework;
+const updateHomework = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, dueDate, curriculumProgram, curriculumUnit, curriculumTopic, } = req.body;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid homework ID",
+                data: null,
+            });
+            return;
+        }
+        const homework = await Homework_1.Homework.findById(id);
+        if (!homework) {
+            res.status(404).json({
+                success: false,
+                message: "Homework not found",
+                data: null,
+            });
+            return;
+        }
+        if (!homework.teacher.equals(req.user._id)) {
+            res.status(403).json({
+                success: false,
+                message: "Access denied",
+                data: null,
+            });
+            return;
+        }
+        const nextProgram = curriculumProgram ?? homework.curriculumProgram;
+        const nextUnit = curriculumUnit !== undefined ? curriculumUnit || undefined : homework.curriculumUnit;
+        const nextTopic = curriculumTopic !== undefined ? curriculumTopic || undefined : homework.curriculumTopic;
+        if (!title?.trim() && !homework.title) {
+            res.status(400).json({
+                success: false,
+                message: "Title is required",
+                data: null,
+            });
+            return;
+        }
+        if (!nextProgram) {
+            res.status(400).json({
+                success: false,
+                message: "Curriculum program is required",
+                data: null,
+            });
+            return;
+        }
+        const curriculumValid = await (0, curriculumService_1.validateHomeworkCurriculumForClass)(homework.class.toString(), nextProgram, nextUnit, nextTopic);
+        if (!curriculumValid) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid curriculum selection for this class",
+                data: null,
+            });
+            return;
+        }
+        if (title?.trim())
+            homework.title = title.trim();
+        if (description !== undefined)
+            homework.description = String(description).trim();
+        if (dueDate)
+            homework.dueDate = new Date(dueDate);
+        homework.curriculumProgram = nextProgram;
+        homework.curriculumUnit = nextUnit;
+        homework.curriculumTopic = nextTopic;
+        await homework.save();
+        res.status(200).json({
+            success: true,
+            message: "Homework updated successfully",
+            data: {
+                ...homework.toObject(),
+                curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(homework.curriculumProgram, homework.curriculumUnit, homework.curriculumTopic),
+            },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to update homework",
+            data: null,
+        });
+    }
+};
+exports.updateHomework = updateHomework;
+const deleteHomework = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid homework ID",
+                data: null,
+            });
+            return;
+        }
+        const homework = await Homework_1.Homework.findById(id);
+        if (!homework) {
+            res.status(404).json({
+                success: false,
+                message: "Homework not found",
+                data: null,
+            });
+            return;
+        }
+        if (!homework.teacher.equals(req.user._id)) {
+            res.status(403).json({
+                success: false,
+                message: "Access denied",
+                data: null,
+            });
+            return;
+        }
+        await homework.deleteOne();
+        res.status(200).json({
+            success: true,
+            message: "Homework deleted successfully",
+            data: { homeworkId: id },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete homework",
+            data: null,
+        });
+    }
+};
+exports.deleteHomework = deleteHomework;
 const getClassHomework = async (req, res) => {
     try {
         const teacherClasses = await Class_1.Class.find({ teacher: req.user._id }).select("_id");
@@ -510,6 +639,10 @@ const getHomeworkDetail = async (req, res) => {
                     student: s.student,
                     content: s.content,
                     submittedAt: s.submittedAt,
+                    curriculumProgram: s.curriculumProgram,
+                    curriculumUnit: s.curriculumUnit,
+                    curriculumTopic: s.curriculumTopic,
+                    curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(s.curriculumProgram, s.curriculumUnit, s.curriculumTopic),
                     status: (0, Homework_1.resolveSubmissionStatus)(s),
                     reviewFeedback: s.reviewFeedback,
                     reviewedAt: s.reviewedAt,

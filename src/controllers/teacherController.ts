@@ -542,6 +542,169 @@ export const createHomework = async (
   }
 };
 
+export const updateHomework = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      dueDate,
+      curriculumProgram,
+      curriculumUnit,
+      curriculumTopic,
+    } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid homework ID",
+        data: null,
+      });
+      return;
+    }
+
+    const homework = await Homework.findById(id);
+    if (!homework) {
+      res.status(404).json({
+        success: false,
+        message: "Homework not found",
+        data: null,
+      });
+      return;
+    }
+
+    if (!homework.teacher.equals(req.user!._id)) {
+      res.status(403).json({
+        success: false,
+        message: "Access denied",
+        data: null,
+      });
+      return;
+    }
+
+    const nextProgram = curriculumProgram ?? homework.curriculumProgram;
+    const nextUnit =
+      curriculumUnit !== undefined ? curriculumUnit || undefined : homework.curriculumUnit;
+    const nextTopic =
+      curriculumTopic !== undefined ? curriculumTopic || undefined : homework.curriculumTopic;
+
+    if (!title?.trim() && !homework.title) {
+      res.status(400).json({
+        success: false,
+        message: "Title is required",
+        data: null,
+      });
+      return;
+    }
+
+    if (!nextProgram) {
+      res.status(400).json({
+        success: false,
+        message: "Curriculum program is required",
+        data: null,
+      });
+      return;
+    }
+
+    const curriculumValid = await validateHomeworkCurriculumForClass(
+      homework.class.toString(),
+      nextProgram,
+      nextUnit,
+      nextTopic
+    );
+    if (!curriculumValid) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid curriculum selection for this class",
+        data: null,
+      });
+      return;
+    }
+
+    if (title?.trim()) homework.title = title.trim();
+    if (description !== undefined) homework.description = String(description).trim();
+    if (dueDate) homework.dueDate = new Date(dueDate);
+    homework.curriculumProgram = nextProgram;
+    homework.curriculumUnit = nextUnit;
+    homework.curriculumTopic = nextTopic;
+
+    await homework.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Homework updated successfully",
+      data: {
+        ...homework.toObject(),
+        curriculumLabels: resolveCurriculumLabels(
+          homework.curriculumProgram,
+          homework.curriculumUnit,
+          homework.curriculumTopic
+        ),
+      },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update homework",
+      data: null,
+    });
+  }
+};
+
+export const deleteHomework = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid homework ID",
+        data: null,
+      });
+      return;
+    }
+
+    const homework = await Homework.findById(id);
+    if (!homework) {
+      res.status(404).json({
+        success: false,
+        message: "Homework not found",
+        data: null,
+      });
+      return;
+    }
+
+    if (!homework.teacher.equals(req.user!._id)) {
+      res.status(403).json({
+        success: false,
+        message: "Access denied",
+        data: null,
+      });
+      return;
+    }
+
+    await homework.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Homework deleted successfully",
+      data: { homeworkId: id },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete homework",
+      data: null,
+    });
+  }
+};
+
 export const getClassHomework = async (
   req: Request,
   res: Response
@@ -656,6 +819,14 @@ export const getHomeworkDetail = async (
           student: s.student,
           content: s.content,
           submittedAt: s.submittedAt,
+          curriculumProgram: s.curriculumProgram,
+          curriculumUnit: s.curriculumUnit,
+          curriculumTopic: s.curriculumTopic,
+          curriculumLabels: resolveCurriculumLabels(
+            s.curriculumProgram,
+            s.curriculumUnit,
+            s.curriculumTopic
+          ),
           status: resolveSubmissionStatus(s),
           reviewFeedback: s.reviewFeedback,
           reviewedAt: s.reviewedAt,

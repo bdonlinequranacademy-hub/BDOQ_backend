@@ -2,6 +2,8 @@ import { Router } from "express";
 import { auth, checkRole } from "../middleware/auth";
 import {
   createHomework,
+  updateHomework,
+  deleteHomework,
   getAttendanceReport,
   getClassAttendanceForDate,
   getClassById,
@@ -64,6 +66,8 @@ router.get("/attendance", getClassAttendanceForDate);
 router.post("/concern-reports", createConcernReport);
 router.post("/compliance-scan", scanTextHandler);
 router.get("/weekly-report", getTeacherWeeklyReport);
+router.put("/homework/:id", updateHomework);
+router.delete("/homework/:id", deleteHomework);
 router.post("/homework", createHomework);
 router.get("/homework", getClassHomework);
 router.get("/homework/:id", getHomeworkDetail);

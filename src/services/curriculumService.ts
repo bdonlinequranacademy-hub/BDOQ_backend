@@ -244,6 +244,24 @@ export function isValidCurriculumPath(
   return Boolean(findTopic(programId, unitId, topicId));
 }
 
+/** Requires unit/topic when the tree has deeper levels (matches portal pathReadyToSave). */
+export function isCurriculumPathComplete(
+  programId: string,
+  unitId?: string,
+  topicId?: string
+): boolean {
+  const program = findProgram(programId);
+  if (!program) return false;
+  const units = program.children ?? [];
+  if (units.length > 0 && !unitId) return false;
+  if (!unitId) return true;
+  const unit = findUnit(programId, unitId);
+  if (!unit) return false;
+  const topics = unit.children ?? [];
+  if (topics.length > 0 && !topicId) return false;
+  return true;
+}
+
 export function pathAllowedForAssignments(
   programId: string,
   unitId: string | undefined,
@@ -270,6 +288,7 @@ export async function validateHomeworkCurriculumForClass(
   unitId?: string,
   topicId?: string
 ): Promise<boolean> {
+  if (!isCurriculumPathComplete(programId, unitId, topicId)) return false;
   if (!isValidCurriculumPath(programId, unitId, topicId)) return false;
 
   const classDoc = await Class.findById(classId).select("students");

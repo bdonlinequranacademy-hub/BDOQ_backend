@@ -11,6 +11,7 @@ exports.attachCurriculumLabels = attachCurriculumLabels;
 exports.mapProgressDocsWithLabels = mapProgressDocsWithLabels;
 exports.mapAssignmentLabels = mapAssignmentLabels;
 exports.isValidCurriculumPath = isValidCurriculumPath;
+exports.isCurriculumPathComplete = isCurriculumPathComplete;
 exports.pathAllowedForAssignments = pathAllowedForAssignments;
 exports.validateHomeworkCurriculumForClass = validateHomeworkCurriculumForClass;
 exports.validateCurriculumForStudent = validateCurriculumForStudent;
@@ -204,6 +205,24 @@ function isValidCurriculumPath(programId, unitId, topicId) {
         return true;
     return Boolean(findTopic(programId, unitId, topicId));
 }
+/** Requires unit/topic when the tree has deeper levels (matches portal pathReadyToSave). */
+function isCurriculumPathComplete(programId, unitId, topicId) {
+    const program = findProgram(programId);
+    if (!program)
+        return false;
+    const units = program.children ?? [];
+    if (units.length > 0 && !unitId)
+        return false;
+    if (!unitId)
+        return true;
+    const unit = findUnit(programId, unitId);
+    if (!unit)
+        return false;
+    const topics = unit.children ?? [];
+    if (topics.length > 0 && !topicId)
+        return false;
+    return true;
+}
 function pathAllowedForAssignments(programId, unitId, topicId, assignments) {
     if (!isValidCurriculumPath(programId, unitId, topicId))
         return false;
@@ -223,6 +242,8 @@ function pathAllowedForAssignments(programId, unitId, topicId, assignments) {
     });
 }
 async function validateHomeworkCurriculumForClass(classId, programId, unitId, topicId) {
+    if (!isCurriculumPathComplete(programId, unitId, topicId))
+        return false;
     if (!isValidCurriculumPath(programId, unitId, topicId))
         return false;
     const classDoc = await Class_1.Class.findById(classId).select("students");

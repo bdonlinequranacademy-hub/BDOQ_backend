@@ -107,6 +107,10 @@ const getMyHomework = async (req, res) => {
                         reviewFeedback: submission.reviewFeedback,
                         grade: submission.grade,
                         feedback: submission.feedback,
+                        curriculumProgram: submission.curriculumProgram,
+                        curriculumUnit: submission.curriculumUnit,
+                        curriculumTopic: submission.curriculumTopic,
+                        curriculumLabels: (0, curriculumService_1.resolveCurriculumLabels)(submission.curriculumProgram, submission.curriculumUnit, submission.curriculumTopic),
                     }
                     : null,
                 createdAt: hw.createdAt,
@@ -245,7 +249,7 @@ exports.getMyNotifications = getMyNotifications;
 const submitHomework = async (req, res) => {
     try {
         const { id } = req.params;
-        const { content } = req.body;
+        const { content, curriculumProgram, curriculumUnit, curriculumTopic, } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
@@ -263,6 +267,37 @@ const submitHomework = async (req, res) => {
             return;
         }
         const trimmedContent = content.trim();
+        if (!curriculumProgram || typeof curriculumProgram !== "string") {
+            res.status(400).json({
+                success: false,
+                message: "Please select a program, unit, and lesson topic for this submission",
+                data: null,
+            });
+            return;
+        }
+        const unitId = typeof curriculumUnit === "string" && curriculumUnit.trim()
+            ? curriculumUnit.trim()
+            : undefined;
+        const topicId = typeof curriculumTopic === "string" && curriculumTopic.trim()
+            ? curriculumTopic.trim()
+            : undefined;
+        if (!(0, curriculumService_1.isCurriculumPathComplete)(curriculumProgram, unitId, topicId)) {
+            res.status(400).json({
+                success: false,
+                message: "Please select the full lesson path (program, section, and topic)",
+                data: null,
+            });
+            return;
+        }
+        const curriculumValid = await (0, curriculumService_1.validateCurriculumForStudent)(req.user._id.toString(), curriculumProgram, unitId, topicId);
+        if (!curriculumValid) {
+            res.status(400).json({
+                success: false,
+                message: "That topic is not in your study plan",
+                data: null,
+            });
+            return;
+        }
         const compliance = (0, complianceScanService_1.scanComplianceText)(trimmedContent);
         if (!compliance.passed) {
             res.status(400).json({
@@ -314,6 +349,9 @@ const submitHomework = async (req, res) => {
                     "submissions.$.status": "pending_review",
                     "submissions.$.reviewFeedback": null,
                     "submissions.$.reviewedAt": null,
+                    "submissions.$.curriculumProgram": curriculumProgram,
+                    "submissions.$.curriculumUnit": unitId,
+                    "submissions.$.curriculumTopic": topicId,
                 },
             });
             await (0, notificationService_1.createUserNotification)({
@@ -332,6 +370,9 @@ const submitHomework = async (req, res) => {
                         submittedAt: new Date(),
                         content: trimmedContent,
                         status: "pending_review",
+                        curriculumProgram,
+                        curriculumUnit: unitId,
+                        curriculumTopic: topicId,
                         grade: null,
                         feedback: null,
                     },
@@ -344,6 +385,9 @@ const submitHomework = async (req, res) => {
             submittedAt: new Date(),
             content: trimmedContent,
             status: "pending_review",
+            curriculumProgram,
+            curriculumUnit: unitId,
+            curriculumTopic: topicId,
         };
         await Homework_1.Homework.findByIdAndUpdate(id, {
             $push: { submissions: newSubmission },

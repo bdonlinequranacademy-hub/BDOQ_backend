@@ -24,6 +24,8 @@ router.get("/attendance", teacherController_1.getClassAttendanceForDate);
 router.post("/concern-reports", concernReportController_1.createConcernReport);
 router.post("/compliance-scan", concernReportController_1.scanTextHandler);
 router.get("/weekly-report", weeklyReportController_1.getTeacherWeeklyReport);
+router.put("/homework/:id", teacherController_1.updateHomework);
+router.delete("/homework/:id", teacherController_1.deleteHomework);
 router.post("/homework", teacherController_1.createHomework);
 router.get("/homework", teacherController_1.getClassHomework);
 router.get("/homework/:id", teacherController_1.getHomeworkDetail);

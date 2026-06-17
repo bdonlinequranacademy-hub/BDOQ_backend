@@ -29,6 +29,7 @@ router.get("/students/:studentId/billing", paymentController_1.getStudentBilling
 router.put("/students/:studentId/billing", paymentController_1.upsertStudentBilling);
 router.get("/stats", adminController_1.getDashboardStats);
 router.get("/homework", adminController_1.getAllHomework);
+router.delete("/homework/:id", adminController_1.deleteAdminHomework);
 router.get("/attendance", adminController_1.getAttendanceOverview);
 router.get("/progress", adminController_1.getAllProgress);
 router.get("/classes", adminController_1.getAllClasses);

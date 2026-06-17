@@ -1027,6 +1027,48 @@ export const getAllHomework = async (
   }
 };
 
+export const deleteAdminHomework = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid homework ID",
+        data: null,
+      });
+      return;
+    }
+
+    const homework = await Homework.findById(id);
+    if (!homework) {
+      res.status(404).json({
+        success: false,
+        message: "Homework not found",
+        data: null,
+      });
+      return;
+    }
+
+    await homework.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Homework deleted successfully",
+      data: { homeworkId: id },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete homework",
+      data: null,
+    });
+  }
+};
+
 export const getAttendanceOverview = async (
   req: Request,
   res: Response
