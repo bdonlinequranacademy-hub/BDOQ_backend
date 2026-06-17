@@ -15,6 +15,7 @@ import { StudentRequest } from "../models/StudentRequest";
 import { countPendingPayments } from "../services/paymentReminderService";
 import { generateStudentId } from "../utils/studentId";
 import { syncSlotsFromClass } from "../services/scheduleService";
+import { parseClassSchedule } from "../utils/scheduleUtils";
 import { parseCurriculumAssignments, mapProgressDocsWithLabels, resolveCurriculumLabels } from "../services/curriculumService";
 import {
   assignableRolesFor,
@@ -607,6 +608,8 @@ export const deleteClass = async (
       return;
     }
 
+    await syncSlotsFromClass(classDoc);
+
     res.status(200).json({
       success: true,
       message: "Class deactivated successfully",
@@ -656,6 +659,17 @@ export const createClass = async (
       return;
     }
 
+    const parsedSchedule = parseClassSchedule(schedule);
+    if (!parsedSchedule) {
+      res.status(400).json({
+        success: false,
+        message:
+          "Schedule must include a valid weekday and time in 24-hour format (e.g. 09:00, Bangladesh time).",
+        data: null,
+      });
+      return;
+    }
+
     const classDoc = await Class.create({
       title,
       description:
@@ -664,7 +678,7 @@ export const createClass = async (
           : undefined,
       teacher: teacherId,
       students: studentIds || [],
-      schedule,
+      schedule: parsedSchedule,
       meetingLink,
       sessionRateBdt,
     });
@@ -742,7 +756,19 @@ export const updateClass = async (
     if (description !== undefined) updateData.description = description;
     if (teacherId !== undefined) updateData.teacher = teacherId;
     if (studentIds !== undefined) updateData.students = studentIds;
-    if (schedule !== undefined) updateData.schedule = schedule;
+    if (schedule !== undefined) {
+      const parsedSchedule = parseClassSchedule(schedule);
+      if (!parsedSchedule) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Schedule must include a valid weekday and time in 24-hour format (e.g. 09:00, Bangladesh time).",
+          data: null,
+        });
+        return;
+      }
+      updateData.schedule = parsedSchedule;
+    }
     if (meetingLink !== undefined) updateData.meetingLink = meetingLink;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (sessionRateBdt !== undefined) updateData.sessionRateBdt = sessionRateBdt;
@@ -1186,6 +1212,11 @@ export const assignStudentToClass = async (
       type: "class",
     });
 
+    const classForSync = await Class.findById(classId);
+    if (classForSync) {
+      await syncSlotsFromClass(classForSync);
+    }
+
     res.status(200).json({
       success: true,
       message: "Student assigned to class successfully",
@@ -1234,6 +1265,11 @@ export const removeStudentFromClass = async (
         data: null,
       });
       return;
+    }
+
+    const classForSync = await Class.findById(classId);
+    if (classForSync) {
+      await syncSlotsFromClass(classForSync);
     }
 
     res.status(200).json({

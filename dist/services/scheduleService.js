@@ -80,9 +80,13 @@ function formatSlot(slot, refs) {
     const studentTz = student.timezone || "UTC";
     const teacherTz = teacher.timezone || scheduleUtils_1.ACADEMY_TIMEZONE;
     const day = slot.day;
-    const startsAt = (0, scheduleUtils_1.getSessionInstant)(day, slot.startTime) ?? new Date();
-    const endsAt = new Date(startsAt.getTime() + slot.durationMinutes * 60000);
-    const sessionPhase = (0, scheduleUtils_1.getSessionPhase)(startsAt, slot.durationMinutes);
+    const startTime = (0, scheduleUtils_1.normalizeScheduleTime)(slot.startTime) ?? slot.startTime;
+    const startsAt = (0, scheduleUtils_1.getSessionInstant)(day, startTime);
+    const safeStartsAt = startsAt ??
+        (0, scheduleUtils_1.getSessionInstant)(day, "09:00") ??
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const endsAt = new Date(safeStartsAt.getTime() + slot.durationMinutes * 60000);
+    const sessionPhase = (0, scheduleUtils_1.getSessionPhase)(safeStartsAt, slot.durationMinutes);
     return {
         _id: slot._id.toString(),
         classId: classDoc._id.toString(),
@@ -108,22 +112,22 @@ function formatSlot(slot, refs) {
         times: {
             academy: {
                 label: "BD",
-                time: (0, scheduleUtils_1.formatWeeklyTime)(day, slot.startTime, scheduleUtils_1.ACADEMY_TIMEZONE),
+                time: (0, scheduleUtils_1.formatWeeklyTime)(day, startTime, scheduleUtils_1.ACADEMY_TIMEZONE),
                 timezone: scheduleUtils_1.ACADEMY_TIMEZONE,
             },
             teacher: {
                 label: "Tea",
-                time: (0, scheduleUtils_1.formatWeeklyTime)(day, slot.startTime, teacherTz),
+                time: (0, scheduleUtils_1.formatWeeklyTime)(day, startTime, teacherTz),
                 timezone: teacherTz,
             },
             student: {
                 label: "Stu",
-                time: (0, scheduleUtils_1.formatWeeklyTime)(day, slot.startTime, studentTz),
+                time: (0, scheduleUtils_1.formatWeeklyTime)(day, startTime, studentTz),
                 timezone: studentTz,
             },
         },
         sessionPhase,
-        startsAt: startsAt.toISOString(),
+        startsAt: safeStartsAt.toISOString(),
         endsAt: endsAt.toISOString(),
     };
 }
@@ -141,10 +145,11 @@ async function syncSlotsFromClass(classDoc) {
     }
     await SessionSlot_1.SessionSlot.updateMany({ class: classDoc._id, student: { $nin: classDoc.students } }, { isActive: false });
     for (const studentId of classDoc.students) {
+        const slotTime = (0, scheduleUtils_1.normalizeScheduleTime)(classDoc.schedule.time) ?? classDoc.schedule.time;
         await SessionSlot_1.SessionSlot.findOneAndUpdate({ class: classDoc._id, student: studentId }, {
             teacher: classDoc.teacher,
             day: classDoc.schedule.day,
-            startTime: classDoc.schedule.time,
+            startTime: slotTime,
             durationMinutes: classDoc.schedule.duration || 60,
             courseType: classDoc.title,
             isActive: true,

@@ -20,6 +20,7 @@ const StudentRequest_1 = require("../models/StudentRequest");
 const paymentReminderService_1 = require("../services/paymentReminderService");
 const studentId_1 = require("../utils/studentId");
 const scheduleService_1 = require("../services/scheduleService");
+const scheduleUtils_1 = require("../utils/scheduleUtils");
 const curriculumService_1 = require("../services/curriculumService");
 const adminRoles_1 = require("../lib/adminRoles");
 const DAY_NAMES = [
@@ -531,6 +532,7 @@ const deleteClass = async (req, res) => {
             });
             return;
         }
+        await (0, scheduleService_1.syncSlotsFromClass)(classDoc);
         res.status(200).json({
             success: true,
             message: "Class deactivated successfully",
@@ -566,6 +568,15 @@ const createClass = async (req, res) => {
             });
             return;
         }
+        const parsedSchedule = (0, scheduleUtils_1.parseClassSchedule)(schedule);
+        if (!parsedSchedule) {
+            res.status(400).json({
+                success: false,
+                message: "Schedule must include a valid weekday and time in 24-hour format (e.g. 09:00, Bangladesh time).",
+                data: null,
+            });
+            return;
+        }
         const classDoc = await Class_1.Class.create({
             title,
             description: typeof description === "string" && description.trim()
@@ -573,7 +584,7 @@ const createClass = async (req, res) => {
                 : undefined,
             teacher: teacherId,
             students: studentIds || [],
-            schedule,
+            schedule: parsedSchedule,
             meetingLink,
             sessionRateBdt,
         });
@@ -634,8 +645,18 @@ const updateClass = async (req, res) => {
             updateData.teacher = teacherId;
         if (studentIds !== undefined)
             updateData.students = studentIds;
-        if (schedule !== undefined)
-            updateData.schedule = schedule;
+        if (schedule !== undefined) {
+            const parsedSchedule = (0, scheduleUtils_1.parseClassSchedule)(schedule);
+            if (!parsedSchedule) {
+                res.status(400).json({
+                    success: false,
+                    message: "Schedule must include a valid weekday and time in 24-hour format (e.g. 09:00, Bangladesh time).",
+                    data: null,
+                });
+                return;
+            }
+            updateData.schedule = parsedSchedule;
+        }
         if (meetingLink !== undefined)
             updateData.meetingLink = meetingLink;
         if (isActive !== undefined)
@@ -989,6 +1010,10 @@ const assignStudentToClass = async (req, res) => {
             message: `You have been enrolled in ${classDoc.title}`,
             type: "class",
         });
+        const classForSync = await Class_1.Class.findById(classId);
+        if (classForSync) {
+            await (0, scheduleService_1.syncSlotsFromClass)(classForSync);
+        }
         res.status(200).json({
             success: true,
             message: "Student assigned to class successfully",
@@ -1026,6 +1051,10 @@ const removeStudentFromClass = async (req, res) => {
                 data: null,
             });
             return;
+        }
+        const classForSync = await Class_1.Class.findById(classId);
+        if (classForSync) {
+            await (0, scheduleService_1.syncSlotsFromClass)(classForSync);
         }
         res.status(200).json({
             success: true,

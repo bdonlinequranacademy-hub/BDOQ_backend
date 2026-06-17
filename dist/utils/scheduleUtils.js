@@ -5,6 +5,8 @@ exports.getOrderedDays = getOrderedDays;
 exports.getTodayScheduleDay = getTodayScheduleDay;
 exports.formatWeeklyTime = formatWeeklyTime;
 exports.formatDuration = formatDuration;
+exports.normalizeScheduleTime = normalizeScheduleTime;
+exports.parseClassSchedule = parseClassSchedule;
 exports.getSessionInstant = getSessionInstant;
 exports.getSessionPhase = getSessionPhase;
 exports.ACADEMY_TIMEZONE = process.env.ACADEMY_TIMEZONE?.trim() || "Asia/Dhaka";
@@ -92,6 +94,51 @@ function formatWeeklyTime(day, time24, targetTimeZone, sourceTimeZone = exports.
 }
 function formatDuration(minutes) {
     return `${minutes}m`;
+}
+const SCHEDULE_DAYS = [
+    "Saturday",
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+];
+/** Normalize free-text or `<input type="time">` values to 24h HH:MM. */
+function normalizeScheduleTime(raw) {
+    const trimmed = raw.trim();
+    const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+    if (!match)
+        return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (Number.isNaN(hours) || Number.isNaN(minutes))
+        return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59)
+        return null;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+function parseClassSchedule(input) {
+    if (!input || typeof input !== "object")
+        return null;
+    const obj = input;
+    if (typeof obj.day !== "string" || !SCHEDULE_DAYS.includes(obj.day)) {
+        return null;
+    }
+    if (typeof obj.time !== "string")
+        return null;
+    const time = normalizeScheduleTime(obj.time);
+    if (!time)
+        return null;
+    let duration = 60;
+    if (typeof obj.duration === "number" && !Number.isNaN(obj.duration)) {
+        duration = Math.min(180, Math.max(15, Math.round(obj.duration)));
+    }
+    return {
+        day: obj.day,
+        time,
+        duration,
+    };
 }
 function getSessionInstant(day, time24, sourceTimeZone = exports.ACADEMY_TIMEZONE) {
     const [hours, minutes] = time24.split(":").map(Number);

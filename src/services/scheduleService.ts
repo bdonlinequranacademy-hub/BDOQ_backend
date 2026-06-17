@@ -9,6 +9,7 @@ import {
   getSessionInstant,
   getSessionPhase,
   getTodayScheduleDay,
+  normalizeScheduleTime,
   type SessionPhase,
 } from "../utils/scheduleUtils";
 
@@ -119,9 +120,14 @@ function formatSlot(
   const studentTz = student.timezone || "UTC";
   const teacherTz = teacher.timezone || ACADEMY_TIMEZONE;
   const day = slot.day as Parameters<typeof formatWeeklyTime>[0];
-  const startsAt = getSessionInstant(day, slot.startTime) ?? new Date();
-  const endsAt = new Date(startsAt.getTime() + slot.durationMinutes * 60_000);
-  const sessionPhase = getSessionPhase(startsAt, slot.durationMinutes);
+  const startTime = normalizeScheduleTime(slot.startTime) ?? slot.startTime;
+  const startsAt = getSessionInstant(day, startTime);
+  const safeStartsAt =
+    startsAt ??
+    getSessionInstant(day, "09:00") ??
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const endsAt = new Date(safeStartsAt.getTime() + slot.durationMinutes * 60_000);
+  const sessionPhase = getSessionPhase(safeStartsAt, slot.durationMinutes);
 
   return {
     _id: slot._id.toString(),
@@ -148,22 +154,22 @@ function formatSlot(
     times: {
       academy: {
         label: "BD",
-        time: formatWeeklyTime(day, slot.startTime, ACADEMY_TIMEZONE),
+        time: formatWeeklyTime(day, startTime, ACADEMY_TIMEZONE),
         timezone: ACADEMY_TIMEZONE,
       },
       teacher: {
         label: "Tea",
-        time: formatWeeklyTime(day, slot.startTime, teacherTz),
+        time: formatWeeklyTime(day, startTime, teacherTz),
         timezone: teacherTz,
       },
       student: {
         label: "Stu",
-        time: formatWeeklyTime(day, slot.startTime, studentTz),
+        time: formatWeeklyTime(day, startTime, studentTz),
         timezone: studentTz,
       },
     },
     sessionPhase,
-    startsAt: startsAt.toISOString(),
+    startsAt: safeStartsAt.toISOString(),
     endsAt: endsAt.toISOString(),
   };
 }
@@ -187,12 +193,14 @@ export async function syncSlotsFromClass(classDoc: IClass): Promise<void> {
   );
 
   for (const studentId of classDoc.students) {
+    const slotTime =
+      normalizeScheduleTime(classDoc.schedule.time) ?? classDoc.schedule.time;
     await SessionSlot.findOneAndUpdate(
       { class: classDoc._id, student: studentId },
       {
         teacher: classDoc.teacher,
         day: classDoc.schedule.day,
-        startTime: classDoc.schedule.time,
+        startTime: slotTime,
         durationMinutes: classDoc.schedule.duration || 60,
         courseType: classDoc.title,
         isActive: true,

@@ -123,6 +123,58 @@ export function formatDuration(minutes: number): string {
   return `${minutes}m`;
 }
 
+const SCHEDULE_DAYS: ScheduleDay[] = [
+  "Saturday",
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+];
+
+/** Normalize free-text or `<input type="time">` values to 24h HH:MM. */
+export function normalizeScheduleTime(raw: string): string | null {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+export function parseClassSchedule(input: unknown): {
+  day: ScheduleDay;
+  time: string;
+  duration: number;
+} | null {
+  if (!input || typeof input !== "object") return null;
+
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.day !== "string" || !SCHEDULE_DAYS.includes(obj.day as ScheduleDay)) {
+    return null;
+  }
+  if (typeof obj.time !== "string") return null;
+
+  const time = normalizeScheduleTime(obj.time);
+  if (!time) return null;
+
+  let duration = 60;
+  if (typeof obj.duration === "number" && !Number.isNaN(obj.duration)) {
+    duration = Math.min(180, Math.max(15, Math.round(obj.duration)));
+  }
+
+  return {
+    day: obj.day as ScheduleDay,
+    time,
+    duration,
+  };
+}
+
 export type SessionPhase = "upcoming" | "live" | "completed";
 
 export function getSessionInstant(
