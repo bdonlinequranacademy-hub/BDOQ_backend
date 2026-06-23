@@ -17,8 +17,8 @@ function getOrCreateSession(sessionId) {
     }
     return session;
 }
-function isTeacherRole(role) {
-    return role === "teacher" || role === "admin" || role === "super_admin";
+function isClassroomHost(role) {
+    return role === "teacher";
 }
 function serializeParticipants(session) {
     return Array.from(session.participants.values());
@@ -45,6 +45,11 @@ function broadcastLiveClasses(io) {
         startedAt: s.startedAt,
         participantCount: s.participants.size,
         teacherId: s.teacherId,
+        participants: serializeParticipants(s).map((p) => ({
+            displayName: p.displayName,
+            role: p.role,
+            handRaised: p.handRaised,
+        })),
     }));
     io.to("role:admin").emit("admin:classroom:live", { sessions: live, at: new Date().toISOString() });
 }
@@ -89,7 +94,7 @@ function registerClassroomHandlers(io, socket) {
             handRaised: false,
             joinedAt: new Date().toISOString(),
         });
-        if (isTeacherRole(role) && !session.teacherId) {
+        if (isClassroomHost(role) && !session.teacherId) {
             session.teacherId = userId;
         }
         activeSessionId = sessionId;
@@ -114,7 +119,7 @@ function registerClassroomHandlers(io, socket) {
             activeSessionId = null;
     });
     socket.on("classroom:start", (payload, ack) => {
-        if (!isTeacherRole(role)) {
+        if (!isClassroomHost(role)) {
             ack?.({ ok: false, error: "Forbidden" });
             return;
         }
@@ -132,7 +137,7 @@ function registerClassroomHandlers(io, socket) {
         ack?.({ ok: true, state: serializeSession(session) });
     });
     socket.on("classroom:end", (payload, ack) => {
-        if (!isTeacherRole(role)) {
+        if (!isClassroomHost(role)) {
             ack?.({ ok: false, error: "Forbidden" });
             return;
         }
@@ -162,7 +167,9 @@ function registerClassroomHandlers(io, socket) {
         const participant = session.participants.get(userId);
         if (!participant)
             return;
-        if (session.whiteboardLocked && !isTeacherRole(role))
+        if (role === "admin" || role === "super_admin")
+            return;
+        if (session.whiteboardLocked && !isClassroomHost(role))
             return;
         session.whiteboardJson = payload.json;
         socket.to(roomName(sessionId)).emit("whiteboard:sync", {
@@ -173,7 +180,7 @@ function registerClassroomHandlers(io, socket) {
         });
     });
     socket.on("classroom:lock", (payload, ack) => {
-        if (!isTeacherRole(role)) {
+        if (!isClassroomHost(role)) {
             ack?.({ ok: false, error: "Forbidden" });
             return;
         }
@@ -192,7 +199,7 @@ function registerClassroomHandlers(io, socket) {
         ack?.({ ok: true, locked: session.whiteboardLocked });
     });
     socket.on("classroom:clear", (payload, ack) => {
-        if (!isTeacherRole(role)) {
+        if (!isClassroomHost(role)) {
             ack?.({ ok: false, error: "Forbidden" });
             return;
         }
@@ -233,7 +240,7 @@ function registerClassroomHandlers(io, socket) {
         ack?.({ ok: true, raised: participant.handRaised });
     });
     socket.on("classroom:notify", (payload) => {
-        if (!isTeacherRole(role))
+        if (!isClassroomHost(role))
             return;
         const sessionId = payload?.sessionId?.trim() || activeSessionId;
         const message = payload?.message?.trim();

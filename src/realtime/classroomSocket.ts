@@ -36,8 +36,8 @@ function getOrCreateSession(sessionId: string): ClassroomSessionState {
   return session;
 }
 
-function isTeacherRole(role: string): boolean {
-  return role === "teacher" || role === "admin" || role === "super_admin";
+function isClassroomHost(role: string): boolean {
+  return role === "teacher";
 }
 
 function serializeParticipants(session: ClassroomSessionState) {
@@ -67,6 +67,11 @@ function broadcastLiveClasses(io: Server): void {
       startedAt: s.startedAt,
       participantCount: s.participants.size,
       teacherId: s.teacherId,
+      participants: serializeParticipants(s).map((p) => ({
+        displayName: p.displayName,
+        role: p.role,
+        handRaised: p.handRaised,
+      })),
     }));
   io.to("role:admin").emit("admin:classroom:live", { sessions: live, at: new Date().toISOString() });
 }
@@ -124,7 +129,7 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
         joinedAt: new Date().toISOString(),
       });
 
-      if (isTeacherRole(role) && !session.teacherId) {
+      if (isClassroomHost(role) && !session.teacherId) {
         session.teacherId = userId;
       }
 
@@ -155,7 +160,7 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
   socket.on(
     "classroom:start",
     (payload: { sessionId?: string }, ack?: (res: unknown) => void) => {
-      if (!isTeacherRole(role)) {
+      if (!isClassroomHost(role)) {
         ack?.({ ok: false, error: "Forbidden" });
         return;
       }
@@ -179,7 +184,7 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
   socket.on(
     "classroom:end",
     (payload: { sessionId?: string }, ack?: (res: unknown) => void) => {
-      if (!isTeacherRole(role)) {
+      if (!isClassroomHost(role)) {
         ack?.({ ok: false, error: "Forbidden" });
         return;
       }
@@ -216,7 +221,9 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
       const participant = session.participants.get(userId);
       if (!participant) return;
 
-      if (session.whiteboardLocked && !isTeacherRole(role)) return;
+      if (role === "admin" || role === "super_admin") return;
+
+      if (session.whiteboardLocked && !isClassroomHost(role)) return;
 
       session.whiteboardJson = payload.json;
 
@@ -232,7 +239,7 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
   socket.on(
     "classroom:lock",
     (payload: { sessionId?: string; locked?: boolean }, ack?: (res: unknown) => void) => {
-      if (!isTeacherRole(role)) {
+      if (!isClassroomHost(role)) {
         ack?.({ ok: false, error: "Forbidden" });
         return;
       }
@@ -257,7 +264,7 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
   socket.on(
     "classroom:clear",
     (payload: { sessionId?: string }, ack?: (res: unknown) => void) => {
-      if (!isTeacherRole(role)) {
+      if (!isClassroomHost(role)) {
         ack?.({ ok: false, error: "Forbidden" });
         return;
       }
@@ -312,7 +319,7 @@ export function registerClassroomHandlers(io: Server, socket: Socket): void {
   socket.on(
     "classroom:notify",
     (payload: { sessionId?: string; message?: string; targetUserId?: string }) => {
-      if (!isTeacherRole(role)) return;
+      if (!isClassroomHost(role)) return;
       const sessionId = payload?.sessionId?.trim() || activeSessionId;
       const message = payload?.message?.trim();
       if (!sessionId || !message) return;
