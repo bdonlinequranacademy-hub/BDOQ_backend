@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { getAllowedOrigins } from "../config/cors";
 import { User } from "../models/User";
+import { registerClassroomHandlers, emitAdminLiveClassrooms } from "./classroomSocket";
 
 let io: Server | null = null;
 
@@ -51,7 +52,10 @@ export function initSocketServer(httpServer: HttpServer): Server {
     socket.join(`user:${userId}`);
     if (role === "admin" || role === "super_admin") {
       socket.join("role:admin");
+      if (io) emitAdminLiveClassrooms(io);
     }
+
+    if (io) registerClassroomHandlers(io, socket);
   });
 
   return io;

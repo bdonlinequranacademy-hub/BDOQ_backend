@@ -10,6 +10,7 @@ const socket_io_1 = require("socket.io");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const cors_1 = require("../config/cors");
 const User_1 = require("../models/User");
+const classroomSocket_1 = require("./classroomSocket");
 let io = null;
 function initSocketServer(httpServer) {
     io = new socket_io_1.Server(httpServer, {
@@ -49,7 +50,11 @@ function initSocketServer(httpServer) {
         socket.join(`user:${userId}`);
         if (role === "admin" || role === "super_admin") {
             socket.join("role:admin");
+            if (io)
+                (0, classroomSocket_1.emitAdminLiveClassrooms)(io);
         }
+        if (io)
+            (0, classroomSocket_1.registerClassroomHandlers)(io, socket);
     });
     return io;
 }
