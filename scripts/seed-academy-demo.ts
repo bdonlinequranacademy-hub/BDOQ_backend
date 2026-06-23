@@ -23,7 +23,6 @@ import { Progress } from "../src/models/Progress";
 import { TrialBooking } from "../src/models/TrialBooking";
 import { ContactMessage } from "../src/models/ContactMessage";
 import { StudentRequest } from "../src/models/StudentRequest";
-import { ConcernReport } from "../src/models/ConcernReport";
 import { Notification } from "../src/models/Notification";
 import { StudentBilling } from "../src/models/StudentBilling";
 import { PaymentRecord } from "../src/models/PaymentRecord";
@@ -114,7 +113,6 @@ async function clearSeedData(): Promise<void> {
   });
   await SessionSlot.deleteMany({ class: { $in: seedClassIds } });
   await StudentRequest.deleteMany({ teacher: { $in: seedTeacherIds } });
-  await ConcernReport.deleteMany({ reporter: { $in: seedUserIds } });
   await Class.deleteMany({ _id: { $in: seedClassIds } });
   await TrialBooking.deleteMany({ source: SEED_TRIAL_SOURCE });
   await ContactMessage.deleteMany({
@@ -508,16 +506,6 @@ async function main(): Promise<void> {
       "I have availability for two more Hifz students on weekday evenings. Please assign from the waiting list.",
     preferredCourseType: "Hifz",
     status: "pending",
-  });
-
-  await ConcernReport.create({
-    reporter: students[2]._id,
-    reporterRole: "student",
-    reporterName: students[2].name,
-    category: "other",
-    message:
-      "Sample concern report for admin review workflow training — not a real incident.",
-    status: "new",
   });
 
   const blogAuthorId = admin?._id ?? teachers[0]._id;

@@ -30,11 +30,6 @@ import {
 } from "../controllers/classLogController";
 import { getTeacherEarningsReport } from "../controllers/earningsController";
 import {
-  createTeacherMonthlyProgress,
-  getMonthlyQuestions,
-  listTeacherMonthlyProgressHandler,
-} from "../controllers/monthlyProgressController";
-import {
   changeTeacherPassword,
   checkAvailability,
   getTeacherProfile,
@@ -44,10 +39,7 @@ import {
   createTeacherStudentRequest,
   listTeacherStudentRequestsHandler,
 } from "../controllers/studentRequestController";
-import {
-  createConcernReport,
-  scanTextHandler,
-} from "../controllers/concernReportController";
+import { scanTextHandler } from "../controllers/complianceController";
 import { getTeacherWeeklyReport } from "../controllers/weeklyReportController";
 
 const router = Router();
@@ -63,7 +55,6 @@ router.get("/schedule/today", getTodaySchedule);
 router.get("/schedule/routine", getWeeklyRoutine);
 router.post("/attendance", markAttendance);
 router.get("/attendance", getClassAttendanceForDate);
-router.post("/concern-reports", createConcernReport);
 router.post("/compliance-scan", scanTextHandler);
 router.get("/weekly-report", getTeacherWeeklyReport);
 router.put("/homework/:id", updateHomework);
@@ -82,9 +73,6 @@ router.get("/class-logs", listTeacherClassLogs);
 router.get("/class-logs/:id", getTeacherClassLog);
 router.post("/class-logs", createTeacherClassLog);
 router.get("/earnings", getTeacherEarningsReport);
-router.get("/monthly-progress/questions", getMonthlyQuestions);
-router.get("/monthly-progress", listTeacherMonthlyProgressHandler);
-router.post("/monthly-progress", createTeacherMonthlyProgress);
 router.get("/profile", getTeacherProfile);
 router.patch("/profile", updateTeacherProfile);
 router.patch("/profile/password", changeTeacherPassword);

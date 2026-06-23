@@ -10,7 +10,6 @@ import { createUserNotification, createUserNotifications } from "../services/not
 import { ClassLog } from "../models/ClassLog";
 import { TrialBooking } from "../models/TrialBooking";
 import { ContactMessage } from "../models/ContactMessage";
-import { ConcernReport } from "../models/ConcernReport";
 import { StudentRequest } from "../models/StudentRequest";
 import { countPendingPayments } from "../services/paymentReminderService";
 import { generateStudentId } from "../utils/studentId";
@@ -888,7 +887,6 @@ export const getDashboardStats = async (
       newTrials,
       newContacts,
       pendingClassLogs,
-      newConcernReports,
       pendingPayments,
       pendingStudentRequests,
       studentsWithPrograms,
@@ -906,7 +904,6 @@ export const getDashboardStats = async (
       TrialBooking.countDocuments({ status: "new" }),
       ContactMessage.countDocuments({ status: "new" }),
       ClassLog.countDocuments({ status: "pending" }),
-      ConcernReport.countDocuments({ status: "new" }),
       countPendingPayments(),
       StudentRequest.countDocuments({ status: "pending" }),
       User.countDocuments({
@@ -942,7 +939,6 @@ export const getDashboardStats = async (
           newTrials,
           newContacts,
           pendingClassLogs,
-          newConcernReports,
           pendingPayments,
           pendingStudentRequests,
         },

@@ -32,7 +32,6 @@ import {
   rejectAdminClassLog,
 } from "../controllers/classLogController";
 import { getAdminEarningsReport } from "../controllers/earningsController";
-import { listAdminMonthlyProgressHandler } from "../controllers/monthlyProgressController";
 import {
   approveStudentRequest,
   listAdminStudentRequestsHandler,
@@ -43,10 +42,6 @@ import {
   listAdminContactMessages,
   patchAdminContactMessageStatus,
 } from "../controllers/contactMessageController";
-import {
-  listAdminConcernReports,
-  updateConcernReportStatus,
-} from "../controllers/concernReportController";
 import {
   getAdminCurriculumTree,
   resetAdminCurriculumTree,
@@ -103,7 +98,6 @@ router.get("/class-logs", listAdminClassLogs);
 router.patch("/class-logs/:id/approve", approveAdminClassLog);
 router.patch("/class-logs/:id/reject", rejectAdminClassLog);
 router.get("/earnings", getAdminEarningsReport);
-router.get("/monthly-progress", listAdminMonthlyProgressHandler);
 router.get("/student-requests", listAdminStudentRequestsHandler);
 router.patch("/student-requests/:id/approve", approveStudentRequest);
 router.patch("/student-requests/:id/reject", rejectStudentRequest);
@@ -111,8 +105,6 @@ router.get("/trial-bookings", listAdminTrialBookings);
 router.patch("/trial-bookings/:id/status", patchAdminTrialBookingStatus);
 router.get("/contact-messages", listAdminContactMessages);
 router.patch("/contact-messages/:id/status", patchAdminContactMessageStatus);
-router.get("/concern-reports", listAdminConcernReports);
-router.patch("/concern-reports/:id/status", updateConcernReportStatus);
 
 router.get("/curriculum", getAdminCurriculumTree);
 router.put("/curriculum", updateAdminCurriculumTree);

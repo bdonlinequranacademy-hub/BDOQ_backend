@@ -12,9 +12,7 @@ import {
   markAsRead,
   submitHomework,
 } from "../controllers/studentController";
-import { listStudentMonthlyProgressHandler } from "../controllers/monthlyProgressController";
 import { getStudentWeeklyReport } from "../controllers/weeklyReportController";
-import { createConcernReport } from "../controllers/concernReportController";
 import {
   changeStudentPassword,
   getStudentProfile,
@@ -39,9 +37,7 @@ router.post("/homework/:id/submit", submitHomework);
 router.get("/attendance", getMyAttendance);
 router.get("/progress", getMyProgress);
 router.get("/curriculum-plan", getMyCurriculumPlan);
-router.get("/monthly-progress", listStudentMonthlyProgressHandler);
 router.get("/weekly-report", getStudentWeeklyReport);
-router.post("/concern-reports", createConcernReport);
 router.get("/notifications", getMyNotifications);
 router.patch("/notifications/:id/read", markAsRead);
 router.get("/profile", getStudentProfile);

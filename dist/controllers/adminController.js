@@ -15,7 +15,6 @@ const notificationService_1 = require("../services/notificationService");
 const ClassLog_1 = require("../models/ClassLog");
 const TrialBooking_1 = require("../models/TrialBooking");
 const ContactMessage_1 = require("../models/ContactMessage");
-const ConcernReport_1 = require("../models/ConcernReport");
 const StudentRequest_1 = require("../models/StudentRequest");
 const paymentReminderService_1 = require("../services/paymentReminderService");
 const studentId_1 = require("../utils/studentId");
@@ -754,7 +753,7 @@ exports.getAllClasses = getAllClasses;
 const getDashboardStats = async (_req, res) => {
     try {
         const today = DAY_NAMES[new Date().getDay()];
-        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, pendingClassLogs, newConcernReports, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
+        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, pendingClassLogs, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
             User_1.User.countDocuments({ role: "student" }),
             User_1.User.countDocuments({ role: "teacher" }),
             Class_1.Class.countDocuments(),
@@ -766,7 +765,6 @@ const getDashboardStats = async (_req, res) => {
             TrialBooking_1.TrialBooking.countDocuments({ status: "new" }),
             ContactMessage_1.ContactMessage.countDocuments({ status: "new" }),
             ClassLog_1.ClassLog.countDocuments({ status: "pending" }),
-            ConcernReport_1.ConcernReport.countDocuments({ status: "new" }),
             (0, paymentReminderService_1.countPendingPayments)(),
             StudentRequest_1.StudentRequest.countDocuments({ status: "pending" }),
             User_1.User.countDocuments({
@@ -801,7 +799,6 @@ const getDashboardStats = async (_req, res) => {
                     newTrials,
                     newContacts,
                     pendingClassLogs,
-                    newConcernReports,
                     pendingPayments,
                     pendingStudentRequests,
                 },
