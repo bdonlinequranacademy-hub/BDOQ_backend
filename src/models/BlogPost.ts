@@ -7,6 +7,68 @@ export const BLOG_CATEGORIES = [
   "Platform & AI",
 ] as const;
 
+/** Categories shown on the public marketing blog (education only). */
+export const PUBLIC_BLOG_CATEGORIES = [
+  "Quran & Tajweed",
+  "Parent Guides",
+  "Learning Tips",
+] as const;
+
+export type PublicBlogCategory = (typeof PUBLIC_BLOG_CATEGORIES)[number];
+
+/** Tags that block a post from the public education blog entirely. */
+export const EXCLUDED_PUBLIC_BLOG_TAGS = [
+  "payment",
+  "bkash",
+  "nagad",
+  "billing",
+  "invoice",
+  "fees",
+  "paypal",
+  "wise",
+  "portal",
+] as const;
+
+/** Non-educational tags hidden from blog filters and cards (post still shows). */
+export const HIDDEN_PUBLIC_BLOG_TAGS = [
+  "bangladesh",
+  "checklist",
+] as const;
+
+export function filterPublicBlogTags(tags: string[] = []): string[] {
+  const hidden = new Set([
+    ...EXCLUDED_PUBLIC_BLOG_TAGS,
+    ...HIDDEN_PUBLIC_BLOG_TAGS,
+  ].map((tag) => tag.toLowerCase()));
+  return tags.filter((tag) => !hidden.has(tag.toLowerCase()));
+}
+
+export function isPublicBlogPost(post: {
+  category: string;
+  tags?: string[];
+  slug?: string;
+}): boolean {
+  if (
+    !PUBLIC_BLOG_CATEGORIES.includes(post.category as PublicBlogCategory)
+  ) {
+    return false;
+  }
+
+  const tags = (post.tags ?? []).map((tag) => tag.toLowerCase());
+  if (
+    EXCLUDED_PUBLIC_BLOG_TAGS.some((blocked) => tags.includes(blocked))
+  ) {
+    return false;
+  }
+
+  const slug = post.slug?.toLowerCase() ?? "";
+  if (slug.includes("payment") || slug.includes("bkash")) {
+    return false;
+  }
+
+  return true;
+}
+
 export type BlogCategory = (typeof BLOG_CATEGORIES)[number];
 export type BlogPostStatus = "draft" | "published";
 
@@ -18,6 +80,13 @@ export interface IBlogAuthor {
 export interface IBlogFaq {
   question: string;
   answer: string;
+}
+
+export interface IBlogTranslation {
+  title?: string;
+  description?: string;
+  body?: string;
+  tags?: string[];
 }
 
 export interface IBlogPost extends Document {
@@ -33,6 +102,9 @@ export interface IBlogPost extends Document {
   featured: boolean;
   status: BlogPostStatus;
   faqs: IBlogFaq[];
+  translations?: {
+    bn?: IBlogTranslation;
+  };
   createdBy: Types.ObjectId;
   updatedBy?: Types.ObjectId;
   createdAt: Date;
@@ -51,6 +123,16 @@ const blogFaqSchema = new Schema<IBlogFaq>(
   {
     question: { type: String, required: true, trim: true },
     answer: { type: String, required: true, trim: true },
+  },
+  { _id: false }
+);
+
+const blogTranslationSchema = new Schema(
+  {
+    title: { type: String, trim: true },
+    description: { type: String, trim: true },
+    body: { type: String },
+    tags: [{ type: String, trim: true }],
   },
   { _id: false }
 );
@@ -77,6 +159,9 @@ const blogPostSchema = new Schema<IBlogPost>(
       default: "draft",
     },
     faqs: [blogFaqSchema],
+    translations: {
+      bn: { type: blogTranslationSchema, default: undefined },
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },

@@ -7,6 +7,7 @@ import { Attendance } from "../models/Attendance";
 import { Progress } from "../models/Progress";
 import { Notification } from "../models/Notification";
 import { mapProgressDocsWithLabels } from "../services/curriculumService";
+import { getStudentTodaySchedule } from "../services/scheduleService";
 
 async function assertChildAccess(
   req: Request,
@@ -225,6 +226,29 @@ export const getChildProgress = async (
     res.status(500).json({
       success: false,
       message: "Failed to fetch progress",
+      data: null,
+    });
+  }
+};
+
+export const getChildTodaySchedule = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id: childId } = req.params;
+    if (!(await assertChildAccess(req, res, childId))) return;
+
+    const data = await getStudentTodaySchedule(new mongoose.Types.ObjectId(childId));
+    res.status(200).json({
+      success: true,
+      message: "Today's schedule fetched successfully",
+      data,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch today's schedule",
       data: null,
     });
   }

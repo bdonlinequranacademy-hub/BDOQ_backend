@@ -25,7 +25,7 @@ const BLOCK_PATTERNS: { label: string; pattern: RegExp }[] = [
 
 const WARN_PATTERNS: { label: string; pattern: RegExp }[] = [
   { label: "phone number", pattern: /(?:\+?\d{1,3}[\s-]?)?(?:0)?1[3-9]\d{8}\b/ },
-  { label: "personal email", pattern: /\b[A-Z0-9._%+-]+@(?!albayaan|myacademy)[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
+  { label: "personal email", pattern: /\b[A-Z0-9._%+-]+@(?!bdonlinequranacademy|myacademy)[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
   { label: "social handle", pattern: /\b@[a-z0-9._]{3,}\b/i },
 ];
 

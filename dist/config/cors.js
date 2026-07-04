@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.isCorsDisabled = isCorsDisabled;
 exports.getAllowedOrigins = getAllowedOrigins;
 exports.createCorsOptions = createCorsOptions;
 function parseOriginList(raw) {
@@ -10,11 +11,18 @@ function parseOriginList(raw) {
         .map((value) => value.trim().replace(/\/$/, ""))
         .filter(Boolean);
 }
+/** When true, all browser origins may call the API (local dev only). */
+function isCorsDisabled() {
+    const raw = process.env.CORS_DISABLED?.trim().toLowerCase();
+    return raw === "true" || raw === "1" || raw === "yes";
+}
 /** Browser origins allowed to call the API (portal, marketing site, etc.). */
 function getAllowedOrigins() {
     const defaults = [
+        "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:5175",
         "http://localhost:4321",
     ];
     const fromEnv = parseOriginList(process.env.CORS_ORIGINS);
@@ -28,6 +36,12 @@ function getAllowedOrigins() {
     return [...new Set(merged)];
 }
 function createCorsOptions() {
+    if (isCorsDisabled()) {
+        return {
+            origin: true,
+            credentials: true,
+        };
+    }
     const allowed = getAllowedOrigins();
     return {
         origin(origin, callback) {

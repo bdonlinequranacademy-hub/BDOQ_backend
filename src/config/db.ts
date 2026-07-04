@@ -4,8 +4,7 @@ const connectDB = async (): Promise<void> => {
   const mongoUri = process.env.MONGO_URI;
 
   if (!mongoUri) {
-    console.error("MongoDB connection error: MONGO_URI is not defined");
-    return;
+    throw new Error("MONGO_URI is not defined");
   }
 
   try {
@@ -14,6 +13,7 @@ const connectDB = async (): Promise<void> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("MongoDB connection error:", message);
+    throw error;
   }
 };
 

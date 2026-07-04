@@ -61,7 +61,7 @@ const getClassById = async (req, res) => {
 exports.getClassById = getClassById;
 const getMyStudents = async (req, res) => {
     try {
-        const classes = await Class_1.Class.find({ teacher: req.user._id }).populate("students", "name email studentId country timezone curriculumAssignments");
+        const classes = await Class_1.Class.find({ teacher: req.user._id }).populate("students", "name email studentId country timezone curriculumAssignments whatsapp");
         const studentMap = new Map();
         for (const cls of classes) {
             for (const student of cls.students) {
@@ -74,6 +74,7 @@ const getMyStudents = async (req, res) => {
                         studentId: student.studentId,
                         country: student.country,
                         timezone: student.timezone,
+                        whatsapp: student.whatsapp,
                         curriculumAssignments: (0, curriculumService_1.mapAssignmentLabels)(student.curriculumAssignments),
                         classes: [],
                     });

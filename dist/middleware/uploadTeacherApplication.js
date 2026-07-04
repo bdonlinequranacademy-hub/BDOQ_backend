@@ -1,0 +1,26 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.teacherApplicationUpload = void 0;
+const multer_1 = __importDefault(require("multer"));
+exports.teacherApplicationUpload = (0, multer_1.default)({
+    storage: multer_1.default.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 4 },
+    fileFilter: (_req, file, cb) => {
+        const allowed = file.mimetype.startsWith("image/") ||
+            file.mimetype === "application/pdf" ||
+            file.originalname.toLowerCase().endsWith(".pdf");
+        if (!allowed) {
+            cb(new Error("Only PDF and image files are allowed"));
+            return;
+        }
+        cb(null, true);
+    },
+}).fields([
+    { name: "certificateFile", maxCount: 1 },
+    { name: "cvFile", maxCount: 1 },
+    { name: "profilePhotoFile", maxCount: 1 },
+    { name: "screenshotFile", maxCount: 1 },
+]);

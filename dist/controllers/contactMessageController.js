@@ -22,6 +22,7 @@ const submitContactMessage = async (req, res) => {
             name: req.body.name,
             email: req.body.email,
             message: req.body.message,
+            subject: typeof req.body.subject === "string" ? req.body.subject : undefined,
             locale: parseLocale(req.body.locale),
         });
         if ("error" in result) {

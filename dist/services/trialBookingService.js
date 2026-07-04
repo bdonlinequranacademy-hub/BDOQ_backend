@@ -8,6 +8,7 @@ exports.countTrialBookingsByStatus = countTrialBookingsByStatus;
 const TrialBooking_1 = require("../models/TrialBooking");
 const emailService_1 = require("./emailService");
 const notificationService_1 = require("./notificationService");
+const whatsappPhone_1 = require("../lib/whatsappPhone");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function notifyEmail() {
     const to = process.env.TRIAL_NOTIFY_EMAIL?.trim() ||
@@ -63,9 +64,9 @@ function formatTrialBooking(booking) {
 async function createTrialBooking(input) {
     const parentName = input.parentName?.trim();
     const email = input.email?.trim().toLowerCase();
-    const whatsapp = input.whatsapp?.trim();
+    const whatsappRaw = input.whatsapp?.trim();
     const country = input.country?.trim();
-    if (!parentName || !whatsapp) {
+    if (!parentName || !whatsappRaw) {
         return { error: "Name and WhatsApp are required." };
     }
     if (email && !EMAIL_RE.test(email)) {
@@ -74,13 +75,17 @@ async function createTrialBooking(input) {
     if (!country) {
         return { error: "Country is required." };
     }
+    const normalizedWa = (0, whatsappPhone_1.normalizeWhatsAppForStorage)(whatsappRaw, country);
+    if (!normalizedWa.ok) {
+        return { error: normalizedWa.error };
+    }
     if (!["child", "teen", "adult"].includes(input.learnerType)) {
         return { error: "Invalid learner type." };
     }
     const booking = await TrialBooking_1.TrialBooking.create({
         parentName,
         email: email || undefined,
-        whatsapp,
+        whatsapp: normalizedWa.whatsapp,
         country,
         learnerType: input.learnerType,
         timeSlot: input.timeSlot,

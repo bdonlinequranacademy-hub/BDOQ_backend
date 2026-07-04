@@ -11,6 +11,7 @@ exports.sendVerificationEmail = sendVerificationEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const smtp_1 = require("../config/smtp");
+const ACADEMY_NAME = "BD Online Quran Academy";
 let cachedTransporter;
 function getTransporter() {
     if (cachedTransporter !== undefined) {
@@ -65,56 +66,79 @@ async function verifySmtpConnection() {
         return false;
     }
 }
+function shouldLogEmailToConsole() {
+    return (process.env.NODE_ENV !== "production" ||
+        process.env.SMTP_DEV_LOG === "true");
+}
+function logEmailToConsole(reason, options) {
+    console.log(`\n--- Email (${reason}) ---`);
+    console.log(`To: ${options.to}`);
+    console.log(`Subject: ${options.subject}`);
+    console.log(options.text);
+    console.log("---\n");
+}
+function logSendFailure(err, from) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.warn(`[email] Send failed: ${msg}`);
+    if (/domain is not verified|550/i.test(msg)) {
+        console.warn(`[email] Resend rejected "${from}". Verify the domain at https://resend.com/domains ` +
+            "or set FROM_EMAIL=onboarding@resend.dev for testing.");
+    }
+}
 async function sendEmail(options) {
     const config = (0, smtp_1.resolveSmtpConfig)();
     const transporter = getTransporter();
+    const logInDev = shouldLogEmailToConsole();
     if (!transporter || !config) {
-        const logInDev = process.env.NODE_ENV !== "production" ||
-            process.env.SMTP_DEV_LOG === "true";
         if (logInDev) {
-            console.log("\n--- Email (SMTP not configured) ---");
-            console.log(`To: ${options.to}`);
-            console.log(`Subject: ${options.subject}`);
-            console.log(options.text);
-            console.log("---\n");
+            logEmailToConsole("SMTP not configured", options);
         }
         return { sent: false, devLogged: logInDev };
     }
-    await transporter.sendMail({
-        from: `Al Bayaan Academy <${config.from}>`,
-        to: options.to,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
-    });
-    return { sent: true, devLogged: false };
+    try {
+        await transporter.sendMail({
+            from: `${ACADEMY_NAME} <${config.from}>`,
+            to: options.to,
+            subject: options.subject,
+            text: options.text,
+            html: options.html,
+        });
+        return { sent: true, devLogged: false };
+    }
+    catch (err) {
+        logSendFailure(err, config.from);
+        if (logInDev) {
+            logEmailToConsole("SMTP send failed — dev fallback", options);
+        }
+        return { sent: false, devLogged: logInDev };
+    }
 }
 async function sendVerificationEmail(email, name, verifyUrl) {
     await sendEmail({
         to: email,
-        subject: "Verify your Al Bayaan Academy account",
-        text: `Hi ${name},\n\nPlease verify your email by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n— Al Bayaan Academy`,
+        subject: `Verify your ${ACADEMY_NAME} account`,
+        text: `Hi ${name},\n\nPlease verify your email by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n— ${ACADEMY_NAME}`,
         html: `
       <p>Hi ${name},</p>
       <p>Please verify your email to access your learning portal:</p>
       <p><a href="${verifyUrl}" style="color:#03214F;font-weight:bold">Verify my email</a></p>
       <p>Or copy this link: ${verifyUrl}</p>
       <p>This link expires in 24 hours.</p>
-      <p>— Al Bayaan Academy</p>
+      <p>— ${ACADEMY_NAME}</p>
     `,
     });
 }
 async function sendPasswordResetEmail(email, name, resetUrl) {
     await sendEmail({
         to: email,
-        subject: "Reset your Al Bayaan Academy password",
-        text: `Hi ${name},\n\nReset your password:\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.\n\n— Al Bayaan Academy`,
+        subject: `Reset your ${ACADEMY_NAME} password`,
+        text: `Hi ${name},\n\nReset your password:\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.\n\n— ${ACADEMY_NAME}`,
         html: `
       <p>Hi ${name},</p>
       <p><a href="${resetUrl}" style="color:#03214F;font-weight:bold">Reset my password</a></p>
       <p>Or copy: ${resetUrl}</p>
       <p>Expires in 1 hour.</p>
-      <p>— Al Bayaan Academy</p>
+      <p>— ${ACADEMY_NAME}</p>
     `,
     });
 }

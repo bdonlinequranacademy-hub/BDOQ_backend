@@ -10,6 +10,7 @@ export interface ICurriculumNodeDoc {
 export interface ICurriculumConfig extends Document {
   key: string;
   tree: ICurriculumNodeDoc[];
+  schemaVersion?: number;
   updatedAt: Date;
 }
 
@@ -31,6 +32,7 @@ const curriculumConfigSchema = new Schema<ICurriculumConfig>(
   {
     key: { type: String, required: true, unique: true, default: "default" },
     tree: { type: [curriculumNodeSchema], default: [] },
+    schemaVersion: { type: Number, default: 1 },
   },
   { timestamps: { createdAt: false, updatedAt: true } }
 );

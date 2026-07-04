@@ -82,7 +82,7 @@ export const getMyStudents = async (
   try {
     const classes = await Class.find({ teacher: req.user!._id }).populate(
       "students",
-      "name email studentId country timezone curriculumAssignments"
+      "name email studentId country timezone curriculumAssignments whatsapp"
     );
 
     const studentMap = new Map<
@@ -94,6 +94,7 @@ export const getMyStudents = async (
         studentId?: string | null;
         country?: string;
         timezone?: string;
+        whatsapp?: string;
         curriculumAssignments: ReturnType<typeof mapAssignmentLabels>;
         classes: { _id: Types.ObjectId; title: string }[];
       }
@@ -107,6 +108,7 @@ export const getMyStudents = async (
         studentId?: string | null;
         country?: string;
         timezone?: string;
+        whatsapp?: string;
         curriculumAssignments?: { programId: string; unitId?: string; topicId?: string }[];
       }[]) {
         const id = student._id.toString();
@@ -118,6 +120,7 @@ export const getMyStudents = async (
             studentId: student.studentId,
             country: student.country,
             timezone: student.timezone,
+            whatsapp: student.whatsapp,
             curriculumAssignments: mapAssignmentLabels(student.curriculumAssignments),
             classes: [],
           });

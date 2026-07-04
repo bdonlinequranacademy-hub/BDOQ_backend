@@ -2,13 +2,15 @@
  * Seeds sample academy data (users, classes, homework, payments, blog, etc.)
  * for owner presentations. All seed records are tagged and safe to remove.
  *
- * Usage (from myAcademy-backend):
+ * Usage (from My-Academy):
  *   npm run seed:academy-demo
  *   ACADEMY_SEED_CLEAR=true npm run seed:academy-demo
+ *   npm run seed:production   ← full deploy demo (academy + resources)
  *
  * Sample logins (password defaults to Sample1234! or SEED_PASSWORD env):
- *   seed.teacher1@seed.albayaan.academy
- *   seed.student1@seed.albayaan.academy  … seed.student8@…
+ *   seed.teacher1@seed.boq.academy
+ *   seed.student1@seed.boq.academy  … seed.student8@…
+ *   seed.parent1@seed.boq.academy   (linked to student1 & student2)
  */
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
@@ -27,12 +29,21 @@ import { Notification } from "../src/models/Notification";
 import { StudentBilling } from "../src/models/StudentBilling";
 import { PaymentRecord } from "../src/models/PaymentRecord";
 import { BlogPost, type BlogCategory } from "../src/models/BlogPost";
+import { SessionJoin } from "../src/models/SessionJoin";
+import { StudentAdmissionApplication } from "../src/models/StudentAdmissionApplication";
+import { TeacherApplication } from "../src/models/TeacherApplication";
 import { computePaidUntil } from "../src/services/paymentService";
-import { ACADEMY_TIMEZONE, formatWeeklyTime } from "../src/utils/scheduleUtils";
+import {
+  ACADEMY_TIMEZONE,
+  formatWeeklyTime,
+  getSessionInstant,
+  getSessionPhase,
+  getTodayScheduleDay,
+} from "../src/utils/scheduleUtils";
 
 dotenv.config();
 
-const SEED_DOMAIN = "seed.albayaan.academy";
+const SEED_DOMAIN = "seed.boq.academy";
 const SEED_PAYMENT_REF = "SEED-";
 const SEED_TRIAL_SOURCE = "academy-seed";
 const SEED_BLOG_SLUG_PREFIX = "seed-";
@@ -71,6 +82,33 @@ function startOfDay(d: Date): Date {
   return x;
 }
 
+function getAcademyDateString(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ACADEMY_TIMEZONE }).format(now);
+}
+
+function dhakaNowMinutes(): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ACADEMY_TIMEZONE,
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return hour * 60 + minute;
+}
+
+function formatMinutesAsTime(totalMinutes: number): string {
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = Math.floor(normalized / 60);
+  const m = normalized % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function dhakaTimeOffset(offsetMinutes: number): string {
+  return formatMinutesAsTime(dhakaNowMinutes() + offsetMinutes);
+}
+
 async function clearSeedData(): Promise<void> {
   const seedUsers = await User.find({
     email: { $regex: `@${SEED_DOMAIN.replace(".", "\\.")}$` },
@@ -90,6 +128,12 @@ async function clearSeedData(): Promise<void> {
     });
     await PaymentRecord.deleteMany({ reference: { $regex: `^${SEED_PAYMENT_REF}` } });
     await BlogPost.deleteMany({ slug: { $regex: `^${SEED_BLOG_SLUG_PREFIX}` } });
+    await StudentAdmissionApplication.deleteMany({
+      email: { $regex: `@${SEED_DOMAIN.replace(".", "\\.")}$` },
+    });
+    await TeacherApplication.deleteMany({
+      email: { $regex: `@${SEED_DOMAIN.replace(".", "\\.")}$` },
+    });
     return;
   }
 
@@ -111,6 +155,10 @@ async function clearSeedData(): Promise<void> {
   await Progress.deleteMany({
     $or: [{ student: { $in: seedUserIds } }, { class: { $in: seedClassIds } }],
   });
+  const seedSlotIds = await SessionSlot.find({ class: { $in: seedClassIds } }).distinct(
+    "_id"
+  );
+  await SessionJoin.deleteMany({ sessionSlot: { $in: seedSlotIds } });
   await SessionSlot.deleteMany({ class: { $in: seedClassIds } });
   await StudentRequest.deleteMany({ teacher: { $in: seedTeacherIds } });
   await Class.deleteMany({ _id: { $in: seedClassIds } });
@@ -119,6 +167,12 @@ async function clearSeedData(): Promise<void> {
     email: { $regex: `@${SEED_DOMAIN.replace(".", "\\.")}$` },
   });
   await BlogPost.deleteMany({ slug: { $regex: `^${SEED_BLOG_SLUG_PREFIX}` } });
+  await StudentAdmissionApplication.deleteMany({
+    email: { $regex: `@${SEED_DOMAIN.replace(".", "\\.")}$` },
+  });
+  await TeacherApplication.deleteMany({
+    email: { $regex: `@${SEED_DOMAIN.replace(".", "\\.")}$` },
+  });
   await User.deleteMany({ _id: { $in: seedUserIds } });
 
   console.log("Cleared previous academy seed data.");
@@ -202,7 +256,7 @@ async function main(): Promise<void> {
       gender: t.gender,
       country: t.country,
       timezone: t.timezone,
-      meetingLink: "https://meet.google.com/albayaan-class",
+      meetingLink: "https://meet.google.com/boq-class",
       bankName: "Dutch-Bangla Bank",
       bankAccount: "****7842",
       bKashNumber: "01712345678",
@@ -226,7 +280,7 @@ async function main(): Promise<void> {
       timezone: s.timezone,
       studentId: `SEED-${String(i + 1).padStart(3, "0")}`,
       curriculumAssignments: [
-        { programId: "quran-tajweed", unitId: "unit-1", completed: false },
+        { programId: "tajweed", unitId: "tj-foundation", topicId: "tj-noon-tanween", completed: false },
       ],
     });
     students.push(doc);
@@ -276,11 +330,11 @@ async function main(): Promise<void> {
     const classStudents = def.studentIndexes.map((i) => students[i]._id);
     const classDoc = await Class.create({
       title: def.title,
-      description: "Live Quran class with tajweed focus — Al Bayaan Academy.",
+      description: "Live Quran class with tajweed focus — BD Online Quran Academy.",
       teacher: def.teacher._id,
       students: classStudents,
       schedule: { day: def.day, time: def.time, duration: def.duration },
-      meetingLink: "https://meet.google.com/albayaan-class",
+      meetingLink: "https://meet.google.com/boq-class",
       sessionRateBdt: def.rate,
       isActive: true,
     });
@@ -331,8 +385,9 @@ async function main(): Promise<void> {
       courseType: "Quran",
       lessonReport: logReports[i],
       topicsCovered: ["Tajweed", "Recitation"],
-      curriculumProgram: "quran-tajweed",
-      curriculumUnit: "unit-1",
+      curriculumProgram: "tajweed",
+      curriculumUnit: "tj-foundation",
+      curriculumTopic: "tj-noon-tanween",
       status: i < 3 ? "pending" : "approved",
       approvedBy: i >= 3 && admin ? admin._id : undefined,
       approvedAt: i >= 3 ? addDays(today, -2) : undefined,
@@ -364,8 +419,9 @@ async function main(): Promise<void> {
     class: hwClass._id,
     teacher: hwTeacher._id,
     dueDate: addDays(today, 5),
-    curriculumProgram: "quran-tajweed",
-    curriculumUnit: "unit-1",
+    curriculumProgram: "tajweed",
+    curriculumUnit: "tj-foundation",
+    curriculumTopic: "tj-noon-tanween",
     submissions: [
       {
         student: hwStudents[0]._id,
@@ -399,7 +455,9 @@ async function main(): Promise<void> {
     class: classes[1]._id,
     teacher: teachers[1]._id,
     dueDate: addDays(today, 7),
-    curriculumProgram: "quran-hifz",
+    curriculumProgram: "hifz",
+    curriculumUnit: "hz-juz-amma",
+    curriculumTopic: "hz-juz-amma-surah-al-mulk",
     submissions: [
       {
         student: students[4]._id,
@@ -443,8 +501,9 @@ async function main(): Promise<void> {
       surahsCompleted: progressData[i].surahs,
       tajweedScore: progressData[i].score,
       memorizedAyahs: progressData[i].ayahs,
-      curriculumProgram: "quran-tajweed",
-      curriculumUnit: "unit-1",
+      curriculumProgram: "tajweed",
+      curriculumUnit: "tj-foundation",
+      curriculumTopic: "tj-noon-tanween",
       notes: "Steady progress in tajweed and memorization.",
       updatedBy: teachers[0]._id,
     });
@@ -527,7 +586,7 @@ async function main(): Promise<void> {
       slug: `${SEED_BLOG_SLUG_PREFIX}starting-tajweed-with-children`,
       title: "Starting Tajweed with Children — 5 Practical Tips",
       description:
-        "A simple tajweed guide for parents before home Quran learning begins — from Al Bayaan Academy experience.",
+        "A simple tajweed guide for parents before home Quran learning begins — from BD Online Quran Academy experience.",
       body: `## Why tajweed first?
 
 Without tajweed, incorrect recitation habits form early. Learning by listening from a qualified teacher is most effective.
@@ -540,11 +599,11 @@ Without tajweed, incorrect recitation habits form early. Learning by listening f
 4. **Encourage effort** — praise progress, not only corrections.
 5. **Use portal homework** — teachers can review submitted work online.
 
-## At Al Bayaan
+## At BOQ Academy
 
 Live classes, teacher feedback, and progress tracking — all in one place.`,
       category: "Quran & Tajweed",
-      tags: ["tajweed", "children", "bangladesh"],
+      tags: ["tajweed", "children", "beginners"],
       author: { name: "Mst. Fatema Begum", role: "Teacher" },
       readMinutes: 5,
       featured: true,
@@ -580,7 +639,7 @@ Same time every day — fit it into your child's routine. Set timezone correctly
 
 Submit payment proof in the portal — classes stay active after admin verification.`,
       category: "Parent Guides",
-      tags: ["parents", "online-class", "checklist"],
+      tags: ["parents", "online-class", "study-setup"],
       author: { name: "Md. Kamrul Hasan", role: "Teacher" },
       readMinutes: 4,
       featured: false,
@@ -617,7 +676,7 @@ Only new memorization without revision — this weakens retention.`,
     {
       slug: `${SEED_BLOG_SLUG_PREFIX}portal-payment-guide`,
       title: "Submitting Payment Proof in the Portal — Step by Step",
-      description: "How to submit bKash, bank transfer, or Wise payments through the Al Bayaan student portal.",
+      description: "How to submit bKash, bank transfer, or Wise payments through the BOQ student portal.",
       body: `## Step 1
 
 Student login → **Payments** menu.
@@ -639,10 +698,10 @@ After admin approval, **Paid until** updates automatically.
 Contact admin through the portal messages page.`,
       category: "Platform & AI",
       tags: ["portal", "payment", "bkash"],
-      author: { name: "Al Bayaan Admin Team", role: "Academy" },
+      author: { name: "BOQ Admin Team", role: "Academy" },
       readMinutes: 3,
       featured: false,
-      status: "published",
+      status: "draft",
       pubDaysAgo: 7,
     },
     {
@@ -708,6 +767,7 @@ This post is under review before publishing. It will include Ramadan schedules a
   }
 
   const adminId = admin?._id;
+  let seedInvoiceSeq = 1;
 
   async function insertPayment(opts: {
     student: IUser;
@@ -748,6 +808,7 @@ This post is under review before publishing. It will include Ramadan schedules a
       reviewedBy: opts.status !== "pending" ? adminId : undefined,
       reviewedAt: opts.status !== "pending" ? addDays(today, -1) : undefined,
       paidUntilAfter,
+      invoiceNumber: `${SEED_PAYMENT_REF}INV-${String(seedInvoiceSeq++).padStart(4, "0")}`,
     });
   }
 
@@ -866,6 +927,202 @@ This post is under review before publishing. It will include Ramadan schedules a
     await Notification.create({ ...n, isRead: false });
   }
 
+  // —— Today's live-monitor demo (always on current academy day) ——
+  const todayDay = getTodayScheduleDay();
+  const sessionDate = getAcademyDateString();
+  const todayClass = await Class.create({
+    title: "Today's Tajweed Sessions",
+    description: "One-to-one live classes scheduled for today — demo data for live monitor.",
+    teacher: teachers[0]._id,
+    students: [students[0]._id, students[1]._id, students[2]._id, students[3]._id],
+    schedule: {
+      day: todayDay,
+      time: dhakaTimeOffset(-20),
+      duration: 60,
+    },
+    meetingLink: "https://meet.google.com/boq-live-demo",
+    sessionRateBdt: 500,
+    isActive: true,
+  });
+
+  const todaySlotPlan = [
+    {
+      studentIdx: 0,
+      teacherIdx: 0,
+      offsetMin: -22,
+      duration: 60,
+      courseType: "Tajweed · Sisters",
+      teacherJoined: true,
+      studentJoined: false,
+    },
+    {
+      studentIdx: 1,
+      teacherIdx: 1,
+      offsetMin: -18,
+      duration: 60,
+      courseType: "Noorani Qaida",
+      teacherJoined: true,
+      studentJoined: true,
+    },
+    {
+      studentIdx: 3,
+      teacherIdx: 1,
+      offsetMin: 50,
+      duration: 45,
+      courseType: "Hifz Review",
+      teacherJoined: false,
+      studentJoined: false,
+    },
+    {
+      studentIdx: 2,
+      teacherIdx: 0,
+      offsetMin: -95,
+      duration: 45,
+      courseType: "Tajweed · Sisters",
+      teacherJoined: true,
+      studentJoined: false,
+    },
+  ];
+
+  const now = new Date();
+  for (const plan of todaySlotPlan) {
+    const student = students[plan.studentIdx];
+    const teacher = teachers[plan.teacherIdx];
+    const startTime = dhakaTimeOffset(plan.offsetMin);
+    const startsAt = getSessionInstant(todayDay, startTime);
+    const phase =
+      startsAt != null
+        ? getSessionPhase(startsAt, plan.duration, now)
+        : ("upcoming" as const);
+
+    const slot = await SessionSlot.create({
+      class: todayClass._id,
+      teacher: teacher._id,
+      student: student._id,
+      day: todayDay,
+      startTime,
+      durationMinutes: plan.duration,
+      courseType: plan.courseType,
+      isActive: phase !== "completed",
+      repeatWeekly: false,
+      sessionPhase: phase,
+    });
+
+    if (plan.teacherJoined) {
+      await SessionJoin.create({
+        sessionSlot: slot._id,
+        sessionDate,
+        user: teacher._id,
+        role: "teacher",
+        source: "meeting_link",
+        joinedAt: startsAt ?? now,
+      });
+    }
+    if (plan.studentJoined) {
+      await SessionJoin.create({
+        sessionSlot: slot._id,
+        sessionDate,
+        user: student._id,
+        role: "student",
+        source: "meeting_link",
+        joinedAt: new Date((startsAt ?? now).getTime() + 3 * 60_000),
+      });
+    }
+  }
+
+  // Parent portal demo (linked children)
+  const parent = await User.create({
+    name: "Abdul Rahman",
+    email: seedEmail("seed.parent1"),
+    password: passwordHash,
+    role: "parent",
+    authProvider: "local",
+    emailVerified: true,
+    isActive: true,
+    country: "Bangladesh",
+    timezone: "Asia/Dhaka",
+    whatsapp: "+8801712345678",
+    children: [students[0]._id, students[1]._id],
+  });
+
+  await Notification.create({
+    user: parent._id,
+    title: "Upcoming class reminder",
+    message: `${students[0].name}'s class "Today's Tajweed Sessions" starts soon.`,
+    type: "class",
+    isRead: false,
+  });
+
+  await StudentAdmissionApplication.create([
+    {
+      fullName: "Zainab Hossain",
+      email: seedEmail("seed.admission1"),
+      whatsapp: "+880 1812 555 010",
+      locale: "en",
+      status: "new",
+      formData: {
+        age: "9",
+        gender: "female",
+        country: "Bangladesh",
+        programInterest: "tajweed",
+        preferredTime: "Evening",
+        guardianName: "Hossain Uddin",
+      },
+    },
+    {
+      fullName: "Ahmed Malik",
+      email: seedEmail("seed.admission2"),
+      whatsapp: "+44 7700 900123",
+      locale: "en",
+      status: "reviewing",
+      formData: {
+        age: "12",
+        gender: "male",
+        country: "United Kingdom",
+        programInterest: "hifz",
+        preferredTime: "Weekend morning",
+        guardianName: "Malik Family",
+      },
+    },
+  ]);
+
+  await TeacherApplication.create([
+    {
+      fullName: "Mst. Ayesha Siddiqua",
+      email: seedEmail("seed.teacherapp1"),
+      phone: "+880 1911 222 333",
+      locale: "bn",
+      status: "new",
+      formData: {
+        gender: "female",
+        experience: "5 years online tajweed teaching",
+        subjects: ["tajweed", "quran-recitation"],
+        availability: "Weekday evenings",
+      },
+      files: {
+        cvUrl: SEED_SCREENSHOT.url,
+        cvPublicId: SEED_SCREENSHOT.publicId,
+      },
+    },
+    {
+      fullName: "Md. Rafiqul Islam",
+      email: seedEmail("seed.teacherapp2"),
+      phone: "+880 1711 444 555",
+      locale: "en",
+      status: "reviewing",
+      formData: {
+        gender: "male",
+        experience: "Hafiz, 3 years teaching children",
+        subjects: ["hifz", "noorani-qaida"],
+        availability: "Morning and afternoon",
+      },
+      files: {
+        cvUrl: SEED_SCREENSHOT.url,
+        cvPublicId: SEED_SCREENSHOT.publicId,
+      },
+    },
+  ]);
+
   if (admin) {
     await Notification.create({
       user: admin._id,
@@ -879,11 +1136,13 @@ This post is under review before publishing. It will include Ramadan schedules a
   console.log("\n=== Academy seed complete ===\n");
   console.log("Created:");
   console.log(`  • ${teachers.length} teachers`);
-  console.log(`  • ${students.length} students`);
-  console.log(`  • ${classes.length} classes (Sat / Mon / Wed routine)`);
+  console.log(`  • ${students.length} students + 1 parent (${seedEmail("seed.parent1")})`);
+  console.log(`  • ${classes.length + 1} classes (weekly + today's live demo on ${todayDay})`);
+  console.log(`  • ${todaySlotPlan.length} today's session slots with join tracking (live monitor)`);
   console.log("  • 5 class logs (3 pending, 2 approved)");
   console.log("  • 2 homework assignments with submissions");
   console.log("  • Attendance, progress, trials, contacts, payments");
+  console.log("  • 2 student admissions + 2 teacher applications");
   console.log(`  • ${blogPosts.length} blog posts (4 published, 1 draft)`);
   console.log("\nPassword (all seed accounts):", seedPassword);
   console.log("\nSample logins:");
@@ -892,10 +1151,11 @@ This post is under review before publishing. It will include Ramadan schedules a
   console.log(`  Student: ${seedEmail("seed.student1")}  (Ayesha Rahman — fee current)`);
   console.log(`  Student: ${seedEmail("seed.student3")}  (Fatema Yasmin — overdue)`);
   console.log(`  Student: ${seedEmail("seed.student6")}  (Ibrahim Hossain — USA, pending payment)`);
-  console.log(`  Student: ${seedEmail("seed.student7")}  (Khadija Akter — pending BDT payment)`);
-  console.log("\nAdmin portal: Dashboard → Payments / Class Logs / Blog / Trial Bookings");
+  console.log(`  Parent:  ${seedEmail("seed.parent1")}  (children: student1 & student2)`);
+  console.log("\nAdmin portal: Dashboard → Live Monitor / Payments / Class Logs / Blog");
+  console.log("Public site: run npm run seed:resources for ebooks, audio & videos");
   console.log("\nTo reset seed data:");
-  console.log("  ACADEMY_SEED_CLEAR=true npm run seed:academy-demo\n");
+  console.log("  npm run seed:production\n");
 
   await mongoose.disconnect();
 }

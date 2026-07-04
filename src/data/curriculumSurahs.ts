@@ -24,13 +24,34 @@ export const SELECTABLE_SURAHS = [
   "Al-Humazah",
 ];
 
-export function surahTopics(prefix: string): { id: string; label: string; labelBn: string }[] {
-  return SELECTABLE_SURAHS.map((name) => ({
+/** Short surahs for the Surah Memorization program (Juz Amma focus). */
+export const SHORT_MEMORIZATION_SURAHS = [
+  "An-Nas",
+  "Al-Falaq",
+  "Al-Ikhlas",
+  "Al-Kawthar",
+  "Al-Asr",
+  "Al-Fil",
+  "Al-Qadr",
+  "Al-Alaq",
+  "At-Tin",
+  "Ash-Sharh",
+  "Al-Muzzammil",
+  "Al-Muddaththir",
+];
+
+export function surahTopics(
+  prefix: string,
+  names: readonly string[] = SELECTABLE_SURAHS
+): { id: string; label: string; labelBn: string }[] {
+  return names.map((name) => ({
     id: `${prefix}-surah-${slugify(name)}`,
     label: name,
     labelBn: name,
   }));
 }
+
+export const SHORT_SURAHS = surahTopics("sm-short", SHORT_MEMORIZATION_SURAHS);
 
 function slugify(name: string): string {
   return name

@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { CurriculumNode } from "../data/curriculumTree";
+import { normalizeProgramId } from "../data/curriculumIds";
 import { Class } from "../models/Class";
 import { User, ICurriculumAssignment } from "../models/User";
 import { getActiveCurriculumTree } from "./curriculumStore";
@@ -9,7 +10,10 @@ export function getFullCurriculumTree(): CurriculumNode[] {
 }
 
 export function findProgram(programId: string): CurriculumNode | undefined {
-  return getActiveCurriculumTree().find((p) => p.id === programId);
+  const normalized = normalizeProgramId(programId);
+  return getActiveCurriculumTree().find(
+    (p) => p.id === normalized || p.id === programId
+  );
 }
 
 export function findUnit(programId: string, unitId: string): CurriculumNode | undefined {
@@ -33,11 +37,21 @@ function cloneNode(node: CurriculumNode): CurriculumNode {
   };
 }
 
+function assignmentProgramMatches(
+  assignmentProgramId: string,
+  pathProgramId: string
+): boolean {
+  return (
+    assignmentProgramId === pathProgramId ||
+    normalizeProgramId(assignmentProgramId) === normalizeProgramId(pathProgramId)
+  );
+}
+
 function filterProgramByAssignment(
   program: CurriculumNode,
   assignment: ICurriculumAssignment
 ): CurriculumNode | null {
-  if (assignment.programId !== program.id) return null;
+  if (!assignmentProgramMatches(assignment.programId, program.id)) return null;
 
   if (!assignment.unitId) {
     return cloneNode(program);
@@ -169,10 +183,11 @@ export function resolveCurriculumLabels(
   topicId?: string
 ): { program?: string; unit?: string; topic?: string } {
   if (!programId) return {};
-  const program = findProgram(programId);
-  const unit = unitId ? findUnit(programId, unitId) : undefined;
+  const normalized = normalizeProgramId(programId);
+  const program = findProgram(normalized);
+  const unit = unitId ? findUnit(normalized, unitId) : undefined;
   const topic =
-    unitId && topicId ? findTopic(programId, unitId, topicId) : undefined;
+    unitId && topicId ? findTopic(normalized, unitId, topicId) : undefined;
   return {
     program: program?.label,
     unit: unit?.label,
@@ -235,13 +250,14 @@ export function isValidCurriculumPath(
   unitId?: string,
   topicId?: string
 ): boolean {
-  const program = findProgram(programId);
+  const normalized = normalizeProgramId(programId);
+  const program = findProgram(normalized);
   if (!program) return false;
   if (!unitId) return true;
-  const unit = findUnit(programId, unitId);
+  const unit = findUnit(normalized, unitId);
   if (!unit) return false;
   if (!topicId) return true;
-  return Boolean(findTopic(programId, unitId, topicId));
+  return Boolean(findTopic(normalized, unitId, topicId));
 }
 
 /** Requires unit/topic when the tree has deeper levels (matches portal pathReadyToSave). */
@@ -272,7 +288,7 @@ export function pathAllowedForAssignments(
   if (!assignments?.length) return true;
 
   return assignments.some((a) => {
-    if (a.programId !== programId) return false;
+    if (!assignmentProgramMatches(a.programId, programId)) return false;
     if (a.topicId) return a.topicId === topicId;
     if (a.unitId) {
       if (a.unitId !== unitId) return false;
@@ -340,12 +356,13 @@ export function parseCurriculumAssignments(raw: unknown): ICurriculumAssignment[
     if (!item || typeof item !== "object") continue;
     const programId = (item as { programId?: string }).programId;
     if (typeof programId !== "string" || !findProgram(programId)) continue;
+    const normalizedProgram = normalizeProgramId(programId);
     const unitId = (item as { unitId?: string }).unitId;
     const topicId = (item as { topicId?: string }).topicId;
-    if (unitId && !findUnit(programId, unitId)) continue;
-    if (topicId && (!unitId || !findTopic(programId, unitId, topicId))) continue;
+    if (unitId && !findUnit(normalizedProgram, unitId)) continue;
+    if (topicId && (!unitId || !findTopic(normalizedProgram, unitId, topicId))) continue;
     parsed.push({
-      programId,
+      programId: normalizedProgram,
       unitId: unitId || undefined,
       topicId: topicId || undefined,
       completed: Boolean((item as { completed?: boolean }).completed),

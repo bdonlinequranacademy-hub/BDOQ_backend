@@ -16,6 +16,10 @@ import {
   notifyAdminsNewPayment,
   notifyStudentPaymentReviewed,
 } from "../services/paymentReminderService";
+import {
+  buildPaymentInvoice,
+  ensureInvoiceNumber,
+} from "../services/paymentInvoiceService";
 
 function formatBilling(billing: InstanceType<typeof StudentBilling> | null) {
   if (!billing) return null;
@@ -53,6 +57,7 @@ function formatPayment(record: InstanceType<typeof PaymentRecord>) {
     rejectionReason: record.rejectionReason ?? undefined,
     paidUntilAfter: record.paidUntilAfter?.toISOString() ?? undefined,
     reviewedAt: record.reviewedAt?.toISOString() ?? undefined,
+    invoiceNumber: record.invoiceNumber ?? undefined,
     createdAt: record.createdAt.toISOString(),
   };
 }
@@ -409,7 +414,7 @@ export const approvePayment = async (
     record.reviewedAt = new Date();
     record.paidUntilAfter = paidUntilAfter;
     record.rejectionReason = undefined;
-    await record.save();
+    await ensureInvoiceNumber(record);
 
     await notifyStudentPaymentReviewed(record.student.toString(), true);
 
@@ -597,6 +602,84 @@ export const getStudentBilling = async (
     res.status(500).json({
       success: false,
       message: "Failed to fetch billing",
+      data: null,
+    });
+  }
+};
+
+async function fetchPaymentInvoiceForUser(
+  paymentId: string,
+  user: IUser,
+  asAdmin: boolean
+): Promise<{ status: number; message: string; data: Awaited<ReturnType<typeof buildPaymentInvoice>> }> {
+  if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+    return { status: 400, message: "Invalid payment ID", data: null };
+  }
+
+  const record = await PaymentRecord.findById(paymentId);
+  if (!record) {
+    return { status: 404, message: "Payment not found", data: null };
+  }
+
+  if (!asAdmin && record.student.toString() !== user._id.toString()) {
+    return { status: 403, message: "Not allowed to view this invoice", data: null };
+  }
+
+  if (record.status !== "approved") {
+    return {
+      status: 400,
+      message: "Invoice is available only for approved payments",
+      data: null,
+    };
+  }
+
+  const data = await buildPaymentInvoice(paymentId);
+  if (!data) {
+    return { status: 404, message: "Invoice could not be generated", data: null };
+  }
+
+  return { status: 200, message: "Invoice fetched", data };
+}
+
+export const getStudentPaymentInvoice = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const user = req.user as IUser;
+    const result = await fetchPaymentInvoiceForUser(req.params.id, user, false);
+    res.status(result.status).json({
+      success: result.status === 200,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (err) {
+    console.error("[payment] getStudentPaymentInvoice failed:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch invoice",
+      data: null,
+    });
+  }
+};
+
+export const getAdminPaymentInvoice = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const user = req.user as IUser;
+    const result = await fetchPaymentInvoiceForUser(req.params.id, user, true);
+    res.status(result.status).json({
+      success: result.status === 200,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (err) {
+    console.error("[payment] getAdminPaymentInvoice failed:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch invoice",
       data: null,
     });
   }

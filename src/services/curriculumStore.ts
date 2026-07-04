@@ -1,4 +1,5 @@
 import { CURRICULUM_PROGRAMS, CurriculumNode } from "../data/curriculumTree";
+import { CURRICULUM_TREE_VERSION } from "../data/curriculumIds";
 import { CurriculumConfig } from "../models/CurriculumConfig";
 
 const CONFIG_KEY = "default";
@@ -20,16 +21,21 @@ export function getActiveCurriculumTree(): CurriculumNode[] {
 
 export async function refreshCurriculumTree(): Promise<CurriculumNode[]> {
   const doc = await CurriculumConfig.findOne({ key: CONFIG_KEY });
-  if (doc?.tree?.length) {
-    activeTree = cloneTree(doc.tree as CurriculumNode[]);
-  } else {
+  const storedVersion = doc?.schemaVersion ?? 1;
+  const needsUpgrade =
+    !doc?.tree?.length || storedVersion < CURRICULUM_TREE_VERSION;
+
+  if (needsUpgrade) {
     activeTree = cloneTree(CURRICULUM_PROGRAMS);
     await CurriculumConfig.findOneAndUpdate(
       { key: CONFIG_KEY },
-      { tree: activeTree },
+      { tree: activeTree, schemaVersion: CURRICULUM_TREE_VERSION },
       { upsert: true, new: true }
     );
+    return activeTree;
   }
+
+  activeTree = cloneTree(doc.tree as CurriculumNode[]);
   return activeTree;
 }
 
@@ -69,7 +75,7 @@ export async function saveCurriculumTree(tree: CurriculumNode[]): Promise<Curric
   const validated = validateCurriculumTree(tree);
   await CurriculumConfig.findOneAndUpdate(
     { key: CONFIG_KEY },
-    { tree: validated },
+    { tree: validated, schemaVersion: CURRICULUM_TREE_VERSION },
     { upsert: true, new: true }
   );
   activeTree = validated;

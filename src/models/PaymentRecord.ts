@@ -30,6 +30,7 @@ export interface IPaymentRecord extends Document {
   reviewedBy?: Types.ObjectId;
   reviewedAt?: Date;
   paidUntilAfter?: Date;
+  invoiceNumber?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -114,6 +115,13 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     },
     paidUntilAfter: {
       type: Date,
+    },
+    invoiceNumber: {
+      type: String,
+      trim: true,
+      default: null,
+      sparse: true,
+      unique: true,
     },
   },
   { timestamps: true }

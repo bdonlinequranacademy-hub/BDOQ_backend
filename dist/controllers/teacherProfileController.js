@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkAvailability = exports.changeTeacherPassword = exports.updateTeacherProfile = exports.getTeacherProfile = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
+const whatsappPhone_1 = require("../lib/whatsappPhone");
 const availabilityService_1 = require("../services/availabilityService");
 function toProfileView(user) {
     return {
@@ -19,11 +20,12 @@ function toProfileView(user) {
         bankName: user.bankName || "",
         bankAccount: user.bankAccount || "",
         bKashNumber: user.bKashNumber || "",
+        whatsapp: user.whatsapp || "",
     };
 }
 const getTeacherProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role timezone country meetingLink bankName bankAccount bKashNumber");
+        const user = await User_1.User.findById(req.user._id).select("name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp");
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -49,7 +51,7 @@ const getTeacherProfile = async (req, res) => {
 exports.getTeacherProfile = getTeacherProfile;
 const updateTeacherProfile = async (req, res) => {
     try {
-        const { name, timezone, country, meetingLink, bankName, bankAccount, bKashNumber, } = req.body;
+        const { name, timezone, country, meetingLink, bankName, bankAccount, bKashNumber, whatsapp, } = req.body;
         const update = {};
         if (typeof name === "string" && name.trim())
             update.name = name.trim();
@@ -66,10 +68,23 @@ const updateTeacherProfile = async (req, res) => {
             update.bankAccount = bankAccount.trim();
         if (typeof bKashNumber === "string")
             update.bKashNumber = bKashNumber.trim();
+        if (whatsapp !== undefined) {
+            const countryHint = typeof country === "string" ? country.trim() : req.user?.country;
+            const normalized = (0, whatsappPhone_1.normalizeWhatsAppForStorage)(whatsapp, countryHint);
+            if (!normalized.ok) {
+                res.status(400).json({
+                    success: false,
+                    message: normalized.error,
+                    data: null,
+                });
+                return;
+            }
+            update.whatsapp = normalized.whatsapp;
+        }
         const user = await User_1.User.findByIdAndUpdate(req.user._id, update, {
             new: true,
             runValidators: true,
-        }).select("name email role timezone country meetingLink bankName bankAccount bKashNumber");
+        }).select("name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp");
         if (!user) {
             res.status(404).json({
                 success: false,

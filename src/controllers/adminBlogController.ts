@@ -4,12 +4,32 @@ import {
   BLOG_CATEGORIES,
   BlogPost,
   IBlogPost,
+  isPublicBlogPost,
+  PUBLIC_BLOG_CATEGORIES,
   type BlogCategory,
   type BlogPostStatus,
 } from "../models/BlogPost";
 import { slugifyTitle } from "../utils/slugify";
 
 const VALID_STATUS: BlogPostStatus[] = ["draft", "published"];
+
+function validatePublicBlogPublish(input: {
+  category: string;
+  tags: string[];
+  slug: string;
+  status: BlogPostStatus;
+}): string | null {
+  if (input.status !== "published") return null;
+
+  if (!isPublicBlogPost(input)) {
+    if (!PUBLIC_BLOG_CATEGORIES.includes(input.category as (typeof PUBLIC_BLOG_CATEGORIES)[number])) {
+      return "Public blog only allows educational categories: Quran & Tajweed, Parent Guides, Learning Tips. Payment or portal guides belong in the student portal, not the public blog.";
+    }
+    return "Payment-related tags or topics cannot be published on the public education blog.";
+  }
+
+  return null;
+}
 
 const formatPost = (post: IBlogPost) => ({
   id: post._id,
@@ -180,6 +200,25 @@ export const adminCreateBlogPost = async (
 
     const baseSlug = slugifyTitle(slugInput?.trim() || title);
     const slug = await ensureUniqueSlug(baseSlug);
+    const normalizedTags = Array.isArray(tags)
+      ? tags.map((t: string) => String(t).trim()).filter(Boolean)
+      : [];
+    const publishStatus: BlogPostStatus = status || "draft";
+
+    const publishError = validatePublicBlogPublish({
+      category,
+      tags: normalizedTags,
+      slug,
+      status: publishStatus,
+    });
+    if (publishError) {
+      res.status(400).json({
+        success: false,
+        message: publishError,
+        data: null,
+      });
+      return;
+    }
 
     const post = await BlogPost.create({
       title: title.trim(),
@@ -188,14 +227,14 @@ export const adminCreateBlogPost = async (
       body,
       pubDate: pubDate ? new Date(pubDate) : new Date(),
       category,
-      tags: Array.isArray(tags) ? tags.map((t: string) => String(t).trim()).filter(Boolean) : [],
+      tags: normalizedTags,
       author: {
         name: author?.name?.trim() || req.user!.name,
-        role: author?.role?.trim() || "Al Bayaan Academy",
+        role: author?.role?.trim() || "BD Online Quran Academy",
       },
       readMinutes,
       featured: Boolean(featured),
-      status: status || "draft",
+      status: publishStatus,
       faqs: Array.isArray(faqs) ? faqs : [],
       createdBy: req.user!._id,
     });
@@ -302,6 +341,21 @@ export const adminUpdateBlogPost = async (
         slugInput?.trim() || post.title
       );
       post.slug = await ensureUniqueSlug(base, id);
+    }
+
+    const publishError = validatePublicBlogPublish({
+      category: post.category,
+      tags: post.tags,
+      slug: post.slug,
+      status: post.status,
+    });
+    if (publishError) {
+      res.status(400).json({
+        success: false,
+        message: publishError,
+        data: null,
+      });
+      return;
     }
 
     post.updatedBy = req.user!._id;

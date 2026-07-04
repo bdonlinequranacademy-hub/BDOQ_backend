@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.changeStudentPassword = exports.updateStudentProfile = exports.getStudentProfile = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
+const whatsappPhone_1 = require("../lib/whatsappPhone");
 function toProfileView(user) {
     return {
         _id: user._id.toString(),
@@ -15,11 +16,12 @@ function toProfileView(user) {
         studentId: user.studentId ?? undefined,
         timezone: user.timezone || "Asia/Dhaka",
         country: user.country || "",
+        whatsapp: user.whatsapp || "",
     };
 }
 const getStudentProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country");
+        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp");
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -45,7 +47,7 @@ const getStudentProfile = async (req, res) => {
 exports.getStudentProfile = getStudentProfile;
 const updateStudentProfile = async (req, res) => {
     try {
-        const { name, timezone, country } = req.body;
+        const { name, timezone, country, whatsapp } = req.body;
         const update = {};
         if (typeof name === "string" && name.trim())
             update.name = name.trim();
@@ -54,10 +56,23 @@ const updateStudentProfile = async (req, res) => {
         }
         if (typeof country === "string")
             update.country = country.trim();
+        if (whatsapp !== undefined) {
+            const countryHint = typeof country === "string" ? country.trim() : req.user?.country;
+            const normalized = (0, whatsappPhone_1.normalizeWhatsAppForStorage)(whatsapp, countryHint);
+            if (!normalized.ok) {
+                res.status(400).json({
+                    success: false,
+                    message: normalized.error,
+                    data: null,
+                });
+                return;
+            }
+            update.whatsapp = normalized.whatsapp;
+        }
         const user = await User_1.User.findByIdAndUpdate(req.user._id, update, {
             new: true,
             runValidators: true,
-        }).select("name email role studentId timezone country");
+        }).select("name email role studentId timezone country whatsapp");
         if (!user) {
             res.status(404).json({
                 success: false,

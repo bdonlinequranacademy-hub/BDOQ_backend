@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../models/User";
+import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
+import { avatarFieldsFromUser } from "../lib/avatarFields";
 import type { ScheduleDay } from "../models/Class";
 import { checkTeacherAvailability } from "../services/availabilityService";
 
@@ -15,6 +17,9 @@ export interface TeacherProfileView {
   bankName: string;
   bankAccount: string;
   bKashNumber: string;
+  whatsapp: string;
+  avatarUrl: string;
+  gender?: "male" | "female";
 }
 
 function toProfileView(user: InstanceType<typeof User>): TeacherProfileView {
@@ -29,6 +34,9 @@ function toProfileView(user: InstanceType<typeof User>): TeacherProfileView {
     bankName: user.bankName || "",
     bankAccount: user.bankAccount || "",
     bKashNumber: user.bKashNumber || "",
+    whatsapp: user.whatsapp || "",
+    ...avatarFieldsFromUser(user),
+    gender: user.gender,
   };
 }
 
@@ -38,7 +46,7 @@ export const getTeacherProfile = async (
 ): Promise<void> => {
   try {
     const user = await User.findById(req.user!._id).select(
-      "name email role timezone country meetingLink bankName bankAccount bKashNumber"
+      "name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp avatarUrl gender"
     );
     if (!user) {
       res.status(404).json({
@@ -76,6 +84,7 @@ export const updateTeacherProfile = async (
       bankName,
       bankAccount,
       bKashNumber,
+      whatsapp,
     } = req.body;
 
     const update: Record<string, string> = {};
@@ -88,12 +97,26 @@ export const updateTeacherProfile = async (
     if (typeof bankName === "string") update.bankName = bankName.trim();
     if (typeof bankAccount === "string") update.bankAccount = bankAccount.trim();
     if (typeof bKashNumber === "string") update.bKashNumber = bKashNumber.trim();
+    if (whatsapp !== undefined) {
+      const countryHint =
+        typeof country === "string" ? country.trim() : req.user?.country;
+      const normalized = normalizeWhatsAppForStorage(whatsapp, countryHint);
+      if (!normalized.ok) {
+        res.status(400).json({
+          success: false,
+          message: normalized.error,
+          data: null,
+        });
+        return;
+      }
+      update.whatsapp = normalized.whatsapp;
+    }
 
     const user = await User.findByIdAndUpdate(req.user!._id, update, {
       new: true,
       runValidators: true,
     }).select(
-      "name email role timezone country meetingLink bankName bankAccount bKashNumber"
+      "name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp avatarUrl gender"
     );
 
     if (!user) {

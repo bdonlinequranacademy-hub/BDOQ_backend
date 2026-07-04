@@ -12,6 +12,7 @@ export interface CreateContactMessageInput {
   name: string;
   email: string;
   message: string;
+  subject?: string;
   locale?: "en" | "bn";
 }
 
@@ -30,6 +31,7 @@ function formatMessageText(message: IContactMessage): string {
   const lines = [
     `Name: ${message.name}`,
     `Email: ${message.email}`,
+    message.subject ? `Subject: ${message.subject}` : null,
     message.locale ? `Locale: ${message.locale}` : null,
     "",
     message.message,
@@ -45,6 +47,7 @@ export function formatContactMessage(message: IContactMessage) {
     _id: message._id.toString(),
     name: message.name,
     email: message.email,
+    subject: message.subject,
     message: message.message,
     locale: message.locale,
     status: message.status,
@@ -77,6 +80,7 @@ export async function createContactMessage(
   const message = await ContactMessage.create({
     name,
     email,
+    subject: input.subject?.trim() || undefined,
     message: body,
     locale,
   });

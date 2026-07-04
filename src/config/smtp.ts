@@ -71,7 +71,7 @@ export function resolveSmtpConfig(): SmtpConfig | null {
 
   const from =
     process.env.FROM_EMAIL?.trim() ||
-    (provider === "gmail" ? user : "noreply@albayaanacademy.com");
+    (provider === "gmail" ? user : "contact@bdonlinequranacademy.com");
 
   return {
     host,

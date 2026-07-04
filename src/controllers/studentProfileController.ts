@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../models/User";
+import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
+import { avatarFieldsFromUser } from "../lib/avatarFields";
 
 export interface StudentProfileView {
   _id: string;
@@ -10,6 +12,9 @@ export interface StudentProfileView {
   studentId?: string;
   timezone: string;
   country: string;
+  whatsapp: string;
+  avatarUrl: string;
+  gender?: "male" | "female";
 }
 
 function toProfileView(user: InstanceType<typeof User>): StudentProfileView {
@@ -21,6 +26,9 @@ function toProfileView(user: InstanceType<typeof User>): StudentProfileView {
     studentId: user.studentId ?? undefined,
     timezone: user.timezone || "Asia/Dhaka",
     country: user.country || "",
+    whatsapp: user.whatsapp || "",
+    ...avatarFieldsFromUser(user),
+    gender: user.gender,
   };
 }
 
@@ -30,7 +38,7 @@ export const getStudentProfile = async (
 ): Promise<void> => {
   try {
     const user = await User.findById(req.user!._id).select(
-      "name email role studentId timezone country"
+      "name email role studentId timezone country whatsapp avatarUrl gender"
     );
     if (!user) {
       res.status(404).json({
@@ -60,7 +68,7 @@ export const updateStudentProfile = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { name, timezone, country } = req.body;
+    const { name, timezone, country, whatsapp } = req.body;
 
     const update: Record<string, string> = {};
     if (typeof name === "string" && name.trim()) update.name = name.trim();
@@ -68,11 +76,25 @@ export const updateStudentProfile = async (
       update.timezone = timezone.trim();
     }
     if (typeof country === "string") update.country = country.trim();
+    if (whatsapp !== undefined) {
+      const countryHint =
+        typeof country === "string" ? country.trim() : req.user?.country;
+      const normalized = normalizeWhatsAppForStorage(whatsapp, countryHint);
+      if (!normalized.ok) {
+        res.status(400).json({
+          success: false,
+          message: normalized.error,
+          data: null,
+        });
+        return;
+      }
+      update.whatsapp = normalized.whatsapp;
+    }
 
     const user = await User.findByIdAndUpdate(req.user!._id, update, {
       new: true,
       runValidators: true,
-    }).select("name email role studentId timezone country");
+    }).select("name email role studentId timezone country whatsapp");
 
     if (!user) {
       res.status(404).json({

@@ -23,6 +23,7 @@ export const submitContactMessage = async (req: Request, res: Response): Promise
       name: req.body.name,
       email: req.body.email,
       message: req.body.message,
+      subject: typeof req.body.subject === "string" ? req.body.subject : undefined,
       locale: parseLocale(req.body.locale),
     });
 

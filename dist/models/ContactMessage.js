@@ -38,6 +38,7 @@ const mongoose_1 = __importStar(require("mongoose"));
 const contactMessageSchema = new mongoose_1.Schema({
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: { type: String, required: true, trim: true, lowercase: true },
+    subject: { type: String, trim: true, maxlength: 200 },
     message: { type: String, required: true, trim: true, maxlength: 5000 },
     locale: { type: String, enum: ["en", "bn"] },
     status: {

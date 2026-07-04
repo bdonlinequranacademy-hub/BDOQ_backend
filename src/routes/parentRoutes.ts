@@ -6,6 +6,7 @@ import {
   getChildHomework,
   getChildAttendance,
   getChildProgress,
+  getChildTodaySchedule,
   getMyNotifications,
   markNotificationRead,
 } from "../controllers/parentController";
@@ -16,6 +17,7 @@ router.use(auth, checkRole("parent"));
 
 router.get("/children", getChildren);
 router.get("/child/:id/classes", getChildClasses);
+router.get("/child/:id/schedule/today", getChildTodaySchedule);
 router.get("/child/:id/homework", getChildHomework);
 router.get("/child/:id/attendance", getChildAttendance);
 router.get("/child/:id/progress", getChildProgress);

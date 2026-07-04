@@ -7,8 +7,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const connectDB = async () => {
     const mongoUri = process.env.MONGO_URI;
     if (!mongoUri) {
-        console.error("MongoDB connection error: MONGO_URI is not defined");
-        return;
+        throw new Error("MONGO_URI is not defined");
     }
     try {
         await mongoose_1.default.connect(mongoUri);
@@ -17,6 +16,7 @@ const connectDB = async () => {
     catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         console.error("MongoDB connection error:", message);
+        throw error;
     }
 };
 exports.default = connectDB;

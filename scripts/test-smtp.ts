@@ -36,9 +36,9 @@ async function main() {
 
   const result = await sendEmail({
     to,
-    subject: "Al Bayaan Academy — SMTP test",
+    subject: "BD Online Quran Academy — SMTP test",
     text: "If you received this, SMTP is working correctly.",
-    html: "<p>If you received this, <strong>SMTP is working</strong> for Al Bayaan Academy.</p>",
+    html: "<p>If you received this, <strong>SMTP is working</strong> for BD Online Quran Academy.</p>",
   });
 
   if (result.sent) {

@@ -30,6 +30,9 @@ export interface IUser extends Document {
   bankName?: string;
   bankAccount?: string;
   bKashNumber?: string;
+  whatsapp?: string;
+  avatarUrl?: string;
+  avatarPublicId?: string;
   emailVerified: boolean;
   emailVerificationToken: string | null;
   emailVerificationExpiry: Date | null;
@@ -127,6 +130,21 @@ const userSchema = new Schema<IUser>(
       default: "",
     },
     bKashNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    whatsapp: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    avatarPublicId: {
       type: String,
       trim: true,
       default: "",

@@ -49,6 +49,12 @@ const blogFaqSchema = new mongoose_1.Schema({
     question: { type: String, required: true, trim: true },
     answer: { type: String, required: true, trim: true },
 }, { _id: false });
+const blogTranslationSchema = new mongoose_1.Schema({
+    title: { type: String, trim: true },
+    description: { type: String, trim: true },
+    body: { type: String },
+    tags: [{ type: String, trim: true }],
+}, { _id: false });
 const blogPostSchema = new mongoose_1.Schema({
     title: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -70,6 +76,9 @@ const blogPostSchema = new mongoose_1.Schema({
         default: "draft",
     },
     faqs: [blogFaqSchema],
+    translations: {
+        bn: { type: blogTranslationSchema, default: undefined },
+    },
     createdBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
     updatedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });

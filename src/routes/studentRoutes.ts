@@ -12,17 +12,21 @@ import {
   markAsRead,
   submitHomework,
 } from "../controllers/studentController";
+import { recordStudentSessionJoin } from "../controllers/sessionJoinController";
 import { getStudentWeeklyReport } from "../controllers/weeklyReportController";
 import {
   changeStudentPassword,
   getStudentProfile,
   updateStudentProfile,
 } from "../controllers/studentProfileController";
+import { uploadProfileAvatar } from "../controllers/avatarController";
+import { avatarUpload } from "../middleware/uploadAvatar";
 import { paymentProofUpload } from "../middleware/uploadPaymentProof";
 import {
   getStudentPaymentStatus,
   listStudentPayments,
   submitStudentPayment,
+  getStudentPaymentInvoice,
 } from "../controllers/paymentController";
 
 const router = Router();
@@ -31,6 +35,7 @@ router.use(auth, checkRole("student"));
 
 router.get("/classes", getMyClasses);
 router.get("/schedule/today", getTodaySchedule);
+router.post("/session/join/:slotId", recordStudentSessionJoin);
 router.get("/classes/:id", getClassById);
 router.get("/homework", getMyHomework);
 router.post("/homework/:id/submit", submitHomework);
@@ -43,9 +48,20 @@ router.patch("/notifications/:id/read", markAsRead);
 router.get("/profile", getStudentProfile);
 router.patch("/profile", updateStudentProfile);
 router.patch("/profile/password", changeStudentPassword);
+router.post("/profile/avatar", (req, res, next) => {
+  avatarUpload(req, res, (err: unknown) => {
+    if (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      res.status(400).json({ success: false, message, data: null });
+      return;
+    }
+    next();
+  });
+}, uploadProfileAvatar);
 
 router.get("/payments/status", getStudentPaymentStatus);
 router.get("/payments", listStudentPayments);
+router.get("/payments/:id/invoice", getStudentPaymentInvoice);
 router.post("/payments", (req, res, next) => {
   paymentProofUpload(req, res, (err: unknown) => {
     if (err) {

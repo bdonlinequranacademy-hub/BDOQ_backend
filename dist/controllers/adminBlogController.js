@@ -157,7 +157,7 @@ const adminCreateBlogPost = async (req, res) => {
             tags: Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean) : [],
             author: {
                 name: author?.name?.trim() || req.user.name,
-                role: author?.role?.trim() || "Al Bayaan Academy",
+                role: author?.role?.trim() || "BD Online Quran Academy",
             },
             readMinutes,
             featured: Boolean(featured),

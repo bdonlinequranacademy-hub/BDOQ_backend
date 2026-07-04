@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateEnv = validateEnv;
+const oauth_1 = require("./oauth");
 const PLACEHOLDER = /^(your-|change-me|comming|coming soon|$)/i;
 function isSet(value) {
     return Boolean(value?.trim() && !PLACEHOLDER.test(value.trim()));
@@ -18,8 +19,8 @@ function validateEnv() {
     if (process.env.JWT_SECRET.length < 16) {
         console.warn("[env] JWT_SECRET should be at least 16 characters for production.");
     }
-    if (!isSet(process.env.GOOGLE_CLIENT_ID) || !isSet(process.env.GOOGLE_CLIENT_SECRET)) {
-        console.warn("[env] Google OAuth is disabled — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
+    if (!(0, oauth_1.isGoogleOAuthConfigured)()) {
+        console.warn("[env] Google OAuth is disabled — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env. See docs/google-oauth-setup.md");
     }
     if (!isSet(process.env.CLOUDINARY_CLOUD_NAME)) {
         console.warn("[env] CLOUDINARY_* is not set — payment screenshot upload will fail.");

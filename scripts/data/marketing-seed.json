@@ -1,0 +1,972 @@
+{
+  "courses": [
+    {
+      "slug": "noorani-qaida",
+      "title": "Noorani Qaida Course",
+      "target": "Children",
+      "description": "Foundation Arabic alphabet and Quran reading basics",
+      "icon": "📖",
+      "category": "private",
+      "gender": "children",
+      "sortOrder": 1,
+      "detail": {
+        "startingPriceBdt": 2000,
+        "recommendedPackage": "Basic",
+        "benefits": [
+          {
+            "id": "b1",
+            "title": "Arabic Alphabet Mastery",
+            "description": "Learn letters, sounds, and joining rules from the foundation.",
+            "icon": "book-open"
+          },
+          {
+            "id": "b2",
+            "title": "Correct Pronunciation",
+            "description": "Build accurate articulation with teacher-guided practice.",
+            "icon": "mic"
+          },
+          {
+            "id": "b3",
+            "title": "Child-Friendly Pace",
+            "description": "Short, engaging lessons designed for young learners.",
+            "icon": "heart"
+          },
+          {
+            "id": "b4",
+            "title": "One-to-One Guidance",
+            "description": "Personal attention from a patient, qualified teacher.",
+            "icon": "user"
+          },
+          {
+            "id": "b5",
+            "title": "Reading Readiness",
+            "description": "Progress toward fluent Quran reading step by step.",
+            "icon": "graduation-cap"
+          },
+          {
+            "id": "b6",
+            "title": "Parent Updates",
+            "description": "Regular feedback on your child's learning progress.",
+            "icon": "message-square"
+          }
+        ],
+        "modules": [
+          {
+            "id": "m1",
+            "title": "Module 1 — Arabic Letters",
+            "topics": [
+              "Individual letters",
+              "Letter shapes",
+              "Pronunciation drills"
+            ]
+          },
+          {
+            "id": "m2",
+            "title": "Module 2 — Harakat & Sounds",
+            "topics": [
+              "Fatha, Kasra, Damma",
+              "Sukoon",
+              "Practice exercises"
+            ]
+          },
+          {
+            "id": "m3",
+            "title": "Module 3 — Joining Letters",
+            "topics": [
+              "Word formation",
+              "Connected reading",
+              "Daily practice"
+            ]
+          },
+          {
+            "id": "m4",
+            "title": "Module 4 — Short Surahs",
+            "topics": [
+              "Simple verses",
+              "Fluency building",
+              "Teacher assessment"
+            ]
+          }
+        ],
+        "audience": [
+          "Children beginning their Quran journey (ages 5+)",
+          "Beginners with no prior Arabic reading experience",
+          "Parents seeking a structured Noorani Qaida program",
+          "Students preparing for Tajweed or Hifz courses"
+        ],
+        "faqs": [
+          {
+            "id": "f1",
+            "question": "What age is best to start Noorani Qaida?",
+            "answer": "Children can start from age 5 or when they can focus for a 30-minute lesson. Our teachers adapt the pace to each child's ability."
+          },
+          {
+            "id": "f2",
+            "question": "How long does it take to complete Noorani Qaida?",
+            "answer": "Most students complete the foundation in 3–6 months with regular classes, depending on age, practice time, and lesson frequency."
+          },
+          {
+            "id": "f3",
+            "question": "Are classes one-to-one for children?",
+            "answer": "Yes. Every child learns with a dedicated teacher in a private online class for maximum attention and progress."
+          },
+          {
+            "id": "f4",
+            "question": "Can parents observe the classes?",
+            "answer": "Yes. Parents are welcome to sit with younger children during lessons and receive regular progress updates from the teacher."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "quran-hifz-male",
+      "title": "Quran Hifz Course (Male)",
+      "description": "Complete Quran memorization for males",
+      "icon": "🕌",
+      "category": "private",
+      "gender": "male",
+      "sortOrder": 2,
+      "detail": {
+        "startingPriceBdt": 5000,
+        "recommendedPackage": "Premium",
+        "benefits": [
+          {
+            "id": "b1",
+            "title": "Complete Hifz Plan",
+            "description": "Structured memorization schedule from Juz 30 to full Quran.",
+            "icon": "book-marked"
+          },
+          {
+            "id": "b2",
+            "title": "Daily Murajaah",
+            "description": "Revision system to strengthen memorized portions.",
+            "icon": "refresh-cw"
+          },
+          {
+            "id": "b3",
+            "title": "Tajweed in Hifz",
+            "description": "Memorize with correct pronunciation and rules.",
+            "icon": "mic"
+          },
+          {
+            "id": "b4",
+            "title": "Experienced Hafiz Teacher",
+            "description": "Learn under a qualified male Hifz instructor.",
+            "icon": "award"
+          },
+          {
+            "id": "b5",
+            "title": "Progress Tracking",
+            "description": "Monthly assessments and personalized targets.",
+            "icon": "bar-chart"
+          },
+          {
+            "id": "b6",
+            "title": "Flexible Scheduling",
+            "description": "Choose class times that fit your daily routine.",
+            "icon": "clock"
+          }
+        ],
+        "modules": [
+          {
+            "id": "m1",
+            "title": "Phase 1 — Foundation & Juz Amma",
+            "topics": [
+              "Memorization technique",
+              "Short surahs",
+              "Daily revision"
+            ]
+          },
+          {
+            "id": "m2",
+            "title": "Phase 2 — Juz 29–28",
+            "topics": [
+              "Longer surahs",
+              "Tajweed application",
+              "Weekly tests"
+            ]
+          },
+          {
+            "id": "m3",
+            "title": "Phase 3 — Middle Juz",
+            "topics": [
+              "Consistent murajaah",
+              "Fluency drills",
+              "Teacher evaluation"
+            ]
+          },
+          {
+            "id": "m4",
+            "title": "Phase 4 — Advanced Hifz",
+            "topics": [
+              "Full Quran completion",
+              "Ijazah preparation",
+              "Final review"
+            ]
+          }
+        ],
+        "audience": [
+          "Male students committed to Quran memorization",
+          "Students with basic Quran reading ability",
+          "Adults and teenagers seeking structured Hifz",
+          "Learners who want one-to-one Hafiz supervision"
+        ],
+        "faqs": [
+          {
+            "id": "f1",
+            "question": "Do I need to know Tajweed before starting Hifz?",
+            "answer": "Basic Quran reading ability is required. If needed, your teacher will strengthen Tajweed alongside memorization."
+          },
+          {
+            "id": "f2",
+            "question": "How many days per week are Hifz classes?",
+            "answer": "Premium plans include up to 5 days per week. Your schedule is set based on your package and availability."
+          },
+          {
+            "id": "f3",
+            "question": "How long does full Quran Hifz take?",
+            "answer": "Duration varies by student dedication and class frequency — typically 2–4 years with consistent practice and revision."
+          },
+          {
+            "id": "f4",
+            "question": "Is murajaah (revision) included?",
+            "answer": "Yes. Revision is a core part of our Hifz program and is built into every lesson plan."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "quran-hifz-female",
+      "title": "Quran Hifz Course (Women)",
+      "description": "Complete Quran memorization for women with female teachers",
+      "icon": "🌙",
+      "category": "private",
+      "gender": "female",
+      "sortOrder": 3,
+      "detail": {
+        "startingPriceBdt": 5000,
+        "recommendedPackage": "Premium",
+        "benefits": [
+          {
+            "id": "b1",
+            "title": "Female Hifz Teachers",
+            "description": "Learn with qualified female instructors in a private setting.",
+            "icon": "shield-check"
+          },
+          {
+            "id": "b2",
+            "title": "Personalized Hifz Plan",
+            "description": "Custom schedule based on your pace and goals.",
+            "icon": "clipboard-list"
+          },
+          {
+            "id": "b3",
+            "title": "Tajweed Integration",
+            "description": "Memorize with proper pronunciation from day one.",
+            "icon": "mic"
+          },
+          {
+            "id": "b4",
+            "title": "Consistent Revision",
+            "description": "Structured murajaah to retain every memorized ayah.",
+            "icon": "refresh-cw"
+          },
+          {
+            "id": "b5",
+            "title": "Safe Learning Space",
+            "description": "Separate online classes ensuring privacy and comfort.",
+            "icon": "heart"
+          },
+          {
+            "id": "b6",
+            "title": "Monthly Check-ups",
+            "description": "Regular progress reviews with your teacher.",
+            "icon": "calendar-check"
+          }
+        ],
+        "modules": [
+          {
+            "id": "m1",
+            "title": "Phase 1 — Beginning Hifz",
+            "topics": [
+              "Memorization method",
+              "Juz Amma",
+              "Daily revision habits"
+            ]
+          },
+          {
+            "id": "m2",
+            "title": "Phase 2 — Building Momentum",
+            "topics": [
+              "Longer surahs",
+              "Tajweed rules",
+              "Weekly assessments"
+            ]
+          },
+          {
+            "id": "m3",
+            "title": "Phase 3 — Sustained Progress",
+            "topics": [
+              "Murajaah system",
+              "Fluency practice",
+              "Teacher feedback"
+            ]
+          },
+          {
+            "id": "m4",
+            "title": "Phase 4 — Completion",
+            "topics": [
+              "Final juz memorization",
+              "Comprehensive revision",
+              "Certification"
+            ]
+          }
+        ],
+        "audience": [
+          "Women and girls seeking Quran memorization",
+          "Students who prefer female teachers",
+          "Sisters with basic reading ability ready for Hifz",
+          "Learners needing a flexible online Hifz program"
+        ],
+        "faqs": [
+          {
+            "id": "f1",
+            "question": "Are Hifz classes only with female teachers?",
+            "answer": "Yes. This course is taught exclusively by qualified female Hafiza and Quran teachers for sisters and girls."
+          },
+          {
+            "id": "f2",
+            "question": "Can mothers learn Hifz alongside daughters?",
+            "answer": "Yes. We welcome adult women and can arrange separate class times for mothers and children."
+          },
+          {
+            "id": "f3",
+            "question": "What package is recommended for Hifz?",
+            "answer": "Our Premium package (5 days/week, 60-minute classes) is ideal for dedicated Hifz students."
+          },
+          {
+            "id": "f4",
+            "question": "Is there a free trial before enrolling?",
+            "answer": "Yes. Register for a free trial class to meet your teacher and discuss your Hifz goals."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "tajweed-male",
+      "title": "Quran Learning with Tajweed (Male)",
+      "description": "Proper Quran recitation with Tajweed rules",
+      "icon": "📿",
+      "category": "private",
+      "gender": "male",
+      "sortOrder": 4,
+      "detail": {
+        "startingPriceBdt": 3000,
+        "recommendedPackage": "Standard",
+        "benefits": [
+          {
+            "id": "b1",
+            "title": "Tajweed Rules Mastery",
+            "description": "Learn articulation points and recitation rules in detail.",
+            "icon": "book-text"
+          },
+          {
+            "id": "b2",
+            "title": "Live Correction",
+            "description": "Real-time feedback from an experienced male teacher.",
+            "icon": "mic"
+          },
+          {
+            "id": "b3",
+            "title": "Practical Recitation",
+            "description": "Apply rules while reading from the Mushaf.",
+            "icon": "book-open"
+          },
+          {
+            "id": "b4",
+            "title": "Structured Curriculum",
+            "description": "Step-by-step lessons from basics to advanced Tajweed.",
+            "icon": "list-checks"
+          },
+          {
+            "id": "b5",
+            "title": "Audio Practice",
+            "description": "Recorded exercises to practice between classes.",
+            "icon": "headphones"
+          },
+          {
+            "id": "b6",
+            "title": "Progress Reports",
+            "description": "Track improvement with regular teacher evaluations.",
+            "icon": "bar-chart"
+          }
+        ],
+        "modules": [
+          {
+            "id": "m1",
+            "title": "Module 1 — Makharij",
+            "topics": [
+              "Articulation points",
+              "Letter exits",
+              "Pronunciation drills"
+            ]
+          },
+          {
+            "id": "m2",
+            "title": "Module 2 — Sifaat",
+            "topics": [
+              "Letter characteristics",
+              "Heavy & light letters",
+              "Practice"
+            ]
+          },
+          {
+            "id": "m3",
+            "title": "Module 3 — Nun & Meem Rules",
+            "topics": [
+              "Idgham, Ikhfa, Iqlab",
+              "Ghunnah",
+              "Applied reading"
+            ]
+          },
+          {
+            "id": "m4",
+            "title": "Module 4 — Madd & Waqf",
+            "topics": [
+              "Elongation rules",
+              "Stopping signs",
+              "Fluent recitation"
+            ]
+          }
+        ],
+        "audience": [
+          "Male students who can read Quran and want proper Tajweed",
+          "Adults improving recitation for salah and taraweeh",
+          "Students preparing for Hifz or further Islamic studies",
+          "Reverts and beginners past Noorani Qaida level"
+        ],
+        "faqs": [
+          {
+            "id": "f1",
+            "question": "Do I need to complete Noorani Qaida first?",
+            "answer": "You should be able to read the Quran at a basic level. If not, we recommend starting with our Noorani Qaida course."
+          },
+          {
+            "id": "f2",
+            "question": "How long are Tajweed classes?",
+            "answer": "Standard package classes are 40 minutes, 3 days per week. Longer sessions are available in Advance and Premium plans."
+          },
+          {
+            "id": "f3",
+            "question": "Will I get course materials?",
+            "answer": "Yes. Teachers share Tajweed notes, practice exercises, and recitation references during your learning plan."
+          },
+          {
+            "id": "f4",
+            "question": "Can I switch class times if needed?",
+            "answer": "Yes. BDOQ Academy offers flexible scheduling — discuss changes with your teacher or our support team."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "tajweed-female",
+      "title": "Quran Learning with Tajweed (Women)",
+      "description": "Tajweed for women with female certified teachers",
+      "icon": "⭐",
+      "category": "private",
+      "gender": "female",
+      "sortOrder": 5,
+      "detail": {
+        "startingPriceBdt": 3000,
+        "recommendedPackage": "Standard",
+        "benefits": [
+          {
+            "id": "b1",
+            "title": "Certified Female Teachers",
+            "description": "Learn Tajweed with qualified female scholars.",
+            "icon": "award"
+          },
+          {
+            "id": "b2",
+            "title": "Private Online Classes",
+            "description": "Comfortable one-to-one learning from home.",
+            "icon": "video"
+          },
+          {
+            "id": "b3",
+            "title": "Rule-by-Rule Learning",
+            "description": "Clear explanations of every Tajweed principle.",
+            "icon": "book-text"
+          },
+          {
+            "id": "b4",
+            "title": "Recitation Practice",
+            "description": "Guided reading with live correction and feedback.",
+            "icon": "mic"
+          },
+          {
+            "id": "b5",
+            "title": "Flexible Timings",
+            "description": "Schedule classes around family and work commitments.",
+            "icon": "clock"
+          },
+          {
+            "id": "b6",
+            "title": "Women-Only Environment",
+            "description": "Separate classes ensuring privacy and peace of mind.",
+            "icon": "shield-check"
+          }
+        ],
+        "modules": [
+          {
+            "id": "m1",
+            "title": "Module 1 — Foundation",
+            "topics": [
+              "Makharij basics",
+              "Correct pronunciation",
+              "Daily drills"
+            ]
+          },
+          {
+            "id": "m2",
+            "title": "Module 2 — Core Rules",
+            "topics": [
+              "Noon sakinah rules",
+              "Meem sakinah rules",
+              "Practice surahs"
+            ]
+          },
+          {
+            "id": "m3",
+            "title": "Module 3 — Advanced Tajweed",
+            "topics": [
+              "Madd types",
+              "Qalqalah",
+              "Applied recitation"
+            ]
+          },
+          {
+            "id": "m4",
+            "title": "Module 4 — Fluency",
+            "topics": [
+              "Waqf & Ibtida",
+              "Beautiful recitation",
+              "Final assessment"
+            ]
+          }
+        ],
+        "audience": [
+          "Women and girls who want to improve Quran recitation",
+          "Sisters seeking female-only Tajweed instruction",
+          "Mothers wanting to read correctly for their children",
+          "Students with basic reading ready for Tajweed rules"
+        ],
+        "faqs": [
+          {
+            "id": "f1",
+            "question": "Are classes only with female teachers?",
+            "answer": "Yes. This course is exclusively taught by certified female Tajweed teachers."
+          },
+          {
+            "id": "f2",
+            "question": "Is this suitable for complete beginners?",
+            "answer": "You should know basic Quran reading. Beginners can start with Noorani Qaida before moving to Tajweed."
+          },
+          {
+            "id": "f3",
+            "question": "What is the monthly fee for Tajweed?",
+            "answer": "The Standard package starts at ৳3,000/month with 3 classes per week. See our pricing page for all plans."
+          },
+          {
+            "id": "f4",
+            "question": "Can I try a class before enrolling?",
+            "answer": "Absolutely. Book a free trial class to experience our teaching quality firsthand."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "free-learning",
+      "title": "Free Quran Learning Course",
+      "description": "Start your Quran journey at no cost",
+      "icon": "🎁",
+      "category": "free",
+      "sortOrder": 6,
+      "detail": {
+        "startingPriceBdt": 0,
+        "recommendedPackage": "Free",
+        "benefits": [
+          {
+            "id": "b1",
+            "title": "No Tuition Cost",
+            "description": "Start learning the Quran without any course fee.",
+            "icon": "gift"
+          },
+          {
+            "id": "b2",
+            "title": "Qualified Teachers",
+            "description": "Learn from experienced BDOQ Academy instructors.",
+            "icon": "award"
+          },
+          {
+            "id": "b3",
+            "title": "Live Online Classes",
+            "description": "Interactive sessions from the comfort of your home.",
+            "icon": "video"
+          },
+          {
+            "id": "b4",
+            "title": "Beginner Friendly",
+            "description": "Ideal introduction to Quran reading and Islamic learning.",
+            "icon": "heart"
+          },
+          {
+            "id": "b5",
+            "title": "Flexible Entry",
+            "description": "Open to students of all ages and backgrounds.",
+            "icon": "users"
+          },
+          {
+            "id": "b6",
+            "title": "Path to Advanced Courses",
+            "description": "Progress to Tajweed, Hifz, or paid plans when ready.",
+            "icon": "arrow-up-right"
+          }
+        ],
+        "modules": [
+          {
+            "id": "m1",
+            "title": "Introduction to Quran",
+            "topics": [
+              "Importance of learning",
+              "Basic etiquette",
+              "Getting started"
+            ]
+          },
+          {
+            "id": "m2",
+            "title": "Arabic Reading Basics",
+            "topics": [
+              "Letters & sounds",
+              "Simple words",
+              "Guided practice"
+            ]
+          },
+          {
+            "id": "m3",
+            "title": "Short Surah Practice",
+            "topics": [
+              "Selected surahs",
+              "Recitation support",
+              "Teacher feedback"
+            ]
+          },
+          {
+            "id": "m4",
+            "title": "Next Steps Guidance",
+            "topics": [
+              "Course recommendations",
+              "Learning plan",
+              "Enrollment support"
+            ]
+          }
+        ],
+        "audience": [
+          "Anyone wanting to start Quran learning at no cost",
+          "Students exploring online Quran education for the first time",
+          "Families looking for an affordable entry point",
+          "Learners who want to try BDOQ Academy before committing"
+        ],
+        "faqs": [
+          {
+            "id": "f1",
+            "question": "Is the free course really free?",
+            "answer": "Yes. There is no tuition fee for this introductory Quran learning course at BDOQ Academy."
+          },
+          {
+            "id": "f2",
+            "question": "How do I register for the free course?",
+            "answer": "Fill out the free trial registration form or contact us on WhatsApp to get started."
+          },
+          {
+            "id": "f3",
+            "question": "How long is the free program?",
+            "answer": "The free learning period gives you a solid introduction. Your teacher will guide you on next steps based on your progress."
+          },
+          {
+            "id": "f4",
+            "question": "Can I upgrade to a paid course later?",
+            "answer": "Yes. Many students move to our Private, Standard, or Premium plans for continued structured learning."
+          }
+        ]
+      }
+    }
+  ],
+  "packages": [
+    {
+      "slug": "basic",
+      "name": "Basic",
+      "priceBdt": 2000,
+      "priceUsd": 25,
+      "period": "Monthly",
+      "features": [
+        "One-to-one class benefits",
+        "Classes 2 days a week",
+        "8 days of classes per month",
+        "Class duration: 30 minutes",
+        "Convenient class times",
+        "Noorani/Najera Basic"
+      ],
+      "popular": false,
+      "sortOrder": 1
+    },
+    {
+      "slug": "standard",
+      "name": "Standard",
+      "priceBdt": 3000,
+      "priceUsd": 35,
+      "period": "Monthly",
+      "features": [
+        "One-to-one class benefits",
+        "Classes 3 days a week",
+        "12 days of classes per month",
+        "Class duration: 40 minutes",
+        "Convenient class times",
+        "Najera with Tajweed"
+      ],
+      "popular": true,
+      "sortOrder": 2
+    },
+    {
+      "slug": "advance",
+      "name": "Advance",
+      "priceBdt": 4000,
+      "priceUsd": 45,
+      "period": "Monthly",
+      "features": [
+        "One-to-one class benefits",
+        "Classes 4 days a week",
+        "16 days of classes per month",
+        "Class duration: 50 minutes",
+        "Convenient class times",
+        "Najera with Tajweed"
+      ],
+      "popular": false,
+      "sortOrder": 3
+    },
+    {
+      "slug": "premium",
+      "name": "Premium",
+      "priceBdt": 5000,
+      "priceUsd": 55,
+      "period": "Monthly",
+      "features": [
+        "One-to-one class benefits",
+        "Classes 5 days a week",
+        "20 days of classes per month",
+        "Class duration: 60 minutes",
+        "Convenient class times",
+        "Hifz/Advance Tajweed"
+      ],
+      "popular": false,
+      "sortOrder": 4
+    }
+  ],
+  "testimonials": [
+    {
+      "externalId": "testimonial-1",
+      "name": "Rahima Khatun",
+      "role": "Student",
+      "location": "Dhaka, Bangladesh",
+      "content": "Alhamdulillah, BD Online Quran Academy has been a blessing for our family. My daughter learns Noorani Qaida one-to-one with a caring female teacher. The class times fit our schedule perfectly.",
+      "rating": 5,
+      "image": "/images/testimonials/student-1.webp",
+      "sortOrder": 1
+    },
+    {
+      "externalId": "testimonial-2",
+      "name": "Ahmed Malik",
+      "role": "Student",
+      "location": "Los Angeles, America",
+      "content": "I enrolled in the Tajweed course while working full-time in the US. BDOQ Academy matched me with an experienced teacher who explains rules clearly in English. The live classes are interactive.",
+      "rating": 5,
+      "image": "/images/testimonials/student-2.webp",
+      "sortOrder": 2
+    },
+    {
+      "externalId": "testimonial-3",
+      "name": "Fatima Begum",
+      "role": "Parent",
+      "location": "Dhaka, Bangladesh",
+      "content": "We chose BDOQ Academy because of their separate system for women and qualified Hafiz teachers. My son is memorizing the Quran with excellent supervision and monthly progress reports.",
+      "rating": 5,
+      "sortOrder": 3
+    },
+    {
+      "externalId": "testimonial-4",
+      "name": "Arafat Hossain",
+      "role": "Student",
+      "location": "Los Angeles, America",
+      "content": "Fortunately, due to knowing English and having a flexible schedule, I could continue learning Quran under Hafiz teachers. The qualified teachers of BDOQ Academy teach Tajweed excellently from Los Angeles.",
+      "rating": 5,
+      "image": "/images/testimonials/student-2.webp",
+      "sortOrder": 4
+    },
+    {
+      "externalId": "testimonial-5",
+      "name": "Abdullah",
+      "role": "Student",
+      "location": "Los Angeles, America",
+      "content": "I could never have imagined Quran from Bangladesh could be taught to such an international standard. I am confidently memorizing the Quran with a dedicated Hafiz teacher at BDOQ Academy.",
+      "rating": 5,
+      "image": "/images/testimonials/student-1.webp",
+      "sortOrder": 5
+    },
+    {
+      "externalId": "testimonial-6",
+      "name": "Nusrat Fatima",
+      "role": "Student",
+      "location": "Dhaka, Bangladesh",
+      "content": "In our country there are many madrasas, but not everyone has equal opportunities for women to learn. I found a place where women study with qualified female teachers only — that is why I chose BDOQ.",
+      "rating": 5,
+      "sortOrder": 6
+    }
+  ],
+  "faq": [
+    {
+      "externalId": "faq-1",
+      "question": "How do I book a free trial class?",
+      "answer": "Visit our Free Trial Class page, fill in your name, contact details, subject interest, and preferred time. Our team will contact you via WhatsApp or email to confirm your schedule and assign a suitable teacher for your first session.",
+      "sortOrder": 1
+    },
+    {
+      "externalId": "faq-2",
+      "question": "When is BDOQ's class time?",
+      "answer": "BDOQ Academy offers flexible class times to suit students in Bangladesh and worldwide. You can choose morning, afternoon, or evening slots based on your timezone. Classes are scheduled according to your availability during registration.",
+      "sortOrder": 2
+    },
+    {
+      "externalId": "faq-3",
+      "question": "What platform do you use for online classes?",
+      "answer": "We conduct live classes through reliable video conferencing platforms with screen sharing and audio clarity optimized for Quran teaching. Your teacher will share the meeting link before each session, and technical support is available if needed.",
+      "sortOrder": 3
+    },
+    {
+      "externalId": "faq-4",
+      "question": "What age group can students enroll in the course?",
+      "answer": "Students of all ages can enroll — from young children starting Noorani Qaida to adults learning Tajweed or Hifz. We match each student with an appropriate teacher and learning plan based on age, level, and goals.",
+      "sortOrder": 4
+    },
+    {
+      "externalId": "faq-5",
+      "question": "How are teachers selected for students?",
+      "answer": "BDOQ Academy assigns teachers based on the student's gender, course type, language preference, and schedule. All teachers are experienced Hafiz or qualified scholars who undergo evaluation to maintain our international teaching standards.",
+      "sortOrder": 5
+    },
+    {
+      "externalId": "faq-6",
+      "question": "Is there a system for girls to learn the Holy Quran?",
+      "answer": "Yes. BDOQ Academy provides a fully separate education system for women and girls with qualified female teachers. This ensures privacy, comfort, and focused learning for sisters of all ages in a safe online environment.",
+      "sortOrder": 6
+    }
+  ],
+  "gallery": [
+    {
+      "externalId": "g1",
+      "title": "Online class session",
+      "album": "gallery-01",
+      "coverGradient": "from-primary to-teal",
+      "heightClass": "h-56",
+      "sortOrder": 1
+    },
+    {
+      "externalId": "g2",
+      "title": "Student recitation practice",
+      "album": "gallery-01",
+      "coverGradient": "from-primary-dark to-primary",
+      "heightClass": "h-72",
+      "sortOrder": 2
+    },
+    {
+      "externalId": "g3",
+      "title": "Teacher mentoring session",
+      "album": "gallery-01",
+      "coverGradient": "from-teal to-primary-dark",
+      "heightClass": "h-48",
+      "sortOrder": 3
+    },
+    {
+      "externalId": "g4",
+      "title": "Noorani Qaida class",
+      "album": "gallery-01",
+      "coverGradient": "from-gold/70 to-primary-dark",
+      "heightClass": "h-64",
+      "sortOrder": 4
+    },
+    {
+      "externalId": "g5",
+      "title": "Tajweed workshop",
+      "album": "gallery-02",
+      "coverGradient": "from-primary to-gold/60",
+      "heightClass": "h-60",
+      "sortOrder": 5
+    },
+    {
+      "externalId": "g6",
+      "title": "Hifz progress review",
+      "album": "gallery-02",
+      "coverGradient": "from-teal-accent/60 to-primary",
+      "heightClass": "h-52",
+      "sortOrder": 6
+    },
+    {
+      "externalId": "g7",
+      "title": "Female teachers team",
+      "album": "gallery-02",
+      "coverGradient": "from-primary-dark to-teal-accent/50",
+      "heightClass": "h-72",
+      "sortOrder": 7
+    },
+    {
+      "externalId": "g8",
+      "title": "International students",
+      "album": "gallery-02",
+      "coverGradient": "from-primary to-primary-dark",
+      "heightClass": "h-48",
+      "sortOrder": 8
+    },
+    {
+      "externalId": "g9",
+      "title": "Academy orientation",
+      "album": "gallery-03",
+      "coverGradient": "from-teal to-primary",
+      "heightClass": "h-64",
+      "sortOrder": 9
+    },
+    {
+      "externalId": "g10",
+      "title": "Certificate ceremony",
+      "album": "gallery-03",
+      "coverGradient": "from-gold/80 to-teal",
+      "heightClass": "h-56",
+      "sortOrder": 10
+    },
+    {
+      "externalId": "g11",
+      "title": "Parent meeting",
+      "album": "gallery-03",
+      "coverGradient": "from-primary-dark to-gold/50",
+      "heightClass": "h-60",
+      "sortOrder": 11
+    },
+    {
+      "externalId": "g12",
+      "title": "Community gathering",
+      "album": "gallery-03",
+      "coverGradient": "from-primary to-teal-accent/70",
+      "heightClass": "h-72",
+      "sortOrder": 12
+    }
+  ]
+}

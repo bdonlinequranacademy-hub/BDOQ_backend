@@ -1,5 +1,6 @@
 import "./config/loadEnv";
 import "./types/express";
+import mongoose from "mongoose";
 import http from "http";
 import express from "express";
 import cors from "cors";
@@ -20,6 +21,7 @@ import teacherRoutes from "./routes/teacherRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import parentRoutes from "./routes/parentRoutes";
 import blogRoutes from "./routes/blogRoutes";
+import resourceRoutes from "./routes/resourceRoutes";
 import searchRoutes from "./routes/searchRoutes";
 import publicRoutes from "./routes/publicRoutes";
 import curriculumRoutes from "./routes/curriculumRoutes";
@@ -35,10 +37,15 @@ app.use(express.json());
 app.use(passport.initialize());
 
 app.get("/api/health", (_req, res) => {
-  res.json({
-    success: true,
-    message: "OK",
-    data: { service: "myacademy-api", timestamp: new Date().toISOString() },
+  const dbReady = mongoose.connection.readyState === 1;
+  res.status(dbReady ? 200 : 503).json({
+    success: dbReady,
+    message: dbReady ? "OK" : "Database unavailable",
+    data: {
+      service: "boq-academy-api",
+      db: dbReady ? "connected" : "disconnected",
+      timestamp: new Date().toISOString(),
+    },
   });
 });
 app.use("/api/auth", authRoutes);
@@ -47,6 +54,7 @@ app.use("/api/teacher", teacherRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/parent", parentRoutes);
 app.use("/api/blog", blogRoutes);
+app.use("/api/resources", resourceRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/curriculum", curriculumRoutes);
@@ -82,6 +90,12 @@ const startServer = async (): Promise<void> => {
   const { startPaymentReminderCron } = await import("./jobs/paymentReminderCron");
   startPaymentReminderCron();
 
+  const { startClassReminderCron } = await import("./jobs/classReminderCron");
+  startClassReminderCron();
+
+  const { startNoShowCron } = await import("./jobs/noShowCron");
+  startNoShowCron();
+
   const { initSocketServer } = await import("./realtime/socketServer");
   const httpServer = http.createServer(app);
   initSocketServer(httpServer);
@@ -91,4 +105,7 @@ const startServer = async (): Promise<void> => {
   });
 };
 
-startServer();
+startServer().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});

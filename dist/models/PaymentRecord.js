@@ -115,6 +115,13 @@ const paymentRecordSchema = new mongoose_1.Schema({
     paidUntilAfter: {
         type: Date,
     },
+    invoiceNumber: {
+        type: String,
+        trim: true,
+        default: null,
+        sparse: true,
+        unique: true,
+    },
 }, { timestamps: true });
 paymentRecordSchema.index({ student: 1, createdAt: -1 });
 paymentRecordSchema.index({ status: 1, createdAt: -1 });

@@ -19,6 +19,7 @@ function formatMessageText(message) {
     const lines = [
         `Name: ${message.name}`,
         `Email: ${message.email}`,
+        message.subject ? `Subject: ${message.subject}` : null,
         message.locale ? `Locale: ${message.locale}` : null,
         "",
         message.message,
@@ -32,6 +33,7 @@ function formatContactMessage(message) {
         _id: message._id.toString(),
         name: message.name,
         email: message.email,
+        subject: message.subject,
         message: message.message,
         locale: message.locale,
         status: message.status,
@@ -56,6 +58,7 @@ async function createContactMessage(input) {
     const message = await ContactMessage_1.ContactMessage.create({
         name,
         email,
+        subject: input.subject?.trim() || undefined,
         message: body,
         locale,
     });

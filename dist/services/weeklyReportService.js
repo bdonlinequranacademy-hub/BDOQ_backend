@@ -96,7 +96,7 @@ function buildReportText(input) {
 
 Weekly progress update — ${input.studentName}
 Week: ${input.weekLabel}
-Prepared by: ${input.teacherName}, Al Bayaan Academy
+Prepared by: ${input.teacherName}, BD Online Quran Academy
 
 VERIFIED SESSIONS (admin-approved class logs): ${input.sessionsHeld}
 

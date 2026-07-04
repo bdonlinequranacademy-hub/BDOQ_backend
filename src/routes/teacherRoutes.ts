@@ -35,12 +35,15 @@ import {
   getTeacherProfile,
   updateTeacherProfile,
 } from "../controllers/teacherProfileController";
+import { uploadProfileAvatar } from "../controllers/avatarController";
+import { avatarUpload } from "../middleware/uploadAvatar";
 import {
   createTeacherStudentRequest,
   listTeacherStudentRequestsHandler,
 } from "../controllers/studentRequestController";
 import { scanTextHandler } from "../controllers/complianceController";
 import { getTeacherWeeklyReport } from "../controllers/weeklyReportController";
+import { recordTeacherSessionJoin } from "../controllers/sessionJoinController";
 
 const router = Router();
 
@@ -53,6 +56,7 @@ router.get("/classes", getMyClasses);
 router.get("/classes/:id", getClassById);
 router.get("/schedule/today", getTodaySchedule);
 router.get("/schedule/routine", getWeeklyRoutine);
+router.post("/session/join/:slotId", recordTeacherSessionJoin);
 router.post("/attendance", markAttendance);
 router.get("/attendance", getClassAttendanceForDate);
 router.post("/compliance-scan", scanTextHandler);
@@ -76,6 +80,16 @@ router.get("/earnings", getTeacherEarningsReport);
 router.get("/profile", getTeacherProfile);
 router.patch("/profile", updateTeacherProfile);
 router.patch("/profile/password", changeTeacherPassword);
+router.post("/profile/avatar", (req, res, next) => {
+  avatarUpload(req, res, (err: unknown) => {
+    if (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      res.status(400).json({ success: false, message, data: null });
+      return;
+    }
+    next();
+  });
+}, uploadProfileAvatar);
 router.post("/availability/check", checkAvailability);
 router.get("/student-requests", listTeacherStudentRequestsHandler);
 router.post("/student-requests", createTeacherStudentRequest);

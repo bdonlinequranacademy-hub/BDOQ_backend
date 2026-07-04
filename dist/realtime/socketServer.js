@@ -15,7 +15,7 @@ let io = null;
 function initSocketServer(httpServer) {
     io = new socket_io_1.Server(httpServer, {
         cors: {
-            origin: (0, cors_1.getAllowedOrigins)(),
+            origin: (0, cors_1.isCorsDisabled)() ? true : (0, cors_1.getAllowedOrigins)(),
             credentials: true,
         },
         path: "/socket.io",

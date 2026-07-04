@@ -1,6 +1,7 @@
 import { TrialBooking, type ITrialBooking, type TrialBookingStatus } from "../models/TrialBooking";
 import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
+import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 
 export type { TrialBookingStatus };
 
@@ -86,10 +87,10 @@ export async function createTrialBooking(
 ): Promise<{ booking: ITrialBooking } | { error: string }> {
   const parentName = input.parentName?.trim();
   const email = input.email?.trim().toLowerCase();
-  const whatsapp = input.whatsapp?.trim();
+  const whatsappRaw = input.whatsapp?.trim();
   const country = input.country?.trim();
 
-  if (!parentName || !whatsapp) {
+  if (!parentName || !whatsappRaw) {
     return { error: "Name and WhatsApp are required." };
   }
 
@@ -101,6 +102,11 @@ export async function createTrialBooking(
     return { error: "Country is required." };
   }
 
+  const normalizedWa = normalizeWhatsAppForStorage(whatsappRaw, country);
+  if (!normalizedWa.ok) {
+    return { error: normalizedWa.error };
+  }
+
   if (!["child", "teen", "adult"].includes(input.learnerType)) {
     return { error: "Invalid learner type." };
   }
@@ -108,7 +114,7 @@ export async function createTrialBooking(
   const booking = await TrialBooking.create({
     parentName,
     email: email || undefined,
-    whatsapp,
+    whatsapp: normalizedWa.whatsapp,
     country,
     learnerType: input.learnerType,
     timeSlot: input.timeSlot,

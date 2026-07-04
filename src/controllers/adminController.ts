@@ -11,11 +11,16 @@ import { ClassLog } from "../models/ClassLog";
 import { TrialBooking } from "../models/TrialBooking";
 import { ContactMessage } from "../models/ContactMessage";
 import { StudentRequest } from "../models/StudentRequest";
+import { StudentAdmissionApplication } from "../models/StudentAdmissionApplication";
+import { TeacherApplication } from "../models/TeacherApplication";
 import { countPendingPayments } from "../services/paymentReminderService";
 import { generateStudentId } from "../utils/studentId";
+import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { syncSlotsFromClass } from "../services/scheduleService";
+import { normalizeMeetingLink } from "../utils/meetingLink";
 import { parseClassSchedule } from "../utils/scheduleUtils";
 import { parseCurriculumAssignments, mapProgressDocsWithLabels, resolveCurriculumLabels } from "../services/curriculumService";
+import { getLiveMonitorPayload } from "../services/liveMonitorService";
 import {
   assignableRolesFor,
   canAssignRole,
@@ -49,6 +54,7 @@ const formatUser = (user: IUser) => ({
   gender: user.gender ?? undefined,
   timezone: user.timezone ?? "Asia/Dhaka",
   country: user.country ?? undefined,
+  whatsapp: user.whatsapp ?? undefined,
   curriculumAssignments: user.curriculumAssignments ?? [],
   createdAt: user.createdAt,
 });
@@ -169,7 +175,7 @@ export const createUser = async (
 ): Promise<void> => {
   try {
     const actor = getActor(req);
-    const { name, email, password, role, gender, timezone, country, curriculumAssignments } =
+    const { name, email, password, role, gender, timezone, country, curriculumAssignments, whatsapp } =
       req.body;
 
     if (!name || !email || !password) {
@@ -275,6 +281,26 @@ export const createUser = async (
       userPayload.gender = gender as UserGender;
     }
 
+    if (
+      whatsapp !== undefined &&
+      (assignRole === "student" || assignRole === "teacher" || assignRole === "admin")
+    ) {
+      const countryHint =
+        typeof country === "string" ? country.trim() : undefined;
+      const normalized = normalizeWhatsAppForStorage(whatsapp, countryHint);
+      if (!normalized.ok) {
+        res.status(400).json({
+          success: false,
+          message: normalized.error,
+          data: null,
+        });
+        return;
+      }
+      if (normalized.whatsapp) {
+        userPayload.whatsapp = normalized.whatsapp;
+      }
+    }
+
     const user = await User.create(userPayload);
 
     res.status(201).json({
@@ -299,7 +325,7 @@ export const updateUser = async (
   try {
     const actor = getActor(req);
     const { id } = req.params;
-    const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments } =
+    const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments, whatsapp } =
       req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -476,6 +502,22 @@ export const updateUser = async (
         return;
       }
       updateData.curriculumAssignments = parsed;
+    }
+    if (whatsapp !== undefined) {
+      const countryHint =
+        typeof country === "string"
+          ? country.trim()
+          : target.country?.trim();
+      const normalized = normalizeWhatsAppForStorage(whatsapp, countryHint);
+      if (!normalized.ok) {
+        res.status(400).json({
+          success: false,
+          message: normalized.error,
+          data: null,
+        });
+        return;
+      }
+      updateData.whatsapp = normalized.whatsapp;
     }
 
     const mongoUpdate: Record<string, unknown> = { ...updateData };
@@ -678,11 +720,18 @@ export const createClass = async (
       teacher: teacherId,
       students: studentIds || [],
       schedule: parsedSchedule,
-      meetingLink,
+      meetingLink: normalizeMeetingLink(meetingLink),
       sessionRateBdt,
     });
 
     const students = studentIds || [];
+
+    await createUserNotification({
+      userId: teacherId,
+      title: "New class assigned",
+      message: `You have been assigned to teach "${title}". Check My Classes for schedule and students.`,
+      type: "class",
+    });
 
     if (students.length > 0) {
       await createUserNotifications(
@@ -768,9 +817,13 @@ export const updateClass = async (
       }
       updateData.schedule = parsedSchedule;
     }
-    if (meetingLink !== undefined) updateData.meetingLink = meetingLink;
+    if (meetingLink !== undefined) {
+      updateData.meetingLink = normalizeMeetingLink(meetingLink);
+    }
     if (isActive !== undefined) updateData.isActive = isActive;
     if (sessionRateBdt !== undefined) updateData.sessionRateBdt = sessionRateBdt;
+
+    const previousClass = await Class.findById(id).select("teacher title");
 
     const classDoc = await Class.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -789,6 +842,19 @@ export const updateClass = async (
     }
 
     await syncSlotsFromClass(classDoc);
+
+    if (
+      teacherId &&
+      previousClass &&
+      previousClass.teacher.toString() !== String(teacherId)
+    ) {
+      await createUserNotification({
+        userId: teacherId,
+        title: "Class assigned to you",
+        message: `You are now the teacher for "${classDoc.title}".`,
+        type: "class",
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -876,16 +942,16 @@ export const getDashboardStats = async (
   res: Response
 ): Promise<void> => {
   try {
-    const today = DAY_NAMES[new Date().getDay()];
-
     const [
       totalStudents,
       totalTeachers,
       totalClasses,
       activeClasses,
-      todaysClasses,
+      liveMonitor,
       newTrials,
       newContacts,
+      newStudentAdmissions,
+      newTeacherApplications,
       pendingClassLogs,
       pendingPayments,
       pendingStudentRequests,
@@ -897,12 +963,11 @@ export const getDashboardStats = async (
       User.countDocuments({ role: "teacher" }),
       Class.countDocuments(),
       Class.countDocuments({ isActive: true }),
-      Class.find({ "schedule.day": today, isActive: true })
-        .select("title teacher students schedule meetingLink")
-        .populate("teacher", "name")
-        .lean(),
+      getLiveMonitorPayload(),
       TrialBooking.countDocuments({ status: "new" }),
       ContactMessage.countDocuments({ status: "new" }),
+      StudentAdmissionApplication.countDocuments({ status: "new" }),
+      TeacherApplication.countDocuments({ status: "new" }),
       ClassLog.countDocuments({ status: "pending" }),
       countPendingPayments(),
       StudentRequest.countDocuments({ status: "pending" }),
@@ -926,6 +991,21 @@ export const getDashboardStats = async (
       }),
     ]);
 
+    const todaysSessions = liveMonitor.sessions.slice(0, 12).map((s) => ({
+      _id: s._id,
+      classId: s.classId,
+      classTitle: s.classTitle,
+      teacherName: s.teacher.name,
+      studentName: s.student.name,
+      startTimeLabel: s.startTimeLabel,
+      sessionPhase: s.sessionPhase,
+      startsAt: s.startsAt,
+      meetingLink: s.meetingLink,
+      teacherJoined: Boolean(s.joins.teacherJoinedAt),
+      studentJoined: Boolean(s.joins.studentJoinedAt),
+      alerts: s.alerts,
+    }));
+
     res.status(200).json({
       success: true,
       message: "Dashboard stats fetched successfully",
@@ -934,10 +1014,13 @@ export const getDashboardStats = async (
         totalTeachers,
         totalClasses,
         activeClasses,
-        todaysClasses,
+        todaysClasses: todaysSessions,
+        liveSummary: liveMonitor.summary,
         pendingActions: {
           newTrials,
           newContacts,
+          newStudentAdmissions,
+          newTeacherApplications,
           pendingClassLogs,
           pendingPayments,
           pendingStudentRequests,
@@ -1247,6 +1330,21 @@ export const assignStudentToClass = async (
       userId: studentId,
       title: "Class Enrollment",
       message: `You have been enrolled in ${classDoc.title}`,
+      type: "class",
+    });
+
+    const teacherRef = classDoc.teacher as
+      | mongoose.Types.ObjectId
+      | { _id: mongoose.Types.ObjectId; name?: string };
+    const teacherUserId =
+      typeof teacherRef === "object" && teacherRef !== null && "_id" in teacherRef
+        ? teacherRef._id
+        : (teacherRef as mongoose.Types.ObjectId);
+
+    await createUserNotification({
+      userId: teacherUserId,
+      title: "New student in your class",
+      message: `${student.name} was enrolled in "${classDoc.title}".`,
       type: "class",
     });
 

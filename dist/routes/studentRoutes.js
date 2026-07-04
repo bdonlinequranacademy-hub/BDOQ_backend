@@ -25,6 +25,7 @@ router.patch("/profile", studentProfileController_1.updateStudentProfile);
 router.patch("/profile/password", studentProfileController_1.changeStudentPassword);
 router.get("/payments/status", paymentController_1.getStudentPaymentStatus);
 router.get("/payments", paymentController_1.listStudentPayments);
+router.get("/payments/:id/invoice", paymentController_1.getStudentPaymentInvoice);
 router.post("/payments", (req, res, next) => {
     (0, uploadPaymentProof_1.paymentProofUpload)(req, res, (err) => {
         if (err) {

@@ -2,11 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { auth } from "../middleware/auth";
 import { portalBaseUrl } from "../services/verificationTokens";
-import {
-  parsePortalIntent,
-  OAuthAccountRequiredError,
-  OAuthPortalMismatchError,
-} from "../lib/portalAuth";
+import { isGoogleOAuthConfigured } from "../config/oauth";
 import {
   login,
   oauthSuccess,
@@ -20,8 +16,8 @@ import {
 
 const router = Router();
 
-function oauthFailureRedirect(portal: string, error: string): string {
-  return `${portalBaseUrl()}/login?portal=${encodeURIComponent(portal)}&error=${encodeURIComponent(error)}`;
+function oauthFailureRedirect(error: string): string {
+  return `${portalBaseUrl()}/login?error=${encodeURIComponent(error)}`;
 }
 
 router.post("/register", register);
@@ -33,34 +29,39 @@ router.post("/resend-verification", resendVerificationEmail);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
+router.get("/oauth-providers", (_req, res) => {
+  res.json({
+    success: true,
+    message: "OAuth providers",
+    data: { google: isGoogleOAuthConfigured() },
+  });
+});
+
 router.get("/google", (req: Request, res: Response, next: NextFunction) => {
-  const portal = parsePortalIntent(req.query.portal);
+  if (!isGoogleOAuthConfigured()) {
+    res.redirect(oauthFailureRedirect("oauth_disabled"));
+    return;
+  }
   passport.authenticate("google", {
     scope: ["profile", "email"],
-    state: portal,
   })(req, res, next);
 });
 
 router.get(
   "/google/callback",
   (req: Request, res: Response, next: NextFunction) => {
-    const portal = parsePortalIntent(req.query.state);
+    if (!isGoogleOAuthConfigured()) {
+      res.redirect(oauthFailureRedirect("oauth_disabled"));
+      return;
+    }
 
     passport.authenticate("google", { session: false }, (err, user) => {
-      if (err instanceof OAuthPortalMismatchError) {
-        res.redirect(oauthFailureRedirect(portal, "oauth_role"));
-        return;
-      }
-      if (err instanceof OAuthAccountRequiredError) {
-        res.redirect(oauthFailureRedirect(portal, "oauth_account_required"));
-        return;
-      }
       if (err?.message === "Account is deactivated") {
-        res.redirect(oauthFailureRedirect(portal, "deactivated"));
+        res.redirect(oauthFailureRedirect("deactivated"));
         return;
       }
       if (err || !user) {
-        res.redirect(oauthFailureRedirect(portal, "oauth"));
+        res.redirect(oauthFailureRedirect("oauth"));
         return;
       }
 
@@ -71,9 +72,8 @@ router.get(
   oauthSuccess
 );
 
-router.get("/failed", (req: Request, res: Response) => {
-  const portal = parsePortalIntent(req.query.portal);
-  res.redirect(oauthFailureRedirect(portal, "oauth"));
+router.get("/failed", (_req: Request, res: Response) => {
+  res.redirect(oauthFailureRedirect("oauth"));
 });
 
 export default router;

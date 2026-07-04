@@ -16,8 +16,11 @@ const ClassLog_1 = require("../models/ClassLog");
 const TrialBooking_1 = require("../models/TrialBooking");
 const ContactMessage_1 = require("../models/ContactMessage");
 const StudentRequest_1 = require("../models/StudentRequest");
+const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
+const TeacherApplication_1 = require("../models/TeacherApplication");
 const paymentReminderService_1 = require("../services/paymentReminderService");
 const studentId_1 = require("../utils/studentId");
+const whatsappPhone_1 = require("../lib/whatsappPhone");
 const scheduleService_1 = require("../services/scheduleService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const curriculumService_1 = require("../services/curriculumService");
@@ -44,6 +47,7 @@ const formatUser = (user) => ({
     gender: user.gender ?? undefined,
     timezone: user.timezone ?? "Asia/Dhaka",
     country: user.country ?? undefined,
+    whatsapp: user.whatsapp ?? undefined,
     curriculumAssignments: user.curriculumAssignments ?? [],
     createdAt: user.createdAt,
 });
@@ -147,7 +151,7 @@ exports.getUserById = getUserById;
 const createUser = async (req, res) => {
     try {
         const actor = getActor(req);
-        const { name, email, password, role, gender, timezone, country, curriculumAssignments } = req.body;
+        const { name, email, password, role, gender, timezone, country, curriculumAssignments, whatsapp } = req.body;
         if (!name || !email || !password) {
             res.status(400).json({
                 success: false,
@@ -239,6 +243,22 @@ const createUser = async (req, res) => {
             }
             userPayload.gender = gender;
         }
+        if (whatsapp !== undefined &&
+            (assignRole === "student" || assignRole === "teacher" || assignRole === "admin")) {
+            const countryHint = typeof country === "string" ? country.trim() : undefined;
+            const normalized = (0, whatsappPhone_1.normalizeWhatsAppForStorage)(whatsapp, countryHint);
+            if (!normalized.ok) {
+                res.status(400).json({
+                    success: false,
+                    message: normalized.error,
+                    data: null,
+                });
+                return;
+            }
+            if (normalized.whatsapp) {
+                userPayload.whatsapp = normalized.whatsapp;
+            }
+        }
         const user = await User_1.User.create(userPayload);
         res.status(201).json({
             success: true,
@@ -260,7 +280,7 @@ const updateUser = async (req, res) => {
     try {
         const actor = getActor(req);
         const { id } = req.params;
-        const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments } = req.body;
+        const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments, whatsapp } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
@@ -426,6 +446,21 @@ const updateUser = async (req, res) => {
                 return;
             }
             updateData.curriculumAssignments = parsed;
+        }
+        if (whatsapp !== undefined) {
+            const countryHint = typeof country === "string"
+                ? country.trim()
+                : target.country?.trim();
+            const normalized = (0, whatsappPhone_1.normalizeWhatsAppForStorage)(whatsapp, countryHint);
+            if (!normalized.ok) {
+                res.status(400).json({
+                    success: false,
+                    message: normalized.error,
+                    data: null,
+                });
+                return;
+            }
+            updateData.whatsapp = normalized.whatsapp;
         }
         const mongoUpdate = { ...updateData };
         if (Object.keys(unsetData).length > 0) {
@@ -753,7 +788,7 @@ exports.getAllClasses = getAllClasses;
 const getDashboardStats = async (_req, res) => {
     try {
         const today = DAY_NAMES[new Date().getDay()];
-        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, pendingClassLogs, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
+        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, newStudentAdmissions, newTeacherApplications, pendingClassLogs, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
             User_1.User.countDocuments({ role: "student" }),
             User_1.User.countDocuments({ role: "teacher" }),
             Class_1.Class.countDocuments(),
@@ -764,6 +799,8 @@ const getDashboardStats = async (_req, res) => {
                 .lean(),
             TrialBooking_1.TrialBooking.countDocuments({ status: "new" }),
             ContactMessage_1.ContactMessage.countDocuments({ status: "new" }),
+            StudentAdmissionApplication_1.StudentAdmissionApplication.countDocuments({ status: "new" }),
+            TeacherApplication_1.TeacherApplication.countDocuments({ status: "new" }),
             ClassLog_1.ClassLog.countDocuments({ status: "pending" }),
             (0, paymentReminderService_1.countPendingPayments)(),
             StudentRequest_1.StudentRequest.countDocuments({ status: "pending" }),
@@ -798,6 +835,8 @@ const getDashboardStats = async (_req, res) => {
                 pendingActions: {
                     newTrials,
                     newContacts,
+                    newStudentAdmissions,
+                    newTeacherApplications,
                     pendingClassLogs,
                     pendingPayments,
                     pendingStudentRequests,

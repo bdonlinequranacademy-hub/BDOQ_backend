@@ -1,7 +1,7 @@
 import type { Server as HttpServer } from "http";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-import { getAllowedOrigins } from "../config/cors";
+import { isCorsDisabled, getAllowedOrigins } from "../config/cors";
 import { User } from "../models/User";
 import { registerClassroomHandlers, emitAdminLiveClassrooms } from "./classroomSocket";
 
@@ -10,7 +10,7 @@ let io: Server | null = null;
 export function initSocketServer(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: getAllowedOrigins(),
+      origin: isCorsDisabled() ? true : getAllowedOrigins(),
       credentials: true,
     },
     path: "/socket.io",
@@ -68,6 +68,12 @@ export function emitToUser(userId: string, event: string, payload: unknown): voi
 export function emitAdminPending(reason?: string): void {
   io?.to("role:admin").emit("admin:pending", {
     reason,
+    at: new Date().toISOString(),
+  });
+}
+
+export function emitAdminLiveMonitorUpdate(): void {
+  io?.to("role:admin").emit("admin:live-monitor:update", {
     at: new Date().toISOString(),
   });
 }

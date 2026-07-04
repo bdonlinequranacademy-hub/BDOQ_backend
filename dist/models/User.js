@@ -127,6 +127,11 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         default: "",
     },
+    whatsapp: {
+        type: String,
+        trim: true,
+        default: "",
+    },
     emailVerified: {
         type: Boolean,
         default: false,
