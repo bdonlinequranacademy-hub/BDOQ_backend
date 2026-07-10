@@ -118,6 +118,8 @@ const startServer = async () => {
     startPaymentReminderCron();
     const { startClassReminderCron } = await Promise.resolve().then(() => __importStar(require("./jobs/classReminderCron")));
     startClassReminderCron();
+    const { startNoShowCron } = await Promise.resolve().then(() => __importStar(require("./jobs/noShowCron")));
+    startNoShowCron();
     const { initSocketServer } = await Promise.resolve().then(() => __importStar(require("./realtime/socketServer")));
     const httpServer = http_1.default.createServer(app);
     initSocketServer(httpServer);

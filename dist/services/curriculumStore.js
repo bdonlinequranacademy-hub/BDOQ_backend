@@ -5,6 +5,7 @@ exports.refreshCurriculumTree = refreshCurriculumTree;
 exports.validateCurriculumTree = validateCurriculumTree;
 exports.saveCurriculumTree = saveCurriculumTree;
 const curriculumTree_1 = require("../data/curriculumTree");
+const curriculumIds_1 = require("../data/curriculumIds");
 const CurriculumConfig_1 = require("../models/CurriculumConfig");
 const CONFIG_KEY = "default";
 let activeTree = [...curriculumTree_1.CURRICULUM_PROGRAMS];
@@ -21,13 +22,14 @@ function getActiveCurriculumTree() {
 }
 async function refreshCurriculumTree() {
     const doc = await CurriculumConfig_1.CurriculumConfig.findOne({ key: CONFIG_KEY });
-    if (doc?.tree?.length) {
-        activeTree = cloneTree(doc.tree);
-    }
-    else {
+    const storedVersion = doc?.schemaVersion ?? 1;
+    const needsUpgrade = !doc?.tree?.length || storedVersion < curriculumIds_1.CURRICULUM_TREE_VERSION;
+    if (needsUpgrade) {
         activeTree = cloneTree(curriculumTree_1.CURRICULUM_PROGRAMS);
-        await CurriculumConfig_1.CurriculumConfig.findOneAndUpdate({ key: CONFIG_KEY }, { tree: activeTree }, { upsert: true, new: true });
+        await CurriculumConfig_1.CurriculumConfig.findOneAndUpdate({ key: CONFIG_KEY }, { tree: activeTree, schemaVersion: curriculumIds_1.CURRICULUM_TREE_VERSION }, { upsert: true, new: true });
+        return activeTree;
     }
+    activeTree = cloneTree(doc.tree);
     return activeTree;
 }
 function collectIds(nodes, ids = new Set()) {
@@ -63,7 +65,7 @@ function validateCurriculumTree(tree) {
 }
 async function saveCurriculumTree(tree) {
     const validated = validateCurriculumTree(tree);
-    await CurriculumConfig_1.CurriculumConfig.findOneAndUpdate({ key: CONFIG_KEY }, { tree: validated }, { upsert: true, new: true });
+    await CurriculumConfig_1.CurriculumConfig.findOneAndUpdate({ key: CONFIG_KEY }, { tree: validated, schemaVersion: curriculumIds_1.CURRICULUM_TREE_VERSION }, { upsert: true, new: true });
     activeTree = validated;
     return activeTree;
 }

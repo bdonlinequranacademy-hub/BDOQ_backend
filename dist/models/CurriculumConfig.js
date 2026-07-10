@@ -47,5 +47,6 @@ curriculumNodeSchema.add({
 const curriculumConfigSchema = new mongoose_1.Schema({
     key: { type: String, required: true, unique: true, default: "default" },
     tree: { type: [curriculumNodeSchema], default: [] },
+    schemaVersion: { type: Number, default: 1 },
 }, { timestamps: { createdAt: false, updatedAt: true } });
 exports.CurriculumConfig = mongoose_1.default.model("CurriculumConfig", curriculumConfigSchema);

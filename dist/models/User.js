@@ -132,6 +132,16 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         default: "",
     },
+    avatarUrl: {
+        type: String,
+        trim: true,
+        default: "",
+    },
+    avatarPublicId: {
+        type: String,
+        trim: true,
+        default: "",
+    },
     emailVerified: {
         type: Boolean,
         default: false,

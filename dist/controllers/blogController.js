@@ -13,7 +13,7 @@ const formatPublicPost = (post, includeBody = false, locale = "en") => {
         description: bn?.description ?? post.description,
         pubDate: post.pubDate,
         category: post.category,
-        tags: bn?.tags ?? post.tags,
+        tags: (0, BlogPost_1.filterPublicBlogTags)(bn?.tags ?? post.tags),
         author: post.author,
         readMinutes: post.readMinutes,
         featured: post.featured,
@@ -25,7 +25,7 @@ const formatPublicPost = (post, includeBody = false, locale = "en") => {
     }
     return base;
 };
-/** Public read — published posts only (for marketing site / headless consumers). */
+/** Public read — published educational posts only (for marketing site). */
 const getPublishedBlogPosts = async (req, res) => {
     try {
         const { category, page = "1", limit = "12", locale = "en" } = req.query;
@@ -34,15 +34,17 @@ const getPublishedBlogPosts = async (req, res) => {
             filter.category = String(category);
         const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
         const limitNum = Math.min(50, Math.max(1, parseInt(String(limit), 10) || 12));
+        const allPublished = await BlogPost_1.BlogPost.find(filter)
+            .sort({ pubDate: -1 })
+            .select("-body");
+        const educational = allPublished.filter((post) => (0, BlogPost_1.isPublicBlogPost)({
+            category: post.category,
+            tags: post.tags,
+            slug: post.slug,
+        }));
+        const total = educational.length;
         const skip = (pageNum - 1) * limitNum;
-        const [posts, total] = await Promise.all([
-            BlogPost_1.BlogPost.find(filter)
-                .sort({ pubDate: -1 })
-                .skip(skip)
-                .limit(limitNum)
-                .select("-body"),
-            BlogPost_1.BlogPost.countDocuments(filter),
-        ]);
+        const posts = educational.slice(skip, skip + limitNum);
         res.status(200).json({
             success: true,
             message: "Published blog posts fetched successfully",
@@ -74,7 +76,12 @@ const getPublishedBlogPostBySlug = async (req, res) => {
             slug: slug.toLowerCase(),
             status: "published",
         });
-        if (!post) {
+        if (!post ||
+            !(0, BlogPost_1.isPublicBlogPost)({
+                category: post.category,
+                tags: post.tags,
+                slug: post.slug,
+            })) {
             res.status(404).json({
                 success: false,
                 message: "Blog post not found",

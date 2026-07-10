@@ -7,6 +7,7 @@ const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("parent"));
 router.get("/children", parentController_1.getChildren);
 router.get("/child/:id/classes", parentController_1.getChildClasses);
+router.get("/child/:id/schedule/today", parentController_1.getChildTodaySchedule);
 router.get("/child/:id/homework", parentController_1.getChildHomework);
 router.get("/child/:id/attendance", parentController_1.getChildAttendance);
 router.get("/child/:id/progress", parentController_1.getChildProgress);

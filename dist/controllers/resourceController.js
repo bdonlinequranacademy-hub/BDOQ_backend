@@ -72,7 +72,7 @@ const getPublishedResources = async (req, res) => {
             filter.category = String(category);
         }
         const items = await Resource_1.Resource.find(filter)
-            .sort({ sortOrder: 1, createdAt: -1 })
+            .sort({ featured: -1, sortOrder: 1, createdAt: -1 })
             .lean();
         setCache(res);
         res.status(200).json({

@@ -22,8 +22,10 @@ const paymentReminderService_1 = require("../services/paymentReminderService");
 const studentId_1 = require("../utils/studentId");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
 const scheduleService_1 = require("../services/scheduleService");
+const meetingLink_1 = require("../utils/meetingLink");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const curriculumService_1 = require("../services/curriculumService");
+const liveMonitorService_1 = require("../services/liveMonitorService");
 const adminRoles_1 = require("../lib/adminRoles");
 const DAY_NAMES = [
     "Sunday",
@@ -619,10 +621,16 @@ const createClass = async (req, res) => {
             teacher: teacherId,
             students: studentIds || [],
             schedule: parsedSchedule,
-            meetingLink,
+            meetingLink: (0, meetingLink_1.normalizeMeetingLink)(meetingLink),
             sessionRateBdt,
         });
         const students = studentIds || [];
+        await (0, notificationService_1.createUserNotification)({
+            userId: teacherId,
+            title: "New class assigned",
+            message: `You have been assigned to teach "${title}". Check My Classes for schedule and students.`,
+            type: "class",
+        });
         if (students.length > 0) {
             await (0, notificationService_1.createUserNotifications)(students.map((studentId) => ({
                 userId: studentId,
@@ -691,12 +699,14 @@ const updateClass = async (req, res) => {
             }
             updateData.schedule = parsedSchedule;
         }
-        if (meetingLink !== undefined)
-            updateData.meetingLink = meetingLink;
+        if (meetingLink !== undefined) {
+            updateData.meetingLink = (0, meetingLink_1.normalizeMeetingLink)(meetingLink);
+        }
         if (isActive !== undefined)
             updateData.isActive = isActive;
         if (sessionRateBdt !== undefined)
             updateData.sessionRateBdt = sessionRateBdt;
+        const previousClass = await Class_1.Class.findById(id).select("teacher title");
         const classDoc = await Class_1.Class.findByIdAndUpdate(id, updateData, {
             new: true,
             runValidators: true,
@@ -712,6 +722,16 @@ const updateClass = async (req, res) => {
             return;
         }
         await (0, scheduleService_1.syncSlotsFromClass)(classDoc);
+        if (teacherId &&
+            previousClass &&
+            previousClass.teacher.toString() !== String(teacherId)) {
+            await (0, notificationService_1.createUserNotification)({
+                userId: teacherId,
+                title: "Class assigned to you",
+                message: `You are now the teacher for "${classDoc.title}".`,
+                type: "class",
+            });
+        }
         res.status(200).json({
             success: true,
             message: "Class updated successfully",
@@ -787,16 +807,12 @@ const getAllClasses = async (req, res) => {
 exports.getAllClasses = getAllClasses;
 const getDashboardStats = async (_req, res) => {
     try {
-        const today = DAY_NAMES[new Date().getDay()];
-        const [totalStudents, totalTeachers, totalClasses, activeClasses, todaysClasses, newTrials, newContacts, newStudentAdmissions, newTeacherApplications, pendingClassLogs, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
+        const [totalStudents, totalTeachers, totalClasses, activeClasses, liveMonitor, newTrials, newContacts, newStudentAdmissions, newTeacherApplications, pendingClassLogs, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
             User_1.User.countDocuments({ role: "student" }),
             User_1.User.countDocuments({ role: "teacher" }),
             Class_1.Class.countDocuments(),
             Class_1.Class.countDocuments({ isActive: true }),
-            Class_1.Class.find({ "schedule.day": today, isActive: true })
-                .select("title teacher students schedule meetingLink")
-                .populate("teacher", "name")
-                .lean(),
+            (0, liveMonitorService_1.getLiveMonitorPayload)(),
             TrialBooking_1.TrialBooking.countDocuments({ status: "new" }),
             ContactMessage_1.ContactMessage.countDocuments({ status: "new" }),
             StudentAdmissionApplication_1.StudentAdmissionApplication.countDocuments({ status: "new" }),
@@ -823,6 +839,20 @@ const getDashboardStats = async (_req, res) => {
                 ],
             }),
         ]);
+        const todaysSessions = liveMonitor.sessions.slice(0, 12).map((s) => ({
+            _id: s._id,
+            classId: s.classId,
+            classTitle: s.classTitle,
+            teacherName: s.teacher.name,
+            studentName: s.student.name,
+            startTimeLabel: s.startTimeLabel,
+            sessionPhase: s.sessionPhase,
+            startsAt: s.startsAt,
+            meetingLink: s.meetingLink,
+            teacherJoined: Boolean(s.joins.teacherJoinedAt),
+            studentJoined: Boolean(s.joins.studentJoinedAt),
+            alerts: s.alerts,
+        }));
         res.status(200).json({
             success: true,
             message: "Dashboard stats fetched successfully",
@@ -831,7 +861,8 @@ const getDashboardStats = async (_req, res) => {
                 totalTeachers,
                 totalClasses,
                 activeClasses,
-                todaysClasses,
+                todaysClasses: todaysSessions,
+                liveSummary: liveMonitor.summary,
                 pendingActions: {
                     newTrials,
                     newContacts,
@@ -1080,6 +1111,16 @@ const assignStudentToClass = async (req, res) => {
             userId: studentId,
             title: "Class Enrollment",
             message: `You have been enrolled in ${classDoc.title}`,
+            type: "class",
+        });
+        const teacherRef = classDoc.teacher;
+        const teacherUserId = typeof teacherRef === "object" && teacherRef !== null && "_id" in teacherRef
+            ? teacherRef._id
+            : teacherRef;
+        await (0, notificationService_1.createUserNotification)({
+            userId: teacherUserId,
+            title: "New student in your class",
+            message: `${student.name} was enrolled in "${classDoc.title}".`,
             type: "class",
         });
         const classForSync = await Class_1.Class.findById(classId);

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markNotificationRead = exports.getMyNotifications = exports.getChildProgress = exports.getChildAttendance = exports.getChildHomework = exports.getChildClasses = exports.getChildren = void 0;
+exports.markNotificationRead = exports.getMyNotifications = exports.getChildTodaySchedule = exports.getChildProgress = exports.getChildAttendance = exports.getChildHomework = exports.getChildClasses = exports.getChildren = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const User_1 = require("../models/User");
 const Class_1 = require("../models/Class");
@@ -12,6 +12,7 @@ const Attendance_1 = require("../models/Attendance");
 const Progress_1 = require("../models/Progress");
 const Notification_1 = require("../models/Notification");
 const curriculumService_1 = require("../services/curriculumService");
+const scheduleService_1 = require("../services/scheduleService");
 async function assertChildAccess(req, res, childId) {
     if (!mongoose_1.default.Types.ObjectId.isValid(childId)) {
         res.status(400).json({
@@ -202,6 +203,27 @@ const getChildProgress = async (req, res) => {
     }
 };
 exports.getChildProgress = getChildProgress;
+const getChildTodaySchedule = async (req, res) => {
+    try {
+        const { id: childId } = req.params;
+        if (!(await assertChildAccess(req, res, childId)))
+            return;
+        const data = await (0, scheduleService_1.getStudentTodaySchedule)(new mongoose_1.default.Types.ObjectId(childId));
+        res.status(200).json({
+            success: true,
+            message: "Today's schedule fetched successfully",
+            data,
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch today's schedule",
+            data: null,
+        });
+    }
+};
+exports.getChildTodaySchedule = getChildTodaySchedule;
 const getMyNotifications = async (req, res) => {
     try {
         const notifications = await Notification_1.Notification.find({ user: req.user._id }).sort({

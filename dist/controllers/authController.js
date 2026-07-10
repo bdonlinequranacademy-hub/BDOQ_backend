@@ -21,6 +21,8 @@ const formatUser = (user) => ({
     studentId: user.studentId ?? undefined,
     timezone: user.timezone ?? "Asia/Dhaka",
     country: user.country ?? undefined,
+    avatarUrl: user.avatarUrl || undefined,
+    gender: user.gender,
     createdAt: user.createdAt,
 });
 const signToken = (userId) => {

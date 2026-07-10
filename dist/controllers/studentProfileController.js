@@ -7,6 +7,7 @@ exports.changeStudentPassword = exports.updateStudentProfile = exports.getStuden
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
+const avatarFields_1 = require("../lib/avatarFields");
 function toProfileView(user) {
     return {
         _id: user._id.toString(),
@@ -17,11 +18,13 @@ function toProfileView(user) {
         timezone: user.timezone || "Asia/Dhaka",
         country: user.country || "",
         whatsapp: user.whatsapp || "",
+        ...(0, avatarFields_1.avatarFieldsFromUser)(user),
+        gender: user.gender,
     };
 }
 const getStudentProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp");
+        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp avatarUrl gender");
         if (!user) {
             res.status(404).json({
                 success: false,

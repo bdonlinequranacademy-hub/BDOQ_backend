@@ -7,6 +7,7 @@ exports.checkAvailability = exports.changeTeacherPassword = exports.updateTeache
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
+const avatarFields_1 = require("../lib/avatarFields");
 const availabilityService_1 = require("../services/availabilityService");
 function toProfileView(user) {
     return {
@@ -21,11 +22,13 @@ function toProfileView(user) {
         bankAccount: user.bankAccount || "",
         bKashNumber: user.bKashNumber || "",
         whatsapp: user.whatsapp || "",
+        ...(0, avatarFields_1.avatarFieldsFromUser)(user),
+        gender: user.gender,
     };
 }
 const getTeacherProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp");
+        const user = await User_1.User.findById(req.user._id).select("name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp avatarUrl gender");
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -84,7 +87,7 @@ const updateTeacherProfile = async (req, res) => {
         const user = await User_1.User.findByIdAndUpdate(req.user._id, update, {
             new: true,
             runValidators: true,
-        }).select("name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp");
+        }).select("name email role timezone country meetingLink bankName bankAccount bKashNumber whatsapp avatarUrl gender");
         if (!user) {
             res.status(404).json({
                 success: false,

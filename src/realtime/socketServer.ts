@@ -1,7 +1,7 @@
 import type { Server as HttpServer } from "http";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-import { isCorsDisabled, getAllowedOrigins } from "../config/cors";
+import { isCorsDisabled, isOriginAllowed } from "../config/cors";
 import { User } from "../models/User";
 import { registerClassroomHandlers, emitAdminLiveClassrooms } from "./classroomSocket";
 
@@ -10,7 +10,15 @@ let io: Server | null = null;
 export function initSocketServer(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: isCorsDisabled() ? true : getAllowedOrigins(),
+      origin: isCorsDisabled()
+        ? true
+        : (origin, callback) => {
+            if (!origin || isOriginAllowed(origin)) {
+              callback(null, true);
+            } else {
+              callback(new Error("CORS not allowed"));
+            }
+          },
       credentials: true,
     },
     path: "/socket.io",

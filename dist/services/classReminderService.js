@@ -9,6 +9,7 @@ const whatsappPhone_1 = require("../lib/whatsappPhone");
 const notificationService_1 = require("./notificationService");
 const emailService_1 = require("./emailService");
 const verificationTokens_1 = require("./verificationTokens");
+const noShowService_1 = require("./noShowService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const REMINDER_MINUTES = 10;
 const REMINDER_WINDOW_MIN = 9;
@@ -84,7 +85,7 @@ async function notifyParticipant(input) {
         const text = waText;
         const htmlParts = [
             `<p>Assalamu Alaikum <strong>${input.user.name}</strong>,</p>`,
-            `<p>Your BOQ Academy class <strong>${input.classTitle}</strong> with <strong>${input.partnerName}</strong> starts in <strong>10 minutes</strong>.</p>`,
+            `<p>Your BDOQ Academy class <strong>${input.classTitle}</strong> with <strong>${input.partnerName}</strong> starts in <strong>10 minutes</strong>.</p>`,
             `<p><strong>Time:</strong> ${timeLabel}</p>`,
         ];
         if (input.meetingLink?.trim()) {
@@ -164,6 +165,9 @@ async function runClassReminders() {
                 startTime: slot.startTime,
                 meetingLink,
             });
+            const studentTz = student.timezone?.trim() || scheduleUtils_1.ACADEMY_TIMEZONE;
+            const timeLabel = timeLabelForUser(slot.day, slot.startTime, studentTz);
+            await (0, noShowService_1.notifyParentsOnClassReminder)(student._id.toString(), classDoc.title, teacher.name, timeLabel);
             await ClassReminderLog_1.ClassReminderLog.create({
                 sessionSlot: slot._id,
                 sessionDate,

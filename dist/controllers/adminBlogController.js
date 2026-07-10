@@ -8,6 +8,17 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const BlogPost_1 = require("../models/BlogPost");
 const slugify_1 = require("../utils/slugify");
 const VALID_STATUS = ["draft", "published"];
+function validatePublicBlogPublish(input) {
+    if (input.status !== "published")
+        return null;
+    if (!(0, BlogPost_1.isPublicBlogPost)(input)) {
+        if (!BlogPost_1.PUBLIC_BLOG_CATEGORIES.includes(input.category)) {
+            return "Public blog only allows educational categories: Quran & Tajweed, Parent Guides, Learning Tips. Payment or portal guides belong in the student portal, not the public blog.";
+        }
+        return "Payment-related tags or topics cannot be published on the public education blog.";
+    }
+    return null;
+}
 const formatPost = (post) => ({
     id: post._id,
     title: post.title,
@@ -147,6 +158,24 @@ const adminCreateBlogPost = async (req, res) => {
         }
         const baseSlug = (0, slugify_1.slugifyTitle)(slugInput?.trim() || title);
         const slug = await ensureUniqueSlug(baseSlug);
+        const normalizedTags = Array.isArray(tags)
+            ? tags.map((t) => String(t).trim()).filter(Boolean)
+            : [];
+        const publishStatus = status || "draft";
+        const publishError = validatePublicBlogPublish({
+            category,
+            tags: normalizedTags,
+            slug,
+            status: publishStatus,
+        });
+        if (publishError) {
+            res.status(400).json({
+                success: false,
+                message: publishError,
+                data: null,
+            });
+            return;
+        }
         const post = await BlogPost_1.BlogPost.create({
             title: title.trim(),
             slug,
@@ -154,14 +183,14 @@ const adminCreateBlogPost = async (req, res) => {
             body,
             pubDate: pubDate ? new Date(pubDate) : new Date(),
             category,
-            tags: Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean) : [],
+            tags: normalizedTags,
             author: {
                 name: author?.name?.trim() || req.user.name,
                 role: author?.role?.trim() || "BD Online Quran Academy",
             },
             readMinutes,
             featured: Boolean(featured),
-            status: status || "draft",
+            status: publishStatus,
             faqs: Array.isArray(faqs) ? faqs : [],
             createdBy: req.user._id,
         });
@@ -252,6 +281,20 @@ const adminUpdateBlogPost = async (req, res) => {
         if (slugInput !== undefined || title !== undefined) {
             const base = (0, slugify_1.slugifyTitle)(slugInput?.trim() || post.title);
             post.slug = await ensureUniqueSlug(base, id);
+        }
+        const publishError = validatePublicBlogPublish({
+            category: post.category,
+            tags: post.tags,
+            slug: post.slug,
+            status: post.status,
+        });
+        if (publishError) {
+            res.status(400).json({
+                success: false,
+                message: publishError,
+                data: null,
+            });
+            return;
         }
         post.updatedBy = req.user._id;
         await post.save();

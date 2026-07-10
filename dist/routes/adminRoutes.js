@@ -16,8 +16,15 @@ const teacherApplicationController_1 = require("../controllers/teacherApplicatio
 const curriculumAdminController_1 = require("../controllers/curriculumAdminController");
 const adminScheduleController_1 = require("../controllers/adminScheduleController");
 const paymentController_1 = require("../controllers/paymentController");
+const adminGalleryController_1 = require("../controllers/adminGalleryController");
+const adminPricingController_1 = require("../controllers/adminPricingController");
+const adminTestimonialController_1 = require("../controllers/adminTestimonialController");
 const whatsappQueueController_1 = require("../controllers/whatsappQueueController");
+const liveMonitorController_1 = require("../controllers/liveMonitorController");
 const certificateController_1 = require("../controllers/certificateController");
+const adminProfileController_1 = require("../controllers/adminProfileController");
+const avatarController_1 = require("../controllers/avatarController");
+const uploadAvatar_1 = require("../middleware/uploadAvatar");
 const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin"));
 router.get("/users", adminController_1.getAllUsers);
@@ -33,6 +40,7 @@ router.patch("/payments/:id/reject", paymentController_1.rejectPayment);
 router.get("/students/:studentId/billing", paymentController_1.getStudentBilling);
 router.put("/students/:studentId/billing", paymentController_1.upsertStudentBilling);
 router.get("/stats", adminController_1.getDashboardStats);
+router.get("/live-monitor", liveMonitorController_1.getAdminLiveMonitor);
 router.get("/whatsapp-queue", whatsappQueueController_1.getWhatsAppQueue);
 router.get("/homework", adminController_1.getAllHomework);
 router.delete("/homework/:id", adminController_1.deleteAdminHomework);
@@ -78,8 +86,39 @@ router.get("/resources/:id", adminResourceController_1.adminGetResourceById);
 router.post("/resources", adminResourceController_1.adminCreateResource);
 router.put("/resources/:id", adminResourceController_1.adminUpdateResource);
 router.delete("/resources/:id", adminResourceController_1.adminDeleteResource);
+/** Student reviews / testimonials for public website */
+router.get("/testimonials", adminTestimonialController_1.adminGetTestimonials);
+router.get("/testimonials/:id", adminTestimonialController_1.adminGetTestimonialById);
+router.post("/testimonials", adminTestimonialController_1.adminCreateTestimonial);
+router.put("/testimonials/:id", adminTestimonialController_1.adminUpdateTestimonial);
+router.delete("/testimonials/:id", adminTestimonialController_1.adminDeleteTestimonial);
+/** Photo / video / audio gallery for public website */
+router.get("/gallery", adminGalleryController_1.adminGetGalleryItems);
+router.get("/gallery/:id", adminGalleryController_1.adminGetGalleryItemById);
+router.post("/gallery", adminGalleryController_1.adminCreateGalleryItem);
+router.put("/gallery/:id", adminGalleryController_1.adminUpdateGalleryItem);
+router.delete("/gallery/:id", adminGalleryController_1.adminDeleteGalleryItem);
+/** Pricing packages for public website */
+router.get("/pricing", adminPricingController_1.adminGetPricingPackages);
+router.get("/pricing/:id", adminPricingController_1.adminGetPricingPackageById);
+router.post("/pricing", adminPricingController_1.adminCreatePricingPackage);
+router.put("/pricing/:id", adminPricingController_1.adminUpdatePricingPackage);
+router.delete("/pricing/:id", adminPricingController_1.adminDeletePricingPackage);
 router.get("/certificates", certificateController_1.listAdminCertificates);
 router.post("/certificates/preview", certificateController_1.previewAdminCertificate);
 router.post("/certificates", certificateController_1.createAdminCertificate);
 router.get("/certificates/:id", certificateController_1.getAdminCertificate);
+router.get("/profile", adminProfileController_1.getAdminProfile);
+router.patch("/profile", adminProfileController_1.updateAdminProfile);
+router.patch("/profile/password", adminProfileController_1.changeAdminPassword);
+router.post("/profile/avatar", (req, res, next) => {
+    (0, uploadAvatar_1.avatarUpload)(req, res, (err) => {
+        if (err) {
+            const message = err instanceof Error ? err.message : "Upload failed";
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, avatarController_1.uploadProfileAvatar);
 exports.default = router;

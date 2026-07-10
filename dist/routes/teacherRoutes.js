@@ -6,9 +6,12 @@ const teacherController_1 = require("../controllers/teacherController");
 const classLogController_1 = require("../controllers/classLogController");
 const earningsController_1 = require("../controllers/earningsController");
 const teacherProfileController_1 = require("../controllers/teacherProfileController");
+const avatarController_1 = require("../controllers/avatarController");
+const uploadAvatar_1 = require("../middleware/uploadAvatar");
 const studentRequestController_1 = require("../controllers/studentRequestController");
 const complianceController_1 = require("../controllers/complianceController");
 const weeklyReportController_1 = require("../controllers/weeklyReportController");
+const sessionJoinController_1 = require("../controllers/sessionJoinController");
 const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("teacher"));
 router.get("/students", teacherController_1.getMyStudents);
@@ -18,6 +21,7 @@ router.get("/classes", teacherController_1.getMyClasses);
 router.get("/classes/:id", teacherController_1.getClassById);
 router.get("/schedule/today", teacherController_1.getTodaySchedule);
 router.get("/schedule/routine", teacherController_1.getWeeklyRoutine);
+router.post("/session/join/:slotId", sessionJoinController_1.recordTeacherSessionJoin);
 router.post("/attendance", teacherController_1.markAttendance);
 router.get("/attendance", teacherController_1.getClassAttendanceForDate);
 router.post("/compliance-scan", complianceController_1.scanTextHandler);
@@ -41,6 +45,16 @@ router.get("/earnings", earningsController_1.getTeacherEarningsReport);
 router.get("/profile", teacherProfileController_1.getTeacherProfile);
 router.patch("/profile", teacherProfileController_1.updateTeacherProfile);
 router.patch("/profile/password", teacherProfileController_1.changeTeacherPassword);
+router.post("/profile/avatar", (req, res, next) => {
+    (0, uploadAvatar_1.avatarUpload)(req, res, (err) => {
+        if (err) {
+            const message = err instanceof Error ? err.message : "Upload failed";
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, avatarController_1.uploadProfileAvatar);
 router.post("/availability/check", teacherProfileController_1.checkAvailability);
 router.get("/student-requests", studentRequestController_1.listTeacherStudentRequestsHandler);
 router.post("/student-requests", studentRequestController_1.createTeacherStudentRequest);

@@ -17,6 +17,7 @@ exports.validateHomeworkCurriculumForClass = validateHomeworkCurriculumForClass;
 exports.validateCurriculumForStudent = validateCurriculumForStudent;
 exports.parseCurriculumAssignments = parseCurriculumAssignments;
 const mongoose_1 = require("mongoose");
+const curriculumIds_1 = require("../data/curriculumIds");
 const Class_1 = require("../models/Class");
 const User_1 = require("../models/User");
 const curriculumStore_1 = require("./curriculumStore");
@@ -24,7 +25,8 @@ function getFullCurriculumTree() {
     return (0, curriculumStore_1.getActiveCurriculumTree)();
 }
 function findProgram(programId) {
-    return (0, curriculumStore_1.getActiveCurriculumTree)().find((p) => p.id === programId);
+    const normalized = (0, curriculumIds_1.normalizeProgramId)(programId);
+    return (0, curriculumStore_1.getActiveCurriculumTree)().find((p) => p.id === normalized || p.id === programId);
 }
 function findUnit(programId, unitId) {
     return findProgram(programId)?.children?.find((u) => u.id === unitId);
@@ -40,8 +42,12 @@ function cloneNode(node) {
         children: node.children?.map(cloneNode),
     };
 }
+function assignmentProgramMatches(assignmentProgramId, pathProgramId) {
+    return (assignmentProgramId === pathProgramId ||
+        (0, curriculumIds_1.normalizeProgramId)(assignmentProgramId) === (0, curriculumIds_1.normalizeProgramId)(pathProgramId));
+}
 function filterProgramByAssignment(program, assignment) {
-    if (assignment.programId !== program.id)
+    if (!assignmentProgramMatches(assignment.programId, program.id))
         return null;
     if (!assignment.unitId) {
         return cloneNode(program);
@@ -157,9 +163,10 @@ async function getCurriculumOptionsForClass(classId) {
 function resolveCurriculumLabels(programId, unitId, topicId) {
     if (!programId)
         return {};
-    const program = findProgram(programId);
-    const unit = unitId ? findUnit(programId, unitId) : undefined;
-    const topic = unitId && topicId ? findTopic(programId, unitId, topicId) : undefined;
+    const normalized = (0, curriculumIds_1.normalizeProgramId)(programId);
+    const program = findProgram(normalized);
+    const unit = unitId ? findUnit(normalized, unitId) : undefined;
+    const topic = unitId && topicId ? findTopic(normalized, unitId, topicId) : undefined;
     return {
         program: program?.label,
         unit: unit?.label,
@@ -193,17 +200,18 @@ function mapAssignmentLabels(assignments) {
     }));
 }
 function isValidCurriculumPath(programId, unitId, topicId) {
-    const program = findProgram(programId);
+    const normalized = (0, curriculumIds_1.normalizeProgramId)(programId);
+    const program = findProgram(normalized);
     if (!program)
         return false;
     if (!unitId)
         return true;
-    const unit = findUnit(programId, unitId);
+    const unit = findUnit(normalized, unitId);
     if (!unit)
         return false;
     if (!topicId)
         return true;
-    return Boolean(findTopic(programId, unitId, topicId));
+    return Boolean(findTopic(normalized, unitId, topicId));
 }
 /** Requires unit/topic when the tree has deeper levels (matches portal pathReadyToSave). */
 function isCurriculumPathComplete(programId, unitId, topicId) {
@@ -229,7 +237,7 @@ function pathAllowedForAssignments(programId, unitId, topicId, assignments) {
     if (!assignments?.length)
         return true;
     return assignments.some((a) => {
-        if (a.programId !== programId)
+        if (!assignmentProgramMatches(a.programId, programId))
             return false;
         if (a.topicId)
             return a.topicId === topicId;
@@ -279,14 +287,15 @@ function parseCurriculumAssignments(raw) {
         const programId = item.programId;
         if (typeof programId !== "string" || !findProgram(programId))
             continue;
+        const normalizedProgram = (0, curriculumIds_1.normalizeProgramId)(programId);
         const unitId = item.unitId;
         const topicId = item.topicId;
-        if (unitId && !findUnit(programId, unitId))
+        if (unitId && !findUnit(normalizedProgram, unitId))
             continue;
-        if (topicId && (!unitId || !findTopic(programId, unitId, topicId)))
+        if (topicId && (!unitId || !findTopic(normalizedProgram, unitId, topicId)))
             continue;
         parsed.push({
-            programId,
+            programId: normalizedProgram,
             unitId: unitId || undefined,
             topicId: topicId || undefined,
             completed: Boolean(item.completed),

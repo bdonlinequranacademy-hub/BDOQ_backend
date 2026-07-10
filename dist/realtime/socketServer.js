@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.initSocketServer = initSocketServer;
 exports.emitToUser = emitToUser;
 exports.emitAdminPending = emitAdminPending;
+exports.emitAdminLiveMonitorUpdate = emitAdminLiveMonitorUpdate;
 const socket_io_1 = require("socket.io");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const cors_1 = require("../config/cors");
@@ -15,7 +16,16 @@ let io = null;
 function initSocketServer(httpServer) {
     io = new socket_io_1.Server(httpServer, {
         cors: {
-            origin: (0, cors_1.isCorsDisabled)() ? true : (0, cors_1.getAllowedOrigins)(),
+            origin: (0, cors_1.isCorsDisabled)()
+                ? true
+                : (origin, callback) => {
+                    if (!origin || (0, cors_1.isOriginAllowed)(origin)) {
+                        callback(null, true);
+                    }
+                    else {
+                        callback(new Error("CORS not allowed"));
+                    }
+                },
             credentials: true,
         },
         path: "/socket.io",
@@ -64,6 +74,11 @@ function emitToUser(userId, event, payload) {
 function emitAdminPending(reason) {
     io?.to("role:admin").emit("admin:pending", {
         reason,
+        at: new Date().toISOString(),
+    });
+}
+function emitAdminLiveMonitorUpdate() {
+    io?.to("role:admin").emit("admin:live-monitor:update", {
         at: new Date().toISOString(),
     });
 }

@@ -479,6 +479,18 @@ const adminUploadResourceFile = async (req, res) => {
             folder = "ebooks";
             resourceType = "raw";
         }
+        else if (purpose === "gallery" && file.mimetype.startsWith("video/")) {
+            folder = "gallery";
+            resourceType = "video";
+        }
+        else if (purpose === "gallery" && file.mimetype.startsWith("audio/")) {
+            folder = "gallery";
+            resourceType = "video";
+        }
+        else if (purpose === "gallery" && file.mimetype.startsWith("image/")) {
+            folder = "gallery";
+            resourceType = "image";
+        }
         else if (file.mimetype.startsWith("audio/")) {
             folder = "audio";
             resourceType = "video";

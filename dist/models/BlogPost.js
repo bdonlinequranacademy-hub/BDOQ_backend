@@ -33,7 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BlogPost = exports.BLOG_CATEGORIES = void 0;
+exports.BlogPost = exports.HIDDEN_PUBLIC_BLOG_TAGS = exports.EXCLUDED_PUBLIC_BLOG_TAGS = exports.PUBLIC_BLOG_CATEGORIES = exports.BLOG_CATEGORIES = void 0;
+exports.filterPublicBlogTags = filterPublicBlogTags;
+exports.isPublicBlogPost = isPublicBlogPost;
 const mongoose_1 = __importStar(require("mongoose"));
 exports.BLOG_CATEGORIES = [
     "Quran & Tajweed",
@@ -41,6 +43,50 @@ exports.BLOG_CATEGORIES = [
     "Learning Tips",
     "Platform & AI",
 ];
+/** Categories shown on the public marketing blog (education only). */
+exports.PUBLIC_BLOG_CATEGORIES = [
+    "Quran & Tajweed",
+    "Parent Guides",
+    "Learning Tips",
+];
+/** Tags that block a post from the public education blog entirely. */
+exports.EXCLUDED_PUBLIC_BLOG_TAGS = [
+    "payment",
+    "bkash",
+    "nagad",
+    "billing",
+    "invoice",
+    "fees",
+    "paypal",
+    "wise",
+    "portal",
+];
+/** Non-educational tags hidden from blog filters and cards (post still shows). */
+exports.HIDDEN_PUBLIC_BLOG_TAGS = [
+    "bangladesh",
+    "checklist",
+];
+function filterPublicBlogTags(tags = []) {
+    const hidden = new Set([
+        ...exports.EXCLUDED_PUBLIC_BLOG_TAGS,
+        ...exports.HIDDEN_PUBLIC_BLOG_TAGS,
+    ].map((tag) => tag.toLowerCase()));
+    return tags.filter((tag) => !hidden.has(tag.toLowerCase()));
+}
+function isPublicBlogPost(post) {
+    if (!exports.PUBLIC_BLOG_CATEGORIES.includes(post.category)) {
+        return false;
+    }
+    const tags = (post.tags ?? []).map((tag) => tag.toLowerCase());
+    if (exports.EXCLUDED_PUBLIC_BLOG_TAGS.some((blocked) => tags.includes(blocked))) {
+        return false;
+    }
+    const slug = post.slug?.toLowerCase() ?? "";
+    if (slug.includes("payment") || slug.includes("bkash")) {
+        return false;
+    }
+    return true;
+}
 const blogAuthorSchema = new mongoose_1.Schema({
     name: { type: String, required: true, trim: true },
     role: { type: String, trim: true },
