@@ -10,6 +10,9 @@ export interface AdminProfileView {
   role: string;
   avatarUrl: string;
   gender?: "male" | "female";
+  authProvider: string;
+  isActive: boolean;
+  createdAt?: string;
 }
 
 function toProfileView(user: InstanceType<typeof User>): AdminProfileView {
@@ -20,15 +23,23 @@ function toProfileView(user: InstanceType<typeof User>): AdminProfileView {
     role: user.role,
     ...avatarFieldsFromUser(user),
     gender: user.gender,
+    authProvider: user.authProvider ?? "local",
+    isActive: user.isActive !== false,
+    createdAt: user.createdAt
+      ? new Date(user.createdAt).toISOString()
+      : undefined,
   };
 }
+
+const PROFILE_SELECT =
+  "name email role avatarUrl gender authProvider isActive createdAt";
 
 export const getAdminProfile = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const user = await User.findById(req.user!._id).select("name email role avatarUrl gender");
+    const user = await User.findById(req.user!._id).select(PROFILE_SELECT);
     if (!user) {
       res.status(404).json({
         success: false,
@@ -57,11 +68,17 @@ export const updateAdminProfile = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { name } = req.body;
+    const { name, gender } = req.body;
 
     const update: Record<string, string> = {};
     if (typeof name === "string" && name.trim()) {
       update.name = name.trim();
+    }
+    if (gender === "male" || gender === "female") {
+      update.gender = gender;
+    }
+    if (gender === "" || gender === null) {
+      // allow clearing — use $unset via separate path; skip for simplicity
     }
 
     if (Object.keys(update).length === 0) {
@@ -76,7 +93,7 @@ export const updateAdminProfile = async (
     const user = await User.findByIdAndUpdate(req.user!._id, update, {
       new: true,
       runValidators: true,
-    }).select("name email role avatarUrl gender");
+    }).select(PROFILE_SELECT);
 
     if (!user) {
       res.status(404).json({

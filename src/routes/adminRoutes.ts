@@ -19,6 +19,7 @@ import {
   updateClass,
   updateUser,
 } from "../controllers/adminController";
+import { getUserProfileDetail } from "../controllers/adminUserProfileController";
 import {
   adminCreateBlogPost,
   adminDeleteBlogPost,
@@ -119,6 +120,7 @@ const router = Router();
 router.use(auth, checkRole("admin", "super_admin"));
 
 router.get("/users", getAllUsers);
+router.get("/users/:id/profile", getUserProfileDetail);
 router.get("/users/:id", getUserById);
 router.post("/users", createUser);
 router.put("/users/:id", updateUser);
