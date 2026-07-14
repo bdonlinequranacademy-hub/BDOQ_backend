@@ -53,6 +53,10 @@ import {
   patchAdminContactMessageStatus,
 } from "../controllers/contactMessageController";
 import {
+  listAdminNewsletterSubscribers,
+  patchAdminNewsletterSubscriberStatus,
+} from "../controllers/newsletterSubscriberController";
+import {
   listAdminStudentAdmissions,
   patchAdminStudentAdmissionStatus,
 } from "../controllers/studentAdmissionController";
@@ -164,6 +168,11 @@ router.get("/trial-bookings", listAdminTrialBookings);
 router.patch("/trial-bookings/:id/status", patchAdminTrialBookingStatus);
 router.get("/contact-messages", listAdminContactMessages);
 router.patch("/contact-messages/:id/status", patchAdminContactMessageStatus);
+router.get("/newsletter-subscribers", listAdminNewsletterSubscribers);
+router.patch(
+  "/newsletter-subscribers/:id/status",
+  patchAdminNewsletterSubscriberStatus
+);
 router.get("/student-admissions", listAdminStudentAdmissions);
 router.patch("/student-admissions/:id/status", patchAdminStudentAdmissionStatus);
 router.get("/teacher-applications", listAdminTeacherApplications);
