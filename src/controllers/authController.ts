@@ -16,13 +16,13 @@ import {
 } from "../services/verificationTokens";
 import { generateStudentId } from "../utils/studentId";
 
-const VALID_ROLES: UserRole[] = ["student", "teacher", "admin", "parent"];
+const VALID_ROLES: UserRole[] = ["student", "teacher", "admin"];
 
 const formatUser = (user: IUser) => ({
   id: user._id,
   name: user.name,
   email: user.email,
-  role: user.role === "parent" ? "student" : user.role,
+  role: user.role,
   isActive: user.isActive,
   emailVerified: user.emailVerified,
   studentId: user.studentId ?? undefined,

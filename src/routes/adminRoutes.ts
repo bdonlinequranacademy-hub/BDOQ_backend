@@ -97,6 +97,27 @@ import {
   adminUpdatePricingPackage,
 } from "../controllers/adminPricingController";
 import {
+  adminCreateCourse,
+  adminDeleteCourse,
+  adminGetCourseById,
+  adminGetCourses,
+  adminUpdateCourse,
+} from "../controllers/adminCourseController";
+import {
+  adminCreateTeacherProfile,
+  adminDeleteTeacherProfile,
+  adminGetTeacherProfileById,
+  adminGetTeacherProfiles,
+  adminUpdateTeacherProfile,
+} from "../controllers/adminTeacherProfileController";
+import {
+  adminCreateFaqItem,
+  adminDeleteFaqItem,
+  adminGetFaqItemById,
+  adminGetFaqItems,
+  adminUpdateFaqItem,
+} from "../controllers/adminFaqController";
+import {
   adminCreateTestimonial,
   adminDeleteTestimonial,
   adminGetTestimonialById,
@@ -220,6 +241,27 @@ router.get("/pricing/:id", adminGetPricingPackageById);
 router.post("/pricing", adminCreatePricingPackage);
 router.put("/pricing/:id", adminUpdatePricingPackage);
 router.delete("/pricing/:id", adminDeletePricingPackage);
+
+/** Course catalog for public website */
+router.get("/courses", adminGetCourses);
+router.get("/courses/:id", adminGetCourseById);
+router.post("/courses", adminCreateCourse);
+router.put("/courses/:id", adminUpdateCourse);
+router.delete("/courses/:id", adminDeleteCourse);
+
+/** Teacher profiles for public website */
+router.get("/teacher-profiles", adminGetTeacherProfiles);
+router.get("/teacher-profiles/:id", adminGetTeacherProfileById);
+router.post("/teacher-profiles", adminCreateTeacherProfile);
+router.put("/teacher-profiles/:id", adminUpdateTeacherProfile);
+router.delete("/teacher-profiles/:id", adminDeleteTeacherProfile);
+
+/** FAQ items for public website */
+router.get("/faq", adminGetFaqItems);
+router.get("/faq/:id", adminGetFaqItemById);
+router.post("/faq", adminCreateFaqItem);
+router.put("/faq/:id", adminUpdateFaqItem);
+router.delete("/faq/:id", adminDeleteFaqItem);
 
 router.get("/certificates", listAdminCertificates);
 router.post("/certificates/preview", previewAdminCertificate);

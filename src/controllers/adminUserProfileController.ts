@@ -35,7 +35,7 @@ function formatBaseUser(user: IUser) {
     id: user._id.toString(),
     name: user.name,
     email: user.email,
-    role: user.role === "parent" ? "student" : user.role,
+    role: user.role,
     isActive: user.isActive !== false,
     studentId: user.studentId ?? undefined,
     gender: user.gender ?? undefined,

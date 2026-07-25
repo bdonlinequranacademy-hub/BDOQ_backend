@@ -15,11 +15,17 @@ function toProfileView(user) {
         role: user.role,
         ...(0, avatarFields_1.avatarFieldsFromUser)(user),
         gender: user.gender,
+        authProvider: user.authProvider ?? "local",
+        isActive: user.isActive !== false,
+        createdAt: user.createdAt
+            ? new Date(user.createdAt).toISOString()
+            : undefined,
     };
 }
+const PROFILE_SELECT = "name email role avatarUrl gender authProvider isActive createdAt";
 const getAdminProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role avatarUrl gender");
+        const user = await User_1.User.findById(req.user._id).select(PROFILE_SELECT);
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -45,10 +51,16 @@ const getAdminProfile = async (req, res) => {
 exports.getAdminProfile = getAdminProfile;
 const updateAdminProfile = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, gender } = req.body;
         const update = {};
         if (typeof name === "string" && name.trim()) {
             update.name = name.trim();
+        }
+        if (gender === "male" || gender === "female") {
+            update.gender = gender;
+        }
+        if (gender === "" || gender === null) {
+            // allow clearing — use $unset via separate path; skip for simplicity
         }
         if (Object.keys(update).length === 0) {
             res.status(400).json({
@@ -61,7 +73,7 @@ const updateAdminProfile = async (req, res) => {
         const user = await User_1.User.findByIdAndUpdate(req.user._id, update, {
             new: true,
             runValidators: true,
-        }).select("name email role avatarUrl gender");
+        }).select(PROFILE_SELECT);
         if (!user) {
             res.status(404).json({
                 success: false,

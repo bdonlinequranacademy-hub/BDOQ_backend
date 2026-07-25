@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
-export type UserRole = "student" | "teacher" | "admin" | "super_admin" | "parent";
-export type AuthProvider = "local" | "google" | "facebook";
+export type UserRole = "student" | "teacher" | "admin" | "super_admin";
+export type AuthProvider = "local" | "google";
 export type UserGender = "male" | "female";
 
 export interface ICurriculumAssignment {
@@ -62,7 +62,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["student", "teacher", "admin", "super_admin", "parent"],
+      enum: ["student", "teacher", "admin", "super_admin"],
       default: "student",
     },
     isActive: {
@@ -71,7 +71,7 @@ const userSchema = new Schema<IUser>(
     },
     authProvider: {
       type: String,
-      enum: ["local", "google", "facebook"],
+      enum: ["local", "google"],
       default: "local",
     },
     providerId: {

@@ -12,7 +12,6 @@ import { buildWaMeUrl, parseWhatsApp } from "../lib/whatsappPhone";
 import { createUserNotification } from "./notificationService";
 import { sendEmail } from "./emailService";
 import { portalBaseUrl } from "./verificationTokens";
-import { notifyParentsOnClassReminder } from "./noShowService";
 import {
   ACADEMY_TIMEZONE,
   formatWeeklyTime,
@@ -49,7 +48,6 @@ function portalHomeForRole(role: IUser["role"]): string {
     case "super_admin":
       return `${base}/admin`;
     case "student":
-    case "parent":
     default:
       return `${base}/student`;
   }
@@ -207,15 +205,6 @@ export async function runClassReminders(): Promise<number> {
         startTime: slot.startTime,
         meetingLink,
       });
-
-      const studentTz = student.timezone?.trim() || ACADEMY_TIMEZONE;
-      const timeLabel = timeLabelForUser(slot.day, slot.startTime, studentTz);
-      await notifyParentsOnClassReminder(
-        student._id.toString(),
-        classDoc.title,
-        teacher.name,
-        timeLabel
-      );
 
       await ClassReminderLog.create({
         sessionSlot: slot._id,

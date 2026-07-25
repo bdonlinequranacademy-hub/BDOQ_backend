@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const contactMessageController_1 = require("../controllers/contactMessageController");
+const newsletterSubscriberController_1 = require("../controllers/newsletterSubscriberController");
 const studentAdmissionController_1 = require("../controllers/studentAdmissionController");
 const teacherApplicationController_1 = require("../controllers/teacherApplicationController");
 const trialBookingController_1 = require("../controllers/trialBookingController");
@@ -25,6 +26,7 @@ router.get("/progress-highlights", publicContentController_1.getPublicProgressHi
 router.get("/live-dashboard", liveMonitorController_1.getPublicLiveDashboardHandler);
 router.post("/trial-bookings", trialBookingController_1.submitTrialBooking);
 router.post("/contact-messages", contactMessageController_1.submitContactMessage);
+router.post("/newsletter-subscribers", newsletterSubscriberController_1.submitNewsletterSubscriber);
 router.post("/student-admissions", studentAdmissionController_1.submitStudentAdmission);
 router.post("/teacher-applications", uploadTeacherApplication_1.teacherApplicationUpload, teacherApplicationController_1.submitTeacherApplication);
 router.get("/certificates/verify/:certificateId", certificateController_1.verifyPublicCertificate);

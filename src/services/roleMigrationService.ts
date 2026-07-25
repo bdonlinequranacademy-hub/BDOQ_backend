@@ -1,16 +1,29 @@
 import { User } from "../models/User";
 import { generateStudentId } from "../utils/studentId";
 
-/** Legacy parent accounts are unified into student (guardian + learner one portal). */
+/**
+ * One-time cleanup: legacy parent accounts → student.
+ * Uses native collection API so it still works after "parent" was removed from the role enum.
+ */
 export async function migrateParentAccountsToStudent(): Promise<number> {
-  const parents = await User.find({ role: "parent" });
+  const parents = await User.collection
+    .find({ role: "parent" })
+    .project({ _id: 1, studentId: 1 })
+    .toArray();
 
-  for (const user of parents) {
-    if (!user.studentId) {
-      user.studentId = await generateStudentId();
-    }
-    user.role = "student";
-    await user.save();
+  for (const doc of parents) {
+    const studentId =
+      typeof doc.studentId === "string" && doc.studentId.trim()
+        ? doc.studentId
+        : await generateStudentId();
+
+    await User.collection.updateOne(
+      { _id: doc._id },
+      {
+        $set: { role: "student", studentId },
+        $unset: { children: "" },
+      }
+    );
   }
 
   if (parents.length > 0) {

@@ -10,7 +10,6 @@
  * Sample logins (password defaults to Sample1234! or SEED_PASSWORD env):
  *   seed.teacher1@seed.boq.academy
  *   seed.student1@seed.boq.academy  … seed.student8@…
- *   seed.parent1@seed.boq.academy   (linked to student1 & student2)
  */
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
@@ -1030,29 +1029,6 @@ This post is under review before publishing. It will include Ramadan schedules a
     }
   }
 
-  // Parent portal demo (linked children)
-  const parent = await User.create({
-    name: "Abdul Rahman",
-    email: seedEmail("seed.parent1"),
-    password: passwordHash,
-    role: "parent",
-    authProvider: "local",
-    emailVerified: true,
-    isActive: true,
-    country: "Bangladesh",
-    timezone: "Asia/Dhaka",
-    whatsapp: "+8801712345678",
-    children: [students[0]._id, students[1]._id],
-  });
-
-  await Notification.create({
-    user: parent._id,
-    title: "Upcoming class reminder",
-    message: `${students[0].name}'s class "Today's Tajweed Sessions" starts soon.`,
-    type: "class",
-    isRead: false,
-  });
-
   await StudentAdmissionApplication.create([
     {
       fullName: "Zainab Hossain",
@@ -1136,7 +1112,7 @@ This post is under review before publishing. It will include Ramadan schedules a
   console.log("\n=== Academy seed complete ===\n");
   console.log("Created:");
   console.log(`  • ${teachers.length} teachers`);
-  console.log(`  • ${students.length} students + 1 parent (${seedEmail("seed.parent1")})`);
+  console.log(`  • ${students.length} students`);
   console.log(`  • ${classes.length + 1} classes (weekly + today's live demo on ${todayDay})`);
   console.log(`  • ${todaySlotPlan.length} today's session slots with join tracking (live monitor)`);
   console.log("  • 5 class logs (3 pending, 2 approved)");
@@ -1151,7 +1127,6 @@ This post is under review before publishing. It will include Ramadan schedules a
   console.log(`  Student: ${seedEmail("seed.student1")}  (Ayesha Rahman — fee current)`);
   console.log(`  Student: ${seedEmail("seed.student3")}  (Fatema Yasmin — overdue)`);
   console.log(`  Student: ${seedEmail("seed.student6")}  (Ibrahim Hossain — USA, pending payment)`);
-  console.log(`  Parent:  ${seedEmail("seed.parent1")}  (children: student1 & student2)`);
   console.log("\nAdmin portal: Dashboard → Live Monitor / Payments / Class Logs / Blog");
   console.log("Public site: run npm run seed:resources for ebooks, audio & videos");
   console.log("\nTo reset seed data:");

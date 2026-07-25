@@ -1,10 +1,9 @@
 import { Attendance } from "../models/Attendance";
 import { SessionAlertLog, type SessionAlertType } from "../models/SessionAlertLog";
 import { SessionSlot } from "../models/SessionSlot";
-import { IUser, User } from "../models/User";
+import { IUser } from "../models/User";
 import {
   createUserNotification,
-  createUserNotifications,
   notifyAdmins,
 } from "./notificationService";
 import { getJoinMapForDate } from "./sessionJoinService";
@@ -62,29 +61,6 @@ async function markAlertSent(
   }).catch(() => {
     /* duplicate race — ignore */
   });
-}
-
-async function notifyParentsOfStudent(
-  studentId: string,
-  title: string,
-  message: string
-): Promise<void> {
-  const parents = await User.find({
-    role: "parent",
-    isActive: true,
-    children: studentId,
-  }).select("_id");
-
-  if (parents.length === 0) return;
-
-  await createUserNotifications(
-    parents.map((parent) => ({
-      userId: parent._id,
-      title,
-      message,
-      type: "class" as const,
-    }))
-  );
 }
 
 async function autoMarkAbsent(input: {
@@ -175,26 +151,6 @@ export async function runNoShowChecks(): Promise<number> {
         message: `Your class "${classDoc.title}" with ${teacher.name} is in progress. Please join now.`,
         type: "class",
       });
-      await notifyParentsOfStudent(
-        student._id.toString(),
-        "Child's class in progress",
-        `${student.name}'s class "${classDoc.title}" with ${teacher.name} started at ${timeLabel} but they have not joined yet.`
-      );
-      alertsSent += 1;
-    }
-
-    if (
-      phase === "live" &&
-      minutesSinceStart >= 1 &&
-      minutesSinceStart < 2 &&
-      !(await alertAlreadySent(slotId, sessionDate, "class_live_parent"))
-    ) {
-      await markAlertSent(slotId, sessionDate, "class_live_parent");
-      await notifyParentsOfStudent(
-        student._id.toString(),
-        "Class is live now",
-        `${student.name}'s class "${classDoc.title}" with ${teacher.name} is live now (${timeLabel}).`
-      );
       alertsSent += 1;
     }
 
@@ -224,17 +180,4 @@ export async function runNoShowChecks(): Promise<number> {
   }
 
   return alertsSent;
-}
-
-export async function notifyParentsOnClassReminder(
-  studentId: string,
-  classTitle: string,
-  teacherName: string,
-  timeLabel: string
-): Promise<void> {
-  await notifyParentsOfStudent(
-    studentId,
-    "Upcoming class reminder",
-    `${classTitle} with ${teacherName} starts in 10 minutes (${timeLabel}).`
-  );
 }
