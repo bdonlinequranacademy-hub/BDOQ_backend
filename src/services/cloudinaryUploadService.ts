@@ -102,7 +102,8 @@ export async function uploadApplicationFile(
   };
 }
 
-const MAX_RESOURCE_BYTES = 15 * 1024 * 1024;
+const MAX_IMAGE_RESOURCE_BYTES = 15 * 1024 * 1024;
+const MAX_VIDEO_RESOURCE_BYTES = 100 * 1024 * 1024;
 
 export async function uploadResourceMedia(
   buffer: Buffer,
@@ -114,7 +115,10 @@ export async function uploadResourceMedia(
     throw new Error("CLOUDINARY_NOT_CONFIGURED");
   }
 
-  if (buffer.length > MAX_RESOURCE_BYTES) {
+  const maxBytes =
+    resourceType === "video" ? MAX_VIDEO_RESOURCE_BYTES : MAX_IMAGE_RESOURCE_BYTES;
+
+  if (buffer.length > maxBytes) {
     throw new Error("FILE_TOO_LARGE");
   }
 

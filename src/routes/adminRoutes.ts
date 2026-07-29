@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { auth, checkRole } from "../middleware/auth";
 import {
   assignStudentToClass,
@@ -118,6 +119,15 @@ import {
   adminUpdateFaqItem,
 } from "../controllers/adminFaqController";
 import {
+  adminGetHomeHeroSlides,
+  adminSaveHomeHeroSlides,
+} from "../controllers/adminHomeHeroController";
+import {
+  adminGetSectionHeaders,
+  adminSaveSectionHeaders,
+  adminUpsertSectionHeader,
+} from "../controllers/adminSectionHeaderController";
+import {
   adminCreateTestimonial,
   adminDeleteTestimonial,
   adminGetTestimonialById,
@@ -214,7 +224,22 @@ router.put("/blog/posts/:id", adminUpdateBlogPost);
 router.delete("/blog/posts/:id", adminDeleteBlogPost);
 
 /** Resources CMS — ebooks, audio, videos for public site */
-router.post("/resources/upload", uploadResourceFile, adminUploadResourceFile);
+router.post("/resources/upload", (req, res, next) => {
+  uploadResourceFile(req, res, (err: unknown) => {
+    if (err) {
+      const code = err instanceof multer.MulterError ? err.code : "";
+      let message = err instanceof Error ? err.message : "Upload failed";
+      if (code === "LIMIT_FILE_SIZE") {
+        message = "File is too large. Videos up to 100 MB, other files up to 15 MB.";
+      } else if (message === "INVALID_FILE_TYPE") {
+        message = "This file type is not supported.";
+      }
+      res.status(400).json({ success: false, message, data: null });
+      return;
+    }
+    next();
+  });
+}, adminUploadResourceFile);
 router.get("/resources", adminGetResources);
 router.get("/resources/:id", adminGetResourceById);
 router.post("/resources", adminCreateResource);
@@ -262,6 +287,15 @@ router.get("/faq/:id", adminGetFaqItemById);
 router.post("/faq", adminCreateFaqItem);
 router.put("/faq/:id", adminUpdateFaqItem);
 router.delete("/faq/:id", adminDeleteFaqItem);
+
+/** Home hero carousel for public website */
+router.get("/home-hero", adminGetHomeHeroSlides);
+router.put("/home-hero", adminSaveHomeHeroSlides);
+
+/** Section headers (eyebrow, title, subtitle) for home & pages */
+router.get("/section-headers", adminGetSectionHeaders);
+router.put("/section-headers", adminSaveSectionHeaders);
+router.put("/section-headers/item", adminUpsertSectionHeader);
 
 router.get("/certificates", listAdminCertificates);
 router.post("/certificates/preview", previewAdminCertificate);

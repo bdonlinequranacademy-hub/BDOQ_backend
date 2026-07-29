@@ -14,6 +14,8 @@ import {
   listPublicPricing,
   listPublicTestimonials,
 } from "../services/publicMarketingService";
+import { listPublicHomeHeroSlides } from "../services/homeHeroService";
+import { listPublicSectionHeaders } from "../services/sectionHeaderService";
 
 export const getPublicTeachersHandler = async (
   req: Request,
@@ -249,6 +251,58 @@ export const getPublicGalleryHandler = async (
     res.status(500).json({
       success: false,
       message: "Failed to fetch gallery",
+      data: null,
+    });
+  }
+};
+
+export const getPublicHomeHeroHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const localeParam = req.query.locale;
+    const locale = localeParam === "bn" ? "bn" : "en";
+    const slides = await listPublicHomeHeroSlides(locale);
+
+    res.status(200).json({
+      success: true,
+      message: "Home hero fetched successfully",
+      data: { slides },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch home hero",
+      data: null,
+    });
+  }
+};
+
+export const getPublicSectionHeadersHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const localeParam = req.query.locale;
+    const locale = localeParam === "bn" ? "bn" : "en";
+    const keysParam = req.query.keys;
+    const keys =
+      typeof keysParam === "string" && keysParam.trim()
+        ? keysParam.split(",").map((key) => key.trim())
+        : undefined;
+
+    const headers = await listPublicSectionHeaders(locale, keys);
+
+    res.status(200).json({
+      success: true,
+      message: "Section headers fetched successfully",
+      data: { headers },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch section headers",
       data: null,
     });
   }

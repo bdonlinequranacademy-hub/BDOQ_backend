@@ -151,13 +151,19 @@ export const adminCreateTestimonial = async (
       });
       return;
     }
-    if (parsedMediaType === "video" && typeof youtubeId !== "string") {
-      res.status(400).json({
-        success: false,
-        message: "Video reviews require a YouTube ID",
-        data: null,
-      });
-      return;
+    if (parsedMediaType === "video") {
+      const hasYoutube =
+        typeof youtubeId === "string" && youtubeId.trim().length >= 11;
+      const hasMediaUrl =
+        typeof mediaUrl === "string" && mediaUrl.trim().length > 0;
+      if (!hasYoutube && !hasMediaUrl) {
+        res.status(400).json({
+          success: false,
+          message: "Video reviews require a YouTube ID or video URL",
+          data: null,
+        });
+        return;
+      }
     }
 
     const doc = await Testimonial.create({
@@ -174,11 +180,14 @@ export const adminCreateTestimonial = async (
       image: typeof image === "string" ? image.trim() : undefined,
       mediaType: parsedMediaType,
       mediaUrl:
-        parsedMediaType === "audio" && typeof mediaUrl === "string"
+        (parsedMediaType === "audio" || parsedMediaType === "video") &&
+        typeof mediaUrl === "string"
           ? mediaUrl.trim()
           : undefined,
       youtubeId:
-        parsedMediaType === "video" && typeof youtubeId === "string"
+        parsedMediaType === "video" &&
+        typeof youtubeId === "string" &&
+        youtubeId.trim()
           ? youtubeId.trim()
           : undefined,
       sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
@@ -264,8 +273,6 @@ export const adminUpdateTestimonial = async (
       doc.youtubeId = undefined;
     } else if (doc.mediaType === "audio") {
       doc.youtubeId = undefined;
-    } else if (doc.mediaType === "video") {
-      doc.mediaUrl = undefined;
     }
 
     await doc.save();

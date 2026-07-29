@@ -11,6 +11,8 @@ import {
   getPublicCoursesHandler,
   getPublicFaqHandler,
   getPublicGalleryHandler,
+  getPublicHomeHeroHandler,
+  getPublicSectionHeadersHandler,
   getPublicPricingHandler,
   getPublicProgressHighlightsHandler,
   getPublicSchedulePreviewHandler,
@@ -32,6 +34,8 @@ router.get("/pricing", getPublicPricingHandler);
 router.get("/testimonials", getPublicTestimonialsHandler);
 router.get("/faq", getPublicFaqHandler);
 router.get("/gallery", getPublicGalleryHandler);
+router.get("/home-hero", getPublicHomeHeroHandler);
+router.get("/section-headers", getPublicSectionHeadersHandler);
 router.get("/schedule-preview", getPublicSchedulePreviewHandler);
 router.get("/stats", getPublicStatsHandler);
 router.get("/progress-highlights", getPublicProgressHighlightsHandler);
