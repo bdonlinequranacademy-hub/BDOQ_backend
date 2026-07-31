@@ -70,12 +70,14 @@ async function uploadApplicationFile(buffer, folder, mimeType, resourceType = "i
         publicId: result.public_id,
     };
 }
-const MAX_RESOURCE_BYTES = 15 * 1024 * 1024;
+const MAX_IMAGE_RESOURCE_BYTES = 15 * 1024 * 1024;
+const MAX_VIDEO_RESOURCE_BYTES = 100 * 1024 * 1024;
 async function uploadResourceMedia(buffer, folder, mimeType, resourceType = "raw") {
     if (!(0, cloudinary_1.isCloudinaryConfigured)()) {
         throw new Error("CLOUDINARY_NOT_CONFIGURED");
     }
-    if (buffer.length > MAX_RESOURCE_BYTES) {
+    const maxBytes = resourceType === "video" ? MAX_VIDEO_RESOURCE_BYTES : MAX_IMAGE_RESOURCE_BYTES;
+    if (buffer.length > maxBytes) {
         throw new Error("FILE_TOO_LARGE");
     }
     const result = await cloudinary_1.cloudinary.uploader.upload(`data:${mimeType};base64,${buffer.toString("base64")}`, {

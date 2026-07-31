@@ -21,6 +21,7 @@ import {
   getPublicTeachersHandler,
   getPublicTestimonialsHandler,
 } from "../controllers/publicContentController";
+import { studentAdmissionUpload } from "../middleware/uploadStudentAdmission";
 import { teacherApplicationUpload } from "../middleware/uploadTeacherApplication";
 
 const router = Router();
@@ -43,7 +44,20 @@ router.get("/live-dashboard", getPublicLiveDashboardHandler);
 router.post("/trial-bookings", submitTrialBooking);
 router.post("/contact-messages", submitContactMessage);
 router.post("/newsletter-subscribers", submitNewsletterSubscriber);
-router.post("/student-admissions", submitStudentAdmission);
+router.post(
+  "/student-admissions",
+  (req, res, next) => {
+    studentAdmissionUpload(req, res, (err: unknown) => {
+      if (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        res.status(400).json({ success: false, message, data: null });
+        return;
+      }
+      next();
+    });
+  },
+  submitStudentAdmission
+);
 router.post(
   "/teacher-applications",
   teacherApplicationUpload,

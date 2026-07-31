@@ -9,7 +9,6 @@ const whatsappPhone_1 = require("../lib/whatsappPhone");
 const notificationService_1 = require("./notificationService");
 const emailService_1 = require("./emailService");
 const verificationTokens_1 = require("./verificationTokens");
-const noShowService_1 = require("./noShowService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const REMINDER_MINUTES = 10;
 const REMINDER_WINDOW_MIN = 9;
@@ -38,7 +37,6 @@ function portalHomeForRole(role) {
         case "super_admin":
             return `${base}/admin`;
         case "student":
-        case "parent":
         default:
             return `${base}/student`;
     }
@@ -165,9 +163,6 @@ async function runClassReminders() {
                 startTime: slot.startTime,
                 meetingLink,
             });
-            const studentTz = student.timezone?.trim() || scheduleUtils_1.ACADEMY_TIMEZONE;
-            const timeLabel = timeLabelForUser(slot.day, slot.startTime, studentTz);
-            await (0, noShowService_1.notifyParentsOnClassReminder)(student._id.toString(), classDoc.title, teacher.name, timeLabel);
             await ClassReminderLog_1.ClassReminderLog.create({
                 sessionSlot: slot._id,
                 sessionDate,

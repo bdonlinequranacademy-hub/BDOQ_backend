@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPublicSchedulePreviewHandler = exports.getPublicGalleryHandler = exports.getPublicFaqHandler = exports.getPublicTestimonialsHandler = exports.getPublicPricingHandler = exports.getPublicCourseBySlugHandler = exports.getPublicCoursesHandler = exports.getPublicProgressHighlightsHandler = exports.getPublicStatsHandler = exports.getPublicTeacherBySlugHandler = exports.getPublicTeachersHandler = void 0;
+exports.getPublicSchedulePreviewHandler = exports.getPublicSectionHeadersHandler = exports.getPublicHomeHeroHandler = exports.getPublicGalleryHandler = exports.getPublicFaqHandler = exports.getPublicTestimonialsHandler = exports.getPublicPricingHandler = exports.getPublicCourseBySlugHandler = exports.getPublicCoursesHandler = exports.getPublicProgressHighlightsHandler = exports.getPublicStatsHandler = exports.getPublicTeacherBySlugHandler = exports.getPublicTeachersHandler = void 0;
 const publicContentService_1 = require("../services/publicContentService");
 const publicMarketingService_1 = require("../services/publicMarketingService");
+const homeHeroService_1 = require("../services/homeHeroService");
+const sectionHeaderService_1 = require("../services/sectionHeaderService");
 const getPublicTeachersHandler = async (req, res) => {
     try {
         const genderParam = req.query.gender;
@@ -208,6 +210,50 @@ const getPublicGalleryHandler = async (_req, res) => {
     }
 };
 exports.getPublicGalleryHandler = getPublicGalleryHandler;
+const getPublicHomeHeroHandler = async (req, res) => {
+    try {
+        const localeParam = req.query.locale;
+        const locale = localeParam === "bn" ? "bn" : "en";
+        const slides = await (0, homeHeroService_1.listPublicHomeHeroSlides)(locale);
+        res.status(200).json({
+            success: true,
+            message: "Home hero fetched successfully",
+            data: { slides },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch home hero",
+            data: null,
+        });
+    }
+};
+exports.getPublicHomeHeroHandler = getPublicHomeHeroHandler;
+const getPublicSectionHeadersHandler = async (req, res) => {
+    try {
+        const localeParam = req.query.locale;
+        const locale = localeParam === "bn" ? "bn" : "en";
+        const keysParam = req.query.keys;
+        const keys = typeof keysParam === "string" && keysParam.trim()
+            ? keysParam.split(",").map((key) => key.trim())
+            : undefined;
+        const headers = await (0, sectionHeaderService_1.listPublicSectionHeaders)(locale, keys);
+        res.status(200).json({
+            success: true,
+            message: "Section headers fetched successfully",
+            data: { headers },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch section headers",
+            data: null,
+        });
+    }
+};
+exports.getPublicSectionHeadersHandler = getPublicSectionHeadersHandler;
 const getPublicSchedulePreviewHandler = async (_req, res) => {
     try {
         const schedule = await (0, publicMarketingService_1.getPublicWeeklySchedulePreview)();

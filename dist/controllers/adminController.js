@@ -42,7 +42,7 @@ const formatUser = (user) => ({
     id: user._id,
     name: user.name,
     email: user.email,
-    role: user.role === "parent" ? "student" : user.role,
+    role: user.role,
     isActive: user.isActive,
     children: user.children?.map((id) => id.toString()) ?? [],
     studentId: user.studentId ?? undefined,

@@ -43,6 +43,37 @@ async function createStudentAdmissionApplication(input) {
     if (!input.formData || typeof input.formData !== "object") {
         return { error: "Application data is required." };
     }
+    const feeMethod = typeof input.formData.admissionFeePaymentMethod === "string"
+        ? input.formData.admissionFeePaymentMethod.trim()
+        : "";
+    const feeReference = typeof input.formData.admissionPaymentReference === "string"
+        ? input.formData.admissionPaymentReference.trim()
+        : "";
+    const feeDate = typeof input.formData.admissionPaymentDate === "string"
+        ? input.formData.admissionPaymentDate.trim()
+        : "";
+    const feeAmount = typeof input.formData.admissionFeeAmount === "string"
+        ? input.formData.admissionFeeAmount.trim()
+        : String(input.formData.admissionFeeAmount ?? "").trim();
+    const proofUrl = typeof input.formData.admissionPaymentProofUrl === "string"
+        ? input.formData.admissionPaymentProofUrl.trim()
+        : "";
+    if (!feeMethod || !feeReference || !feeDate || !feeAmount) {
+        return {
+            error: "Admission fee payment details are required (method, amount, reference, and date).",
+        };
+    }
+    if (!proofUrl) {
+        return { error: "Payment proof screenshot is required." };
+    }
+    const allowedMethods = new Set(["bkash", "nagad", "bank", "paypal", "cash"]);
+    if (!allowedMethods.has(feeMethod)) {
+        return { error: "Invalid admission fee payment method." };
+    }
+    const parsedAmount = Number(feeAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        return { error: "Invalid admission fee amount." };
+    }
     const countryHint = typeof input.formData.country === "string"
         ? input.formData.country
         : typeof input.formData.studentCountry === "string"
@@ -67,6 +98,8 @@ async function createStudentAdmissionApplication(input) {
             `Name: ${fullName}`,
             `Email: ${email}`,
             `WhatsApp: ${normalizedWa.whatsapp}`,
+            `Admission fee: ${feeAmount} ${String(input.formData.admissionFeeCurrency ?? "bdt").toUpperCase()} via ${feeMethod}`,
+            `Reference: ${feeReference}`,
             `Submitted: ${application.createdAt.toISOString()}`,
         ].join("\n");
         await (0, emailService_1.sendEmail)({

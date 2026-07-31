@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.patchAdminStudentAdmissionStatus = exports.listAdminStudentAdmissions = exports.submitStudentAdmission = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
+const cloudinaryUploadService_1 = require("../services/cloudinaryUploadService");
 const studentAdmissionService_1 = require("../services/studentAdmissionService");
 function parseLocale(value) {
     if (value === "en" || value === "bn")
@@ -20,19 +21,61 @@ function parseStatus(value) {
     }
     return undefined;
 }
+function parseFormData(raw) {
+    if (typeof raw === "string") {
+        try {
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+                ? parsed
+                : null;
+        }
+        catch {
+            return null;
+        }
+    }
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        return raw;
+    }
+    return null;
+}
 const submitStudentAdmission = async (req, res) => {
     try {
-        const body = req.body ?? {};
+        const file = req.file;
+        const body = parseFormData(req.body.data ?? req.body) ?? {};
         const fullName = typeof body.fullName === "string"
             ? body.fullName
             : typeof body.name === "string"
                 ? body.name
                 : "";
+        let proofUpload;
+        if (file) {
+            try {
+                proofUpload = await (0, cloudinaryUploadService_1.uploadApplicationFile)(file.buffer, "student-admissions/payment-proofs", file.mimetype || "image/jpeg", "image");
+            }
+            catch (uploadErr) {
+                const message = uploadErr instanceof Error &&
+                    uploadErr.message === "CLOUDINARY_NOT_CONFIGURED"
+                    ? "File upload is not configured on the server"
+                    : "Failed to upload payment proof";
+                res.status(503).json({ success: false, message, data: null });
+                return;
+            }
+        }
+        const formData = {
+            ...body,
+            ...(proofUpload
+                ? {
+                    admissionPaymentProofUrl: proofUpload.url,
+                    admissionPaymentProofPublicId: proofUpload.publicId,
+                }
+                : {}),
+        };
+        delete formData.admissionPaymentProofFile;
         const result = await (0, studentAdmissionService_1.createStudentAdmissionApplication)({
             fullName,
-            email: body.email,
-            whatsapp: body.whatsapp,
-            formData: body,
+            email: typeof body.email === "string" ? body.email : "",
+            whatsapp: typeof body.whatsapp === "string" ? body.whatsapp : "",
+            formData,
             locale: parseLocale(body.locale),
         });
         if ("error" in result) {
@@ -42,7 +85,7 @@ const submitStudentAdmission = async (req, res) => {
         const { application } = result;
         res.status(201).json({
             success: true,
-            message: "Admission application received. We will contact you within 24–48 hours.",
+            message: "Admission application received. We will verify your payment and contact you within 24–48 hours.",
             data: { id: application._id, status: application.status },
         });
     }

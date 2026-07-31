@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import type { StudentAdmissionStatus } from "../models/StudentAdmissionApplication";
+import { uploadApplicationFile } from "../services/cloudinaryUploadService";
 import {
   createStudentAdmissionApplication,
   listStudentAdmissionApplications,
@@ -24,12 +25,33 @@ function parseStatus(value: unknown): StudentAdmissionStatus | undefined {
   return undefined;
 }
 
+function parseFormData(raw: unknown): Record<string, unknown> | null {
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+
+  return null;
+}
+
 export const submitStudentAdmission = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const body = req.body ?? {};
+    const file = req.file;
+    const body = parseFormData(req.body.data ?? req.body) ?? {};
+
     const fullName =
       typeof body.fullName === "string"
         ? body.fullName
@@ -37,11 +59,44 @@ export const submitStudentAdmission = async (
           ? body.name
           : "";
 
+    let proofUpload: { url: string; publicId: string } | undefined;
+
+    if (file) {
+      try {
+        proofUpload = await uploadApplicationFile(
+          file.buffer,
+          "student-admissions/payment-proofs",
+          file.mimetype || "image/jpeg",
+          "image"
+        );
+      } catch (uploadErr) {
+        const message =
+          uploadErr instanceof Error &&
+          uploadErr.message === "CLOUDINARY_NOT_CONFIGURED"
+            ? "File upload is not configured on the server"
+            : "Failed to upload payment proof";
+        res.status(503).json({ success: false, message, data: null });
+        return;
+      }
+    }
+
+    const formData: Record<string, unknown> = {
+      ...body,
+      ...(proofUpload
+        ? {
+            admissionPaymentProofUrl: proofUpload.url,
+            admissionPaymentProofPublicId: proofUpload.publicId,
+          }
+        : {}),
+    };
+
+    delete formData.admissionPaymentProofFile;
+
     const result = await createStudentAdmissionApplication({
       fullName,
-      email: body.email,
-      whatsapp: body.whatsapp,
-      formData: body,
+      email: typeof body.email === "string" ? body.email : "",
+      whatsapp: typeof body.whatsapp === "string" ? body.whatsapp : "",
+      formData,
       locale: parseLocale(body.locale),
     });
 
@@ -54,7 +109,8 @@ export const submitStudentAdmission = async (
 
     res.status(201).json({
       success: true,
-      message: "Admission application received. We will contact you within 24–48 hours.",
+      message:
+        "Admission application received. We will verify your payment and contact you within 24–48 hours.",
       data: { id: application._id, status: application.status },
     });
   } catch (err) {

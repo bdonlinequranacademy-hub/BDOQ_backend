@@ -9,6 +9,7 @@ const trialBookingController_1 = require("../controllers/trialBookingController"
 const certificateController_1 = require("../controllers/certificateController");
 const liveMonitorController_1 = require("../controllers/liveMonitorController");
 const publicContentController_1 = require("../controllers/publicContentController");
+const uploadStudentAdmission_1 = require("../middleware/uploadStudentAdmission");
 const uploadTeacherApplication_1 = require("../middleware/uploadTeacherApplication");
 const router = (0, express_1.Router)();
 /** Public marketing endpoints (no auth). */
@@ -20,6 +21,8 @@ router.get("/pricing", publicContentController_1.getPublicPricingHandler);
 router.get("/testimonials", publicContentController_1.getPublicTestimonialsHandler);
 router.get("/faq", publicContentController_1.getPublicFaqHandler);
 router.get("/gallery", publicContentController_1.getPublicGalleryHandler);
+router.get("/home-hero", publicContentController_1.getPublicHomeHeroHandler);
+router.get("/section-headers", publicContentController_1.getPublicSectionHeadersHandler);
 router.get("/schedule-preview", publicContentController_1.getPublicSchedulePreviewHandler);
 router.get("/stats", publicContentController_1.getPublicStatsHandler);
 router.get("/progress-highlights", publicContentController_1.getPublicProgressHighlightsHandler);
@@ -27,7 +30,7 @@ router.get("/live-dashboard", liveMonitorController_1.getPublicLiveDashboardHand
 router.post("/trial-bookings", trialBookingController_1.submitTrialBooking);
 router.post("/contact-messages", contactMessageController_1.submitContactMessage);
 router.post("/newsletter-subscribers", newsletterSubscriberController_1.submitNewsletterSubscriber);
-router.post("/student-admissions", studentAdmissionController_1.submitStudentAdmission);
+router.post("/student-admissions", uploadStudentAdmission_1.studentAdmissionUpload, studentAdmissionController_1.submitStudentAdmission);
 router.post("/teacher-applications", uploadTeacherApplication_1.teacherApplicationUpload, teacherApplicationController_1.submitTeacherApplication);
 router.get("/certificates/verify/:certificateId", certificateController_1.verifyPublicCertificate);
 exports.default = router;

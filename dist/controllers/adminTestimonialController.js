@@ -120,13 +120,17 @@ const adminCreateTestimonial = async (req, res) => {
             });
             return;
         }
-        if (parsedMediaType === "video" && typeof youtubeId !== "string") {
-            res.status(400).json({
-                success: false,
-                message: "Video reviews require a YouTube ID",
-                data: null,
-            });
-            return;
+        if (parsedMediaType === "video") {
+            const hasYoutube = typeof youtubeId === "string" && youtubeId.trim().length >= 11;
+            const hasMediaUrl = typeof mediaUrl === "string" && mediaUrl.trim().length > 0;
+            if (!hasYoutube && !hasMediaUrl) {
+                res.status(400).json({
+                    success: false,
+                    message: "Video reviews require a YouTube ID or video URL",
+                    data: null,
+                });
+                return;
+            }
         }
         const doc = await Testimonial_1.Testimonial.create({
             externalId: typeof externalId === "string" && externalId.trim()
@@ -139,10 +143,13 @@ const adminCreateTestimonial = async (req, res) => {
             rating: typeof rating === "number" && rating >= 1 && rating <= 5 ? rating : 5,
             image: typeof image === "string" ? image.trim() : undefined,
             mediaType: parsedMediaType,
-            mediaUrl: parsedMediaType === "audio" && typeof mediaUrl === "string"
+            mediaUrl: (parsedMediaType === "audio" || parsedMediaType === "video") &&
+                typeof mediaUrl === "string"
                 ? mediaUrl.trim()
                 : undefined,
-            youtubeId: parsedMediaType === "video" && typeof youtubeId === "string"
+            youtubeId: parsedMediaType === "video" &&
+                typeof youtubeId === "string" &&
+                youtubeId.trim()
                 ? youtubeId.trim()
                 : undefined,
             sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
@@ -222,9 +229,6 @@ const adminUpdateTestimonial = async (req, res) => {
         }
         else if (doc.mediaType === "audio") {
             doc.youtubeId = undefined;
-        }
-        else if (doc.mediaType === "video") {
-            doc.mediaUrl = undefined;
         }
         await doc.save();
         res.status(200).json({

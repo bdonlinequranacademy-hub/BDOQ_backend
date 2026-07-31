@@ -491,6 +491,22 @@ const adminUploadResourceFile = async (req, res) => {
             folder = "gallery";
             resourceType = "image";
         }
+        else if (purpose === "hero" && file.mimetype.startsWith("image/")) {
+            folder = "hero";
+            resourceType = "image";
+        }
+        else if (purpose === "testimonial" && file.mimetype.startsWith("video/")) {
+            folder = "testimonials";
+            resourceType = "video";
+        }
+        else if (purpose === "testimonial" && file.mimetype.startsWith("audio/")) {
+            folder = "testimonials";
+            resourceType = "video";
+        }
+        else if (purpose === "testimonial" && file.mimetype.startsWith("image/")) {
+            folder = "testimonials";
+            resourceType = "image";
+        }
         else if (file.mimetype.startsWith("audio/")) {
             folder = "audio";
             resourceType = "video";
@@ -523,9 +539,12 @@ const adminUploadResourceFile = async (req, res) => {
             return;
         }
         if (message === "FILE_TOO_LARGE") {
+            const isVideo = req.file?.mimetype.startsWith("video/");
             res.status(400).json({
                 success: false,
-                message: "File exceeds 15 MB limit",
+                message: isVideo
+                    ? "File exceeds 100 MB limit"
+                    : "File exceeds 15 MB limit",
                 data: null,
             });
             return;

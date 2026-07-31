@@ -55,7 +55,7 @@ const userSchema = new mongoose_1.Schema({
     },
     role: {
         type: String,
-        enum: ["student", "teacher", "admin", "super_admin", "parent"],
+        enum: ["student", "teacher", "admin", "super_admin"],
         default: "student",
     },
     isActive: {
@@ -64,7 +64,7 @@ const userSchema = new mongoose_1.Schema({
     },
     authProvider: {
         type: String,
-        enum: ["local", "google", "facebook"],
+        enum: ["local", "google"],
         default: "local",
     },
     providerId: {

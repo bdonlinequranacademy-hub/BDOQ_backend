@@ -1,11 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runNoShowChecks = runNoShowChecks;
-exports.notifyParentsOnClassReminder = notifyParentsOnClassReminder;
 const Attendance_1 = require("../models/Attendance");
 const SessionAlertLog_1 = require("../models/SessionAlertLog");
 const SessionSlot_1 = require("../models/SessionSlot");
-const User_1 = require("../models/User");
 const notificationService_1 = require("./notificationService");
 const sessionJoinService_1 = require("./sessionJoinService");
 const socketServer_1 = require("../realtime/socketServer");
@@ -43,21 +41,6 @@ async function markAlertSent(sessionSlotId, sessionDate, alertType) {
     }).catch(() => {
         /* duplicate race — ignore */
     });
-}
-async function notifyParentsOfStudent(studentId, title, message) {
-    const parents = await User_1.User.find({
-        role: "parent",
-        isActive: true,
-        children: studentId,
-    }).select("_id");
-    if (parents.length === 0)
-        return;
-    await (0, notificationService_1.createUserNotifications)(parents.map((parent) => ({
-        userId: parent._id,
-        title,
-        message,
-        type: "class",
-    })));
 }
 async function autoMarkAbsent(input) {
     const attendanceDate = new Date(`${input.sessionDate}T00:00:00.000Z`);
@@ -128,15 +111,6 @@ async function runNoShowChecks() {
                 message: `Your class "${classDoc.title}" with ${teacher.name} is in progress. Please join now.`,
                 type: "class",
             });
-            await notifyParentsOfStudent(student._id.toString(), "Child's class in progress", `${student.name}'s class "${classDoc.title}" with ${teacher.name} started at ${timeLabel} but they have not joined yet.`);
-            alertsSent += 1;
-        }
-        if (phase === "live" &&
-            minutesSinceStart >= 1 &&
-            minutesSinceStart < 2 &&
-            !(await alertAlreadySent(slotId, sessionDate, "class_live_parent"))) {
-            await markAlertSent(slotId, sessionDate, "class_live_parent");
-            await notifyParentsOfStudent(student._id.toString(), "Class is live now", `${student.name}'s class "${classDoc.title}" with ${teacher.name} is live now (${timeLabel}).`);
             alertsSent += 1;
         }
         if (phase === "completed" &&
@@ -160,7 +134,4 @@ async function runNoShowChecks() {
         console.log(`[no-show] sent ${alertsSent} alert(s)`);
     }
     return alertsSent;
-}
-async function notifyParentsOnClassReminder(studentId, classTitle, teacherName, timeLabel) {
-    await notifyParentsOfStudent(studentId, "Upcoming class reminder", `${classTitle} with ${teacherName} starts in 10 minutes (${timeLabel}).`);
 }

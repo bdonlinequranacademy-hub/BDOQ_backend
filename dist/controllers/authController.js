@@ -10,12 +10,12 @@ const User_1 = require("../models/User");
 const emailService_1 = require("../services/emailService");
 const verificationTokens_1 = require("../services/verificationTokens");
 const studentId_1 = require("../utils/studentId");
-const VALID_ROLES = ["student", "teacher", "admin", "parent"];
+const VALID_ROLES = ["student", "teacher", "admin"];
 const formatUser = (user) => ({
     id: user._id,
     name: user.name,
     email: user.email,
-    role: user.role === "parent" ? "student" : user.role,
+    role: user.role,
     isActive: user.isActive,
     emailVerified: user.emailVerified,
     studentId: user.studentId ?? undefined,

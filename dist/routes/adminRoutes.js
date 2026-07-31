@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const multer_1 = __importDefault(require("multer"));
 const auth_1 = require("../middleware/auth");
 const adminController_1 = require("../controllers/adminController");
 const adminUserProfileController_1 = require("../controllers/adminUserProfileController");
@@ -23,6 +27,8 @@ const adminPricingController_1 = require("../controllers/adminPricingController"
 const adminCourseController_1 = require("../controllers/adminCourseController");
 const adminTeacherProfileController_1 = require("../controllers/adminTeacherProfileController");
 const adminFaqController_1 = require("../controllers/adminFaqController");
+const adminHomeHeroController_1 = require("../controllers/adminHomeHeroController");
+const adminSectionHeaderController_1 = require("../controllers/adminSectionHeaderController");
 const adminTestimonialController_1 = require("../controllers/adminTestimonialController");
 const whatsappQueueController_1 = require("../controllers/whatsappQueueController");
 const liveMonitorController_1 = require("../controllers/liveMonitorController");
@@ -88,7 +94,23 @@ router.post("/blog/posts", adminBlogController_1.adminCreateBlogPost);
 router.put("/blog/posts/:id", adminBlogController_1.adminUpdateBlogPost);
 router.delete("/blog/posts/:id", adminBlogController_1.adminDeleteBlogPost);
 /** Resources CMS — ebooks, audio, videos for public site */
-router.post("/resources/upload", uploadResourceFile_1.uploadResourceFile, adminResourceController_1.adminUploadResourceFile);
+router.post("/resources/upload", (req, res, next) => {
+    (0, uploadResourceFile_1.uploadResourceFile)(req, res, (err) => {
+        if (err) {
+            const code = err instanceof multer_1.default.MulterError ? err.code : "";
+            let message = err instanceof Error ? err.message : "Upload failed";
+            if (code === "LIMIT_FILE_SIZE") {
+                message = "File is too large. Videos up to 100 MB, other files up to 15 MB.";
+            }
+            else if (message === "INVALID_FILE_TYPE") {
+                message = "This file type is not supported.";
+            }
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, adminResourceController_1.adminUploadResourceFile);
 router.get("/resources", adminResourceController_1.adminGetResources);
 router.get("/resources/:id", adminResourceController_1.adminGetResourceById);
 router.post("/resources", adminResourceController_1.adminCreateResource);
@@ -130,6 +152,13 @@ router.get("/faq/:id", adminFaqController_1.adminGetFaqItemById);
 router.post("/faq", adminFaqController_1.adminCreateFaqItem);
 router.put("/faq/:id", adminFaqController_1.adminUpdateFaqItem);
 router.delete("/faq/:id", adminFaqController_1.adminDeleteFaqItem);
+/** Home hero carousel for public website */
+router.get("/home-hero", adminHomeHeroController_1.adminGetHomeHeroSlides);
+router.put("/home-hero", adminHomeHeroController_1.adminSaveHomeHeroSlides);
+/** Section headers (eyebrow, title, subtitle) for home & pages */
+router.get("/section-headers", adminSectionHeaderController_1.adminGetSectionHeaders);
+router.put("/section-headers", adminSectionHeaderController_1.adminSaveSectionHeaders);
+router.put("/section-headers/item", adminSectionHeaderController_1.adminUpsertSectionHeader);
 router.get("/certificates", certificateController_1.listAdminCertificates);
 router.post("/certificates/preview", certificateController_1.previewAdminCertificate);
 router.post("/certificates", certificateController_1.createAdminCertificate);
