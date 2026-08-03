@@ -12,8 +12,8 @@ import {
   hashToken,
   verificationExpiry,
   resetExpiry,
-  portalBaseUrl,
 } from "../services/verificationTokens";
+import { resolveAuthBaseUrl, getPortalBaseUrl } from "../lib/email/resolveAuthOrigin";
 import { generateStudentId } from "../utils/studentId";
 
 const VALID_ROLES: UserRole[] = ["student", "teacher", "admin"];
@@ -53,8 +53,12 @@ async function assignVerificationToken(user: IUser): Promise<string> {
   return raw;
 }
 
-async function sendUserVerificationEmail(user: IUser, rawToken: string) {
-  const verifyUrl = `${portalBaseUrl()}/verify-email?token=${rawToken}`;
+async function sendUserVerificationEmail(
+  user: IUser,
+  rawToken: string,
+  baseUrl: string
+) {
+  const verifyUrl = `${baseUrl}/verify-email?token=${rawToken}`;
   await sendVerificationEmail(user.email, user.name, verifyUrl);
 }
 
@@ -131,7 +135,8 @@ export const register = async (
 
     if (!skipVerification) {
       const raw = await assignVerificationToken(user);
-      await sendUserVerificationEmail(user, raw);
+      const authBase = resolveAuthBaseUrl(req, "portal");
+      await sendUserVerificationEmail(user, raw, authBase);
 
       res.status(201).json({
         success: true,
@@ -258,7 +263,8 @@ export const resendVerificationEmail = async (
 
     if (user && user.isActive && user.emailVerified === false) {
       const raw = await assignVerificationToken(user);
-      await sendUserVerificationEmail(user, raw);
+      const authBase = resolveAuthBaseUrl(req, "portal");
+      await sendUserVerificationEmail(user, raw, authBase);
     }
 
     res.status(200).json({
@@ -304,7 +310,8 @@ export const forgotPassword = async (
       user.passwordResetExpiry = resetExpiry();
       await user.save();
 
-      const resetUrl = `${portalBaseUrl()}/reset-password?token=${raw}`;
+      const authBase = resolveAuthBaseUrl(req, "portal");
+      const resetUrl = `${authBase}/reset-password?token=${raw}`;
       await sendPasswordResetEmail(user.email, user.name, resetUrl);
     }
 
@@ -388,26 +395,26 @@ export const oauthSuccess = (req: Request, res: Response): void => {
     const user = req.user as IUser | undefined;
 
     if (!user) {
-      res.redirect(`${portalBaseUrl()}/login?error=oauth`);
+      res.redirect(`${getPortalBaseUrl()}/login?error=oauth`);
       return;
     }
 
     if (!user.isActive) {
-      res.redirect(`${portalBaseUrl()}/login?error=deactivated`);
+      res.redirect(`${getPortalBaseUrl()}/login?error=deactivated`);
       return;
     }
 
     if (!process.env.JWT_SECRET) {
-      res.redirect(`${portalBaseUrl()}/login?error=oauth`);
+      res.redirect(`${getPortalBaseUrl()}/login?error=oauth`);
       return;
     }
 
     const token = signToken(user._id.toString());
-    const callbackUrl = new URL("/auth/callback", portalBaseUrl());
+    const callbackUrl = new URL("/auth/callback", getPortalBaseUrl());
     callbackUrl.hash = `token=${encodeURIComponent(token)}`;
     res.redirect(callbackUrl.toString());
   } catch {
-    res.redirect(`${portalBaseUrl()}/login?error=oauth`);
+    res.redirect(`${getPortalBaseUrl()}/login?error=oauth`);
   }
 };
 

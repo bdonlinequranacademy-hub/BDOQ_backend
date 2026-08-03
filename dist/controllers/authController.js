@@ -9,6 +9,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../models/User");
 const emailService_1 = require("../services/emailService");
 const verificationTokens_1 = require("../services/verificationTokens");
+const resolveAuthOrigin_1 = require("../lib/email/resolveAuthOrigin");
 const studentId_1 = require("../utils/studentId");
 const VALID_ROLES = ["student", "teacher", "admin"];
 const formatUser = (user) => ({
@@ -43,8 +44,8 @@ async function assignVerificationToken(user) {
     await user.save();
     return raw;
 }
-async function sendUserVerificationEmail(user, rawToken) {
-    const verifyUrl = `${(0, verificationTokens_1.portalBaseUrl)()}/verify-email?token=${rawToken}`;
+async function sendUserVerificationEmail(user, rawToken, baseUrl) {
+    const verifyUrl = `${baseUrl}/verify-email?token=${rawToken}`;
     await (0, emailService_1.sendVerificationEmail)(user.email, user.name, verifyUrl);
 }
 const register = async (req, res) => {
@@ -107,7 +108,8 @@ const register = async (req, res) => {
         });
         if (!skipVerification) {
             const raw = await assignVerificationToken(user);
-            await sendUserVerificationEmail(user, raw);
+            const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
+            await sendUserVerificationEmail(user, raw, authBase);
             res.status(201).json({
                 success: true,
                 message: "Please check your email to verify your account",
@@ -215,7 +217,8 @@ const resendVerificationEmail = async (req, res) => {
         const user = await User_1.User.findOne({ email: email.toLowerCase() });
         if (user && user.isActive && user.emailVerified === false) {
             const raw = await assignVerificationToken(user);
-            await sendUserVerificationEmail(user, raw);
+            const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
+            await sendUserVerificationEmail(user, raw, authBase);
         }
         res.status(200).json({
             success: true,
@@ -253,7 +256,8 @@ const forgotPassword = async (req, res) => {
             user.passwordResetToken = (0, verificationTokens_1.hashToken)(raw);
             user.passwordResetExpiry = (0, verificationTokens_1.resetExpiry)();
             await user.save();
-            const resetUrl = `${(0, verificationTokens_1.portalBaseUrl)()}/reset-password?token=${raw}`;
+            const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
+            const resetUrl = `${authBase}/reset-password?token=${raw}`;
             await (0, emailService_1.sendPasswordResetEmail)(user.email, user.name, resetUrl);
         }
         res.status(200).json({
@@ -327,24 +331,24 @@ const oauthSuccess = (req, res) => {
     try {
         const user = req.user;
         if (!user) {
-            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=oauth`);
+            res.redirect(`${(0, resolveAuthOrigin_1.getPortalBaseUrl)()}/login?error=oauth`);
             return;
         }
         if (!user.isActive) {
-            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=deactivated`);
+            res.redirect(`${(0, resolveAuthOrigin_1.getPortalBaseUrl)()}/login?error=deactivated`);
             return;
         }
         if (!process.env.JWT_SECRET) {
-            res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=oauth`);
+            res.redirect(`${(0, resolveAuthOrigin_1.getPortalBaseUrl)()}/login?error=oauth`);
             return;
         }
         const token = signToken(user._id.toString());
-        const callbackUrl = new URL("/auth/callback", (0, verificationTokens_1.portalBaseUrl)());
+        const callbackUrl = new URL("/auth/callback", (0, resolveAuthOrigin_1.getPortalBaseUrl)());
         callbackUrl.hash = `token=${encodeURIComponent(token)}`;
         res.redirect(callbackUrl.toString());
     }
     catch {
-        res.redirect(`${(0, verificationTokens_1.portalBaseUrl)()}/login?error=oauth`);
+        res.redirect(`${(0, resolveAuthOrigin_1.getPortalBaseUrl)()}/login?error=oauth`);
     }
 };
 exports.oauthSuccess = oauthSuccess;

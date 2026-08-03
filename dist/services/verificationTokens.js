@@ -1,29 +1,11 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateRawToken = generateRawToken;
-exports.hashToken = hashToken;
-exports.verificationExpiry = verificationExpiry;
-exports.resetExpiry = resetExpiry;
-exports.portalBaseUrl = portalBaseUrl;
-const crypto_1 = __importDefault(require("crypto"));
-const TOKEN_BYTES = 32;
-const VERIFICATION_HOURS = 24;
-const RESET_HOURS = 1;
-function generateRawToken() {
-    return crypto_1.default.randomBytes(TOKEN_BYTES).toString("hex");
-}
-function hashToken(raw) {
-    return crypto_1.default.createHash("sha256").update(raw).digest("hex");
-}
-function verificationExpiry() {
-    return new Date(Date.now() + VERIFICATION_HOURS * 60 * 60 * 1000);
-}
-function resetExpiry() {
-    return new Date(Date.now() + RESET_HOURS * 60 * 60 * 1000);
-}
-function portalBaseUrl() {
-    return (process.env.CLIENT_URL || "http://localhost:5174").replace(/\/$/, "");
-}
+exports.portalBaseUrl = exports.getPortalBaseUrl = exports.resetExpiry = exports.verificationExpiry = exports.hashToken = exports.generateRawToken = void 0;
+var tokenUtils_1 = require("./tokenUtils");
+Object.defineProperty(exports, "generateRawToken", { enumerable: true, get: function () { return tokenUtils_1.generateRawToken; } });
+Object.defineProperty(exports, "hashToken", { enumerable: true, get: function () { return tokenUtils_1.hashToken; } });
+Object.defineProperty(exports, "verificationExpiry", { enumerable: true, get: function () { return tokenUtils_1.verificationExpiry; } });
+Object.defineProperty(exports, "resetExpiry", { enumerable: true, get: function () { return tokenUtils_1.resetExpiry; } });
+var resolveAuthOrigin_1 = require("../lib/email/resolveAuthOrigin");
+Object.defineProperty(exports, "getPortalBaseUrl", { enumerable: true, get: function () { return resolveAuthOrigin_1.getPortalBaseUrl; } });
+Object.defineProperty(exports, "portalBaseUrl", { enumerable: true, get: function () { return resolveAuthOrigin_1.portalBaseUrl; } });

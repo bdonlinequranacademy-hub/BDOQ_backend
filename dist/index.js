@@ -100,7 +100,7 @@ const startServer = async () => {
     await (0, roleMigrationService_1.unsetStudentIdForNonStudents)().catch((err) => {
         console.warn("Non-student studentId cleanup skipped:", err);
     });
-    await (0, emailService_1.verifySmtpConnection)();
+    await (0, emailService_1.verifyEmailConnection)();
     if (process.env.SCHEDULE_RESYNC_ON_BOOT === "true") {
         await (0, scheduleService_1.resyncAllClasses)().catch((err) => {
             console.warn("Schedule resync skipped:", err);

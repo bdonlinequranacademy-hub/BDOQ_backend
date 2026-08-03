@@ -9,7 +9,7 @@ import "./config/passport";
 import connectDB from "./config/db";
 import { createCorsOptions } from "./config/cors";
 import { validateEnv } from "./config/env";
-import { verifySmtpConnection } from "./services/emailService";
+import { verifyEmailConnection } from "./services/emailService";
 import {
   migrateScheduleRepeatField,
   migrateSessionSlotIndexes,
@@ -71,7 +71,7 @@ const startServer = async (): Promise<void> => {
   await unsetStudentIdForNonStudents().catch((err) => {
     console.warn("Non-student studentId cleanup skipped:", err);
   });
-  await verifySmtpConnection();
+  await verifyEmailConnection();
   if (process.env.SCHEDULE_RESYNC_ON_BOOT === "true") {
     await resyncAllClasses().catch((err) => {
       console.warn("Schedule resync skipped:", err);

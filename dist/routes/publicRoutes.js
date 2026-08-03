@@ -30,7 +30,16 @@ router.get("/live-dashboard", liveMonitorController_1.getPublicLiveDashboardHand
 router.post("/trial-bookings", trialBookingController_1.submitTrialBooking);
 router.post("/contact-messages", contactMessageController_1.submitContactMessage);
 router.post("/newsletter-subscribers", newsletterSubscriberController_1.submitNewsletterSubscriber);
-router.post("/student-admissions", uploadStudentAdmission_1.studentAdmissionUpload, studentAdmissionController_1.submitStudentAdmission);
+router.post("/student-admissions", (req, res, next) => {
+    (0, uploadStudentAdmission_1.studentAdmissionUpload)(req, res, (err) => {
+        if (err) {
+            const message = err instanceof Error ? err.message : "Upload failed";
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, studentAdmissionController_1.submitStudentAdmission);
 router.post("/teacher-applications", uploadTeacherApplication_1.teacherApplicationUpload, teacherApplicationController_1.submitTeacherApplication);
 router.get("/certificates/verify/:certificateId", certificateController_1.verifyPublicCertificate);
 exports.default = router;

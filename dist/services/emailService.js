@@ -1,71 +1,17 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.isEmailConfigured = isEmailConfigured;
 exports.isSmtpConfigured = isSmtpConfigured;
 exports.isEmailVerificationEnforced = isEmailVerificationEnforced;
+exports.emailSetupHint = emailSetupHint;
+exports.verifyEmailConnection = verifyEmailConnection;
 exports.verifySmtpConnection = verifySmtpConnection;
 exports.sendEmail = sendEmail;
 exports.sendVerificationEmail = sendVerificationEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
-const nodemailer_1 = __importDefault(require("nodemailer"));
-const smtp_1 = require("../config/smtp");
-const ACADEMY_NAME = "BD Online Quran Academy";
-let cachedTransporter;
-function getTransporter() {
-    if (cachedTransporter !== undefined) {
-        return cachedTransporter;
-    }
-    const config = (0, smtp_1.resolveSmtpConfig)();
-    if (!config) {
-        cachedTransporter = null;
-        return null;
-    }
-    cachedTransporter = nodemailer_1.default.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.secure,
-        auth: {
-            user: config.user,
-            pass: config.pass,
-        },
-    });
-    return cachedTransporter;
-}
-function isSmtpConfigured() {
-    return getTransporter() !== null;
-}
-function isEmailVerificationEnforced() {
-    return process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
-}
-/** Call on server start to log SMTP readiness. */
-async function verifySmtpConnection() {
-    const transporter = getTransporter();
-    if (!transporter) {
-        console.warn("[email] SMTP not configured — verification links will print to the console in development.\n" +
-            (0, smtp_1.smtpSetupHint)());
-        return false;
-    }
-    try {
-        await transporter.verify();
-        const config = (0, smtp_1.resolveSmtpConfig)();
-        console.log(`[email] SMTP ready (${config?.provider} → ${config?.host}:${config?.port})`);
-        return true;
-    }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        const hasKey = Boolean(process.env.RESEND_API_KEY?.trim() || process.env.SMTP_PASS?.trim());
-        if (hasKey && /535|invalid|unauthorized|401/i.test(msg)) {
-            console.warn("[email] Resend/SMTP key rejected — emails disabled. Create a new API key at https://resend.com/api-keys, then npm run test-email. Dev: links still print to console.");
-        }
-        else {
-            console.warn(`[email] SMTP connection failed: ${msg}`);
-            console.warn((0, smtp_1.smtpSetupHint)());
-        }
-        return false;
-    }
-}
+const emailConfig_1 = require("../lib/email/emailConfig");
+const brandEmailTemplate_1 = require("../lib/email/brandEmailTemplate");
+const resendClient_1 = require("../lib/email/resendClient");
 function shouldLogEmailToConsole() {
     return (process.env.NODE_ENV !== "production" ||
         process.env.SMTP_DEV_LOG === "true");
@@ -80,65 +26,103 @@ function logEmailToConsole(reason, options) {
 function logSendFailure(err, from) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.warn(`[email] Send failed: ${msg}`);
-    if (/domain is not verified|550/i.test(msg)) {
-        console.warn(`[email] Resend rejected "${from}". Verify the domain at https://resend.com/domains ` +
-            "or set FROM_EMAIL=onboarding@resend.dev for testing.");
+    if (/domain is not verified|not authorized|403|422/i.test(msg)) {
+        console.warn(`[email] Resend rejected "${from}". Verify bdonlinequranacademy.com at https://resend.com/domains`);
     }
 }
+function isEmailConfigured() {
+    return (0, resendClient_1.isResendConfigured)();
+}
+/** @deprecated Prefer isEmailConfigured — kept for scripts */
+function isSmtpConfigured() {
+    return isEmailConfigured();
+}
+function isEmailVerificationEnforced() {
+    return process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+}
+function emailSetupHint() {
+    return [
+        "Resend SDK email setup:",
+        "RESEND_API_KEY=re_... (from https://resend.com/api-keys)",
+        "FROM_EMAIL=no-reply@bdonlinequranacademy.com (domain must be verified on Resend)",
+        "CLIENT_URL=https://admin.bdonlinequranacademy.com",
+        "PUBLIC_SITE_URL=https://www.bdonlinequranacademy.com",
+    ].join("\n");
+}
+/** Call on server start to verify Resend readiness. */
+async function verifyEmailConnection() {
+    if (!(0, resendClient_1.isResendConfigured)()) {
+        console.warn("[email] RESEND_API_KEY not configured — auth links will print to the console in development.\n" +
+            emailSetupHint());
+        return false;
+    }
+    console.log(`[email] Resend SDK ready (from: ${(0, emailConfig_1.resolveFromAddress)()})`);
+    return true;
+}
+/** @deprecated Use verifyEmailConnection */
+async function verifySmtpConnection() {
+    return verifyEmailConnection();
+}
 async function sendEmail(options) {
-    const config = (0, smtp_1.resolveSmtpConfig)();
-    const transporter = getTransporter();
+    const client = (0, resendClient_1.getResendClient)();
+    const from = (0, emailConfig_1.resolveFromAddress)();
     const logInDev = shouldLogEmailToConsole();
-    if (!transporter || !config) {
+    if (!client) {
         if (logInDev) {
-            logEmailToConsole("SMTP not configured", options);
+            logEmailToConsole("Resend not configured", options);
         }
         return { sent: false, devLogged: logInDev };
     }
     try {
-        await transporter.sendMail({
-            from: `${ACADEMY_NAME} <${config.from}>`,
+        const { error } = await client.emails.send({
+            from,
             to: options.to,
             subject: options.subject,
             text: options.text,
             html: options.html,
         });
+        if (error) {
+            throw new Error(error.message);
+        }
         return { sent: true, devLogged: false };
     }
     catch (err) {
-        logSendFailure(err, config.from);
+        logSendFailure(err, from);
         if (logInDev) {
-            logEmailToConsole("SMTP send failed — dev fallback", options);
+            logEmailToConsole("Resend send failed — dev fallback", options);
         }
         return { sent: false, devLogged: logInDev };
     }
 }
-async function sendVerificationEmail(email, name, verifyUrl) {
+async function sendVerificationEmail(email, name, verificationLink) {
+    const content = {
+        title: "Verify your email address",
+        greeting: `Assalamu alaikum ${name},`,
+        messageBody: `Welcome to ${emailConfig_1.EMAIL_BRAND.name}. Please confirm your email address to activate your account and access your learning portal.\n\nThis link expires in 24 hours.`,
+        buttonText: "Verify my email",
+        buttonLink: verificationLink,
+        preheader: "Confirm your BDOQ Academy account",
+    };
     await sendEmail({
         to: email,
-        subject: `Verify your ${ACADEMY_NAME} account`,
-        text: `Hi ${name},\n\nPlease verify your email by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n— ${ACADEMY_NAME}`,
-        html: `
-      <p>Hi ${name},</p>
-      <p>Please verify your email to access your learning portal:</p>
-      <p><a href="${verifyUrl}" style="color:#03214F;font-weight:bold">Verify my email</a></p>
-      <p>Or copy this link: ${verifyUrl}</p>
-      <p>This link expires in 24 hours.</p>
-      <p>— ${ACADEMY_NAME}</p>
-    `,
+        subject: `Verify your ${emailConfig_1.EMAIL_BRAND.name} account`,
+        text: (0, brandEmailTemplate_1.buildBrandEmailText)(content),
+        html: (0, brandEmailTemplate_1.buildBrandEmailHtml)(content),
     });
 }
-async function sendPasswordResetEmail(email, name, resetUrl) {
+async function sendPasswordResetEmail(email, name, resetLink) {
+    const content = {
+        title: "Reset your password",
+        greeting: `Assalamu alaikum ${name},`,
+        messageBody: `We received a request to reset your ${emailConfig_1.EMAIL_BRAND.name} password. Click the button below to choose a new password.\n\nThis link expires in 1 hour. If you did not request a reset, you can safely ignore this email.`,
+        buttonText: "Reset my password",
+        buttonLink: resetLink,
+        preheader: "Password reset request for BDOQ Academy",
+    };
     await sendEmail({
         to: email,
-        subject: `Reset your ${ACADEMY_NAME} password`,
-        text: `Hi ${name},\n\nReset your password:\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.\n\n— ${ACADEMY_NAME}`,
-        html: `
-      <p>Hi ${name},</p>
-      <p><a href="${resetUrl}" style="color:#03214F;font-weight:bold">Reset my password</a></p>
-      <p>Or copy: ${resetUrl}</p>
-      <p>Expires in 1 hour.</p>
-      <p>— ${ACADEMY_NAME}</p>
-    `,
+        subject: `Reset your ${emailConfig_1.EMAIL_BRAND.name} password`,
+        text: (0, brandEmailTemplate_1.buildBrandEmailText)(content),
+        html: (0, brandEmailTemplate_1.buildBrandEmailHtml)(content),
     });
 }

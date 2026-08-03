@@ -1,77 +1,9 @@
-import nodemailer from "nodemailer";
-import type { Transporter } from "nodemailer";
-import { resolveSmtpConfig, smtpSetupHint } from "../config/smtp";
-
-const ACADEMY_NAME = "BD Online Quran Academy";
-
-let cachedTransporter: Transporter | null | undefined;
-
-function getTransporter(): Transporter | null {
-  if (cachedTransporter !== undefined) {
-    return cachedTransporter;
-  }
-
-  const config = resolveSmtpConfig();
-  if (!config) {
-    cachedTransporter = null;
-    return null;
-  }
-
-  cachedTransporter = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    auth: {
-      user: config.user,
-      pass: config.pass,
-    },
-  });
-
-  return cachedTransporter;
-}
-
-export function isSmtpConfigured(): boolean {
-  return getTransporter() !== null;
-}
-
-export function isEmailVerificationEnforced(): boolean {
-  return process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
-}
-
-/** Call on server start to log SMTP readiness. */
-export async function verifySmtpConnection(): Promise<boolean> {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn(
-      "[email] SMTP not configured — verification links will print to the console in development.\n" +
-        smtpSetupHint()
-    );
-    return false;
-  }
-
-  try {
-    await transporter.verify();
-    const config = resolveSmtpConfig();
-    console.log(
-      `[email] SMTP ready (${config?.provider} → ${config?.host}:${config?.port})`
-    );
-    return true;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    const hasKey = Boolean(
-      process.env.RESEND_API_KEY?.trim() || process.env.SMTP_PASS?.trim()
-    );
-    if (hasKey && /535|invalid|unauthorized|401/i.test(msg)) {
-      console.warn(
-        "[email] Resend/SMTP key rejected — emails disabled. Create a new API key at https://resend.com/api-keys, then npm run test-email. Dev: links still print to console."
-      );
-    } else {
-      console.warn(`[email] SMTP connection failed: ${msg}`);
-      console.warn(smtpSetupHint());
-    }
-    return false;
-  }
-}
+import { EMAIL_BRAND, resolveFromAddress } from "../lib/email/emailConfig";
+import {
+  buildBrandEmailHtml,
+  buildBrandEmailText,
+} from "../lib/email/brandEmailTemplate";
+import { getResendClient, isResendConfigured } from "../lib/email/resendClient";
 
 function shouldLogEmailToConsole(): boolean {
   return (
@@ -94,12 +26,53 @@ function logEmailToConsole(
 function logSendFailure(err: unknown, from: string): void {
   const msg = err instanceof Error ? err.message : "Unknown error";
   console.warn(`[email] Send failed: ${msg}`);
-  if (/domain is not verified|550/i.test(msg)) {
+  if (/domain is not verified|not authorized|403|422/i.test(msg)) {
     console.warn(
-      `[email] Resend rejected "${from}". Verify the domain at https://resend.com/domains ` +
-        "or set FROM_EMAIL=onboarding@resend.dev for testing."
+      `[email] Resend rejected "${from}". Verify bdonlinequranacademy.com at https://resend.com/domains`
     );
   }
+}
+
+export function isEmailConfigured(): boolean {
+  return isResendConfigured();
+}
+
+/** @deprecated Prefer isEmailConfigured — kept for scripts */
+export function isSmtpConfigured(): boolean {
+  return isEmailConfigured();
+}
+
+export function isEmailVerificationEnforced(): boolean {
+  return process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+}
+
+export function emailSetupHint(): string {
+  return [
+    "Resend SDK email setup:",
+    "RESEND_API_KEY=re_... (from https://resend.com/api-keys)",
+    "FROM_EMAIL=no-reply@bdonlinequranacademy.com (domain must be verified on Resend)",
+    "CLIENT_URL=https://admin.bdonlinequranacademy.com",
+    "PUBLIC_SITE_URL=https://www.bdonlinequranacademy.com",
+  ].join("\n");
+}
+
+/** Call on server start to verify Resend readiness. */
+export async function verifyEmailConnection(): Promise<boolean> {
+  if (!isResendConfigured()) {
+    console.warn(
+      "[email] RESEND_API_KEY not configured — auth links will print to the console in development.\n" +
+        emailSetupHint()
+    );
+    return false;
+  }
+
+  console.log(`[email] Resend SDK ready (from: ${resolveFromAddress()})`);
+  return true;
+}
+
+/** @deprecated Use verifyEmailConnection */
+export async function verifySmtpConnection(): Promise<boolean> {
+  return verifyEmailConnection();
 }
 
 export async function sendEmail(options: {
@@ -108,30 +81,35 @@ export async function sendEmail(options: {
   text: string;
   html: string;
 }): Promise<{ sent: boolean; devLogged: boolean }> {
-  const config = resolveSmtpConfig();
-  const transporter = getTransporter();
+  const client = getResendClient();
+  const from = resolveFromAddress();
   const logInDev = shouldLogEmailToConsole();
 
-  if (!transporter || !config) {
+  if (!client) {
     if (logInDev) {
-      logEmailToConsole("SMTP not configured", options);
+      logEmailToConsole("Resend not configured", options);
     }
     return { sent: false, devLogged: logInDev };
   }
 
   try {
-    await transporter.sendMail({
-      from: `${ACADEMY_NAME} <${config.from}>`,
+    const { error } = await client.emails.send({
+      from,
       to: options.to,
       subject: options.subject,
       text: options.text,
       html: options.html,
     });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
     return { sent: true, devLogged: false };
   } catch (err) {
-    logSendFailure(err, config.from);
+    logSendFailure(err, from);
     if (logInDev) {
-      logEmailToConsole("SMTP send failed — dev fallback", options);
+      logEmailToConsole("Resend send failed — dev fallback", options);
     }
     return { sent: false, devLogged: logInDev };
   }
@@ -140,38 +118,45 @@ export async function sendEmail(options: {
 export async function sendVerificationEmail(
   email: string,
   name: string,
-  verifyUrl: string
+  verificationLink: string
 ): Promise<void> {
+  const content = {
+    title: "Verify your email address",
+    greeting: `Assalamu alaikum ${name},`,
+    messageBody:
+      `Welcome to ${EMAIL_BRAND.name}. Please confirm your email address to activate your account and access your learning portal.\n\nThis link expires in 24 hours.`,
+    buttonText: "Verify my email",
+    buttonLink: verificationLink,
+    preheader: "Confirm your BDOQ Academy account",
+  };
+
   await sendEmail({
     to: email,
-    subject: `Verify your ${ACADEMY_NAME} account`,
-    text: `Hi ${name},\n\nPlease verify your email by opening this link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n— ${ACADEMY_NAME}`,
-    html: `
-      <p>Hi ${name},</p>
-      <p>Please verify your email to access your learning portal:</p>
-      <p><a href="${verifyUrl}" style="color:#03214F;font-weight:bold">Verify my email</a></p>
-      <p>Or copy this link: ${verifyUrl}</p>
-      <p>This link expires in 24 hours.</p>
-      <p>— ${ACADEMY_NAME}</p>
-    `,
+    subject: `Verify your ${EMAIL_BRAND.name} account`,
+    text: buildBrandEmailText(content),
+    html: buildBrandEmailHtml(content),
   });
 }
 
 export async function sendPasswordResetEmail(
   email: string,
   name: string,
-  resetUrl: string
+  resetLink: string
 ): Promise<void> {
+  const content = {
+    title: "Reset your password",
+    greeting: `Assalamu alaikum ${name},`,
+    messageBody:
+      `We received a request to reset your ${EMAIL_BRAND.name} password. Click the button below to choose a new password.\n\nThis link expires in 1 hour. If you did not request a reset, you can safely ignore this email.`,
+    buttonText: "Reset my password",
+    buttonLink: resetLink,
+    preheader: "Password reset request for BDOQ Academy",
+  };
+
   await sendEmail({
     to: email,
-    subject: `Reset your ${ACADEMY_NAME} password`,
-    text: `Hi ${name},\n\nReset your password:\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.\n\n— ${ACADEMY_NAME}`,
-    html: `
-      <p>Hi ${name},</p>
-      <p><a href="${resetUrl}" style="color:#03214F;font-weight:bold">Reset my password</a></p>
-      <p>Or copy: ${resetUrl}</p>
-      <p>Expires in 1 hour.</p>
-      <p>— ${ACADEMY_NAME}</p>
-    `,
+    subject: `Reset your ${EMAIL_BRAND.name} password`,
+    text: buildBrandEmailText(content),
+    html: buildBrandEmailHtml(content),
   });
 }
