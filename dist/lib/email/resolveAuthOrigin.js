@@ -4,8 +4,8 @@ exports.getPortalBaseUrl = getPortalBaseUrl;
 exports.getPublicSiteBaseUrl = getPublicSiteBaseUrl;
 exports.resolveAuthBaseUrl = resolveAuthBaseUrl;
 exports.portalBaseUrl = portalBaseUrl;
-const PORTAL_FALLBACK = "https://admin.bdonlinequranacademy.com";
-const PUBLIC_FALLBACK = "https://www.bdonlinequranacademy.com";
+const PORTAL_FALLBACK = "https://myacademy.bdonlinequranacademy.com";
+const PUBLIC_FALLBACK = "https://bdonlinequranacademy.com";
 function stripTrailingSlash(url) {
     return url.replace(/\/$/, "");
 }
@@ -31,6 +31,7 @@ function matchesHost(candidate, allowedHosts) {
 }
 function portalHosts() {
     const hosts = new Set([
+        "myacademy.bdonlinequranacademy.com",
         "admin.bdonlinequranacademy.com",
         "bdoq-academy-portal.vercel.app",
         "localhost",

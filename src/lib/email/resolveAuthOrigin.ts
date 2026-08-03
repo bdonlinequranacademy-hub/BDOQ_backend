@@ -2,8 +2,8 @@ import type { Request } from "express";
 
 export type AuthAppTarget = "portal" | "public";
 
-const PORTAL_FALLBACK = "https://admin.bdonlinequranacademy.com";
-const PUBLIC_FALLBACK = "https://www.bdonlinequranacademy.com";
+const PORTAL_FALLBACK = "https://myacademy.bdonlinequranacademy.com";
+const PUBLIC_FALLBACK = "https://bdonlinequranacademy.com";
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, "");
@@ -35,6 +35,7 @@ function matchesHost(candidate: string, allowedHosts: string[]): boolean {
 
 function portalHosts(): string[] {
   const hosts = new Set<string>([
+    "myacademy.bdonlinequranacademy.com",
     "admin.bdonlinequranacademy.com",
     "bdoq-academy-portal.vercel.app",
     "localhost",

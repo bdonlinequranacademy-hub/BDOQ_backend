@@ -46,7 +46,7 @@ function resolveSmtpConfig() {
         return null;
     }
     const from = process.env.FROM_EMAIL?.trim() ||
-        (provider === "gmail" ? user : "contact@bdonlinequranacademy.com");
+        (provider === "gmail" ? user : "bdonlinequranacademy@gmail.com");
     return {
         host,
         port,
