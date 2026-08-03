@@ -166,3 +166,53 @@ export async function sendPasswordResetEmail(
 
   return { sent: result.sent, error: result.error };
 }
+
+export async function sendPasswordResetGoogleHintEmail(
+  email: string,
+  name: string,
+  loginUrl: string
+): Promise<{ sent: boolean; error?: string }> {
+  const content = {
+    title: "Sign in with Google",
+    greeting: `Assalamu alaikum ${name},`,
+    messageBody:
+      `You requested a password reset for ${email}, but this account uses Google sign-in.\n\nPlease open the login page and tap "Sign in with Google" — no password is needed for this account.`,
+    buttonText: "Go to login",
+    buttonLink: loginUrl,
+    preheader: "Use Google sign-in for your BDOQ Academy account",
+  };
+
+  const result = await sendEmail({
+    to: email,
+    subject: `How to sign in — ${EMAIL_BRAND.name}`,
+    text: buildBrandEmailText(content),
+    html: buildBrandEmailHtml(content),
+  });
+
+  return { sent: result.sent, error: result.error };
+}
+
+export async function sendPasswordResetNoAccountEmail(
+  email: string,
+  registerUrl: string,
+  supportEmail: string
+): Promise<{ sent: boolean; error?: string }> {
+  const content = {
+    title: "Password reset request",
+    greeting: "Assalamu alaikum,",
+    messageBody:
+      `We received a password reset request for ${email}, but we could not find an active account with this email address.\n\nIf you are new, you can register for a student account. If you believe this is a mistake, reply to this email or contact us at ${supportEmail}.`,
+    buttonText: "Create an account",
+    buttonLink: registerUrl,
+    preheader: "BDOQ Academy password reset",
+  };
+
+  const result = await sendEmail({
+    to: email,
+    subject: `Password reset — ${EMAIL_BRAND.name}`,
+    text: buildBrandEmailText(content),
+    html: buildBrandEmailHtml(content),
+  });
+
+  return { sent: result.sent, error: result.error };
+}

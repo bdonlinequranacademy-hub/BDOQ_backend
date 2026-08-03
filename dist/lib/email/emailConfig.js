@@ -11,7 +11,8 @@ exports.EMAIL_BRAND = {
     textDark: "#1A1A2E",
     textMuted: "#6B7280",
     background: "#F0FBF6",
-    logoUrl: "https://www.bdonlinequranacademy.com/logo.png",
+    logoUrl: process.env.EMAIL_LOGO_URL?.trim() ||
+        "https://www.bdonlinequranacademy.com/images/brand/bdoq-logo.png",
     websiteUrl: "https://www.bdonlinequranacademy.com",
 };
 function resolveFromAddress() {

@@ -24,7 +24,7 @@ function buildBrandEmailHtml(content) {
     const buttonBlock = content.buttonText && content.buttonLink
         ? `
         <tr>
-          <td align="center" style="padding: 8px 0 28px;">
+          <td align="center" style="padding: 8px 28px 20px;">
             <a href="${escapeHtml(content.buttonLink)}"
                style="display:inline-block;background:${emailConfig_1.EMAIL_BRAND.primaryColor};color:#ffffff;font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:999px;">
               ${escapeHtml(content.buttonText)}
@@ -32,9 +32,16 @@ function buildBrandEmailHtml(content) {
           </td>
         </tr>
         <tr>
-          <td style="font-family:Inter,Arial,sans-serif;font-size:13px;line-height:1.6;color:${emailConfig_1.EMAIL_BRAND.textMuted};padding-bottom:8px;word-break:break-all;">
-            Or copy this link:<br />
-            <a href="${escapeHtml(content.buttonLink)}" style="color:${emailConfig_1.EMAIL_BRAND.primaryDark};">${escapeHtml(content.buttonLink)}</a>
+          <td style="padding: 0 28px 28px;font-family:Inter,Arial,sans-serif;">
+            <p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:${emailConfig_1.EMAIL_BRAND.textMuted};">
+              Or copy and paste this link into your browser:
+            </p>
+            <div style="padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+              <a href="${escapeHtml(content.buttonLink)}"
+                 style="font-size:12px;line-height:1.6;color:${emailConfig_1.EMAIL_BRAND.primaryDark};word-break:break-all;text-decoration:none;">
+                ${escapeHtml(content.buttonLink)}
+              </a>
+            </div>
           </td>
         </tr>`
         : "";
@@ -54,7 +61,7 @@ function buildBrandEmailHtml(content) {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
           <tr>
             <td align="center" style="padding:28px 24px 12px;background:${emailConfig_1.EMAIL_BRAND.background};border-bottom:3px solid ${emailConfig_1.EMAIL_BRAND.accentGold};">
-              <img src="${emailConfig_1.EMAIL_BRAND.logoUrl}" alt="${emailConfig_1.EMAIL_BRAND.name}" width="160" style="display:block;max-width:160px;height:auto;margin:0 auto;" />
+              <img src="${emailConfig_1.EMAIL_BRAND.logoUrl}" alt="${emailConfig_1.EMAIL_BRAND.name}" width="160" height="auto" style="display:block;max-width:160px;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;" />
             </td>
           </tr>
           <tr>

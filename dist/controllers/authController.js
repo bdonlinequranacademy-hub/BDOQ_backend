@@ -238,7 +238,7 @@ exports.resendVerificationEmail = resendVerificationEmail;
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        if (!email) {
+        if (!email || typeof email !== "string") {
             res.status(400).json({
                 success: false,
                 message: "Please provide email",
@@ -246,26 +246,36 @@ const forgotPassword = async (req, res) => {
             });
             return;
         }
+        const normalizedEmail = email.trim().toLowerCase();
+        const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
+        const loginUrl = `${authBase}/login`;
+        const registerUrl = `${authBase}/register`;
+        const supportEmail = process.env.SUPPORT_EMAIL?.trim() || "bdonlinequranacademy@gmail.com";
         const user = await User_1.User.findOne({
-            email: email.toLowerCase(),
+            email: normalizedEmail,
             isActive: true,
-            authProvider: "local",
         });
-        if (user) {
+        let mail;
+        if (user?.authProvider === "local") {
             const raw = (0, verificationTokens_1.generateRawToken)();
             user.passwordResetToken = (0, verificationTokens_1.hashToken)(raw);
             user.passwordResetExpiry = (0, verificationTokens_1.resetExpiry)();
             await user.save();
-            const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
             const resetUrl = `${authBase}/reset-password?token=${raw}`;
-            const mail = await (0, emailService_1.sendPasswordResetEmail)(user.email, user.name, resetUrl);
-            if (!mail.sent) {
-                console.error(`[auth] Password reset email NOT sent to ${user.email}: ${mail.error ?? "unknown"}`);
-            }
+            mail = await (0, emailService_1.sendPasswordResetEmail)(user.email, user.name, resetUrl);
+        }
+        else if (user) {
+            mail = await (0, emailService_1.sendPasswordResetGoogleHintEmail)(normalizedEmail, user.name, loginUrl);
+        }
+        else {
+            mail = await (0, emailService_1.sendPasswordResetNoAccountEmail)(normalizedEmail, registerUrl, supportEmail);
+        }
+        if (!mail.sent) {
+            console.error(`[auth] Password reset email NOT sent to ${normalizedEmail}: ${mail.error ?? "unknown"}`);
         }
         res.status(200).json({
             success: true,
-            message: "If an account exists for this email, password reset instructions have been sent",
+            message: "Password reset instructions have been sent to your email.",
             data: null,
         });
     }
