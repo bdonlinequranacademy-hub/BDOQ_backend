@@ -17,7 +17,7 @@ Google OAuth credentials **Google Cloud Console** থেকে নিতে হ�
 1. **APIs & Services** → **OAuth consent screen**
 2. User type: **External**
 3. App name: `BD Online Quran Academy`
-4. User support email: `contact@bdonlinequranacademy.com`
+4. User support email: `bdonlinequranacademy@gmail.com`
 5. Developer contact email: আপনার email
 6. Scopes: default (`email`, `profile`, `openid`) যথেষ্ট
 7. **Save**
