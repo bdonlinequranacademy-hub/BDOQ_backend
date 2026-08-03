@@ -28,8 +28,17 @@ function validateEnv() {
     if (!isSet(process.env.API_BASE_URL) && process.env.NODE_ENV === "production") {
         console.warn("[env] API_BASE_URL is not set — OAuth callbacks will use http://localhost:PORT. Set API_BASE_URL to your public API URL.");
     }
+    if (process.env.NODE_ENV === "production") {
+        if (!isSet(process.env.RESEND_API_KEY)) {
+            console.error("[env] RESEND_API_KEY is missing in production — password reset and verification emails will NOT be sent.");
+        }
+        const from = process.env.FROM_EMAIL?.trim() ?? "";
+        if (from && !from.endsWith("@bdonlinequranacademy.com")) {
+            console.warn(`[env] FROM_EMAIL="${from}" should be no-reply@bdonlinequranacademy.com for Resend (verified domain).`);
+        }
+    }
     const requireVerify = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
-    if (requireVerify && !isSet(process.env.RESEND_API_KEY) && !isSet(process.env.SMTP_USER)) {
-        console.warn("[env] Email verification is enabled but SMTP/Resend is not configured.");
+    if (requireVerify && !isSet(process.env.RESEND_API_KEY)) {
+        console.warn("[env] Email verification is enabled but RESEND_API_KEY is not configured.");
     }
 }

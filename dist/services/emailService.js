@@ -68,10 +68,12 @@ async function sendEmail(options) {
     const from = (0, emailConfig_1.resolveFromAddress)();
     const logInDev = shouldLogEmailToConsole();
     if (!client) {
+        const msg = "RESEND_API_KEY is not configured";
+        console.error(`[email] ${msg}`);
         if (logInDev) {
             logEmailToConsole("Resend not configured", options);
         }
-        return { sent: false, devLogged: logInDev };
+        return { sent: false, devLogged: logInDev, error: msg };
     }
     try {
         const { error } = await client.emails.send({
@@ -87,11 +89,13 @@ async function sendEmail(options) {
         return { sent: true, devLogged: false };
     }
     catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
         logSendFailure(err, from);
+        console.error(`[email] Failed to send to ${options.to}: ${msg}`);
         if (logInDev) {
             logEmailToConsole("Resend send failed — dev fallback", options);
         }
-        return { sent: false, devLogged: logInDev };
+        return { sent: false, devLogged: logInDev, error: msg };
     }
 }
 async function sendVerificationEmail(email, name, verificationLink) {
@@ -119,10 +123,11 @@ async function sendPasswordResetEmail(email, name, resetLink) {
         buttonLink: resetLink,
         preheader: "Password reset request for BDOQ Academy",
     };
-    await sendEmail({
+    const result = await sendEmail({
         to: email,
         subject: `Reset your ${emailConfig_1.EMAIL_BRAND.name} password`,
         text: (0, brandEmailTemplate_1.buildBrandEmailText)(content),
         html: (0, brandEmailTemplate_1.buildBrandEmailHtml)(content),
     });
+    return { sent: result.sent, error: result.error };
 }

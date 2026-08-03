@@ -312,7 +312,12 @@ export const forgotPassword = async (
 
       const authBase = resolveAuthBaseUrl(req, "portal");
       const resetUrl = `${authBase}/reset-password?token=${raw}`;
-      await sendPasswordResetEmail(user.email, user.name, resetUrl);
+      const mail = await sendPasswordResetEmail(user.email, user.name, resetUrl);
+      if (!mail.sent) {
+        console.error(
+          `[auth] Password reset email NOT sent to ${user.email}: ${mail.error ?? "unknown"}`
+        );
+      }
     }
 
     res.status(200).json({

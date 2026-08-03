@@ -258,7 +258,10 @@ const forgotPassword = async (req, res) => {
             await user.save();
             const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
             const resetUrl = `${authBase}/reset-password?token=${raw}`;
-            await (0, emailService_1.sendPasswordResetEmail)(user.email, user.name, resetUrl);
+            const mail = await (0, emailService_1.sendPasswordResetEmail)(user.email, user.name, resetUrl);
+            if (!mail.sent) {
+                console.error(`[auth] Password reset email NOT sent to ${user.email}: ${mail.error ?? "unknown"}`);
+            }
         }
         res.status(200).json({
             success: true,
