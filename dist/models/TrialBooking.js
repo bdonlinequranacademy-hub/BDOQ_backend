@@ -40,6 +40,11 @@ const trialBookingSchema = new mongoose_1.Schema({
     email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
     country: { type: String, trim: true },
+    age: { type: String, trim: true },
+    learnerGender: {
+        type: String,
+        enum: ["male", "female"],
+    },
     learnerType: {
         type: String,
         enum: ["child", "teen", "adult"],

@@ -7,6 +7,8 @@ export interface ITrialBooking extends Document {
   email?: string;
   whatsapp: string;
   country?: string;
+  age?: string;
+  learnerGender?: "male" | "female";
   learnerType: "child" | "teen" | "adult";
   timeSlot?: "anytime" | "early_morning" | "morning" | "afternoon" | "evening" | "late_evening";
   teacherPreference: "any" | "female" | "male";
@@ -30,6 +32,11 @@ const trialBookingSchema = new Schema<ITrialBooking>(
     email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
     country: { type: String, trim: true },
+    age: { type: String, trim: true },
+    learnerGender: {
+      type: String,
+      enum: ["male", "female"],
+    },
     learnerType: {
       type: String,
       enum: ["child", "teen", "adult"],

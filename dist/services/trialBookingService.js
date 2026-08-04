@@ -4,6 +4,8 @@ exports.formatTrialBooking = formatTrialBooking;
 exports.createTrialBooking = createTrialBooking;
 exports.listTrialBookings = listTrialBookings;
 exports.updateTrialBookingStatus = updateTrialBookingStatus;
+exports.updateTrialBooking = updateTrialBooking;
+exports.deleteTrialBooking = deleteTrialBooking;
 exports.countTrialBookingsByStatus = countTrialBookingsByStatus;
 const TrialBooking_1 = require("../models/TrialBooking");
 const emailService_1 = require("./emailService");
@@ -16,13 +18,27 @@ function notifyEmail() {
         process.env.TEST_EMAIL_TO?.trim();
     return to || null;
 }
+function deriveLearnerTypeFromAge(age) {
+    if (age === "70+")
+        return "adult";
+    const years = Number.parseInt(age, 10);
+    if (Number.isNaN(years))
+        return "adult";
+    if (years < 12)
+        return "child";
+    if (years < 18)
+        return "teen";
+    return "adult";
+}
 function formatBookingText(booking) {
     const lines = [
         `Name: ${booking.parentName}`,
         booking.email ? `Email: ${booking.email}` : null,
         `WhatsApp: ${booking.whatsapp}`,
         booking.country ? `Country: ${booking.country}` : null,
-        `Learner: ${booking.learnerType}`,
+        booking.age ? `Age: ${booking.age}` : null,
+        booking.learnerGender ? `Gender: ${booking.learnerGender}` : null,
+        `Learner type: ${booking.learnerType}`,
         `Teacher preference: ${booking.teacherPreference}`,
         booking.timeSlot ? `Preferred time: ${booking.timeSlot}` : null,
         booking.preferredDays.length
@@ -44,6 +60,8 @@ function formatTrialBooking(booking) {
         email: booking.email,
         whatsapp: booking.whatsapp,
         country: booking.country,
+        age: booking.age,
+        learnerGender: booking.learnerGender,
         learnerType: booking.learnerType,
         timeSlot: booking.timeSlot,
         teacherPreference: booking.teacherPreference,
@@ -87,6 +105,8 @@ async function createTrialBooking(input) {
         email: email || undefined,
         whatsapp: normalizedWa.whatsapp,
         country,
+        age: input.age?.trim() || undefined,
+        learnerGender: input.learnerGender,
         learnerType: input.learnerType,
         timeSlot: input.timeSlot,
         teacherPreference: input.teacherPreference ?? "any",
@@ -131,6 +151,83 @@ async function updateTrialBookingStatus(id, status) {
         return { error: "Trial booking not found" };
     }
     return { booking: formatTrialBooking(booking) };
+}
+async function updateTrialBooking(id, input) {
+    const booking = await TrialBooking_1.TrialBooking.findById(id);
+    if (!booking) {
+        return { error: "Trial booking not found" };
+    }
+    if (input.parentName !== undefined) {
+        const parentName = input.parentName.trim();
+        if (!parentName)
+            return { error: "Name is required." };
+        booking.parentName = parentName;
+    }
+    if (input.email !== undefined) {
+        const email = input.email.trim().toLowerCase();
+        if (email && !EMAIL_RE.test(email)) {
+            return { error: "Invalid email address." };
+        }
+        booking.email = email || undefined;
+    }
+    if (input.country !== undefined) {
+        const country = input.country.trim();
+        if (!country)
+            return { error: "Country is required." };
+        booking.country = country;
+    }
+    if (input.whatsapp !== undefined) {
+        const whatsappRaw = input.whatsapp.trim();
+        if (!whatsappRaw)
+            return { error: "WhatsApp is required." };
+        const country = booking.country?.trim() || input.country?.trim() || "Bangladesh";
+        const normalizedWa = (0, whatsappPhone_1.normalizeWhatsAppForStorage)(whatsappRaw, country);
+        if (!normalizedWa.ok)
+            return { error: normalizedWa.error };
+        booking.whatsapp = normalizedWa.whatsapp;
+    }
+    if (input.age !== undefined) {
+        const age = input.age.trim();
+        booking.age = age || undefined;
+        if (age) {
+            booking.learnerType = deriveLearnerTypeFromAge(age);
+        }
+    }
+    if (input.learnerGender !== undefined) {
+        booking.learnerGender = input.learnerGender;
+    }
+    if (input.learnerType !== undefined) {
+        booking.learnerType = input.learnerType;
+    }
+    if (input.timeSlot !== undefined) {
+        booking.timeSlot = input.timeSlot;
+    }
+    if (input.teacherPreference !== undefined) {
+        booking.teacherPreference = input.teacherPreference;
+    }
+    if (input.preferredDays !== undefined) {
+        booking.preferredDays = input.preferredDays
+            .map((day) => day.trim())
+            .filter(Boolean);
+    }
+    if (input.timezone !== undefined) {
+        booking.timezone = input.timezone.trim() || undefined;
+    }
+    if (input.courseSlug !== undefined) {
+        booking.courseSlug = input.courseSlug.trim() || undefined;
+    }
+    if (input.status !== undefined) {
+        booking.status = input.status;
+    }
+    await booking.save();
+    return { booking: formatTrialBooking(booking) };
+}
+async function deleteTrialBooking(id) {
+    const deleted = await TrialBooking_1.TrialBooking.findByIdAndDelete(id);
+    if (!deleted) {
+        return { error: "Trial booking not found" };
+    }
+    return { ok: true };
 }
 async function countTrialBookingsByStatus(status) {
     return TrialBooking_1.TrialBooking.countDocuments({ status });

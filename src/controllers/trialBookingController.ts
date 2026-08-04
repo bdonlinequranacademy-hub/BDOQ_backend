@@ -4,7 +4,9 @@ import type { TrialBookingStatus } from "../models/TrialBooking";
 import {
   createTrialBooking,
   listTrialBookings,
+  updateTrialBooking,
   updateTrialBookingStatus,
+  deleteTrialBooking,
 } from "../services/trialBookingService";
 
 function parseLearnerType(value: unknown): "child" | "teen" | "adult" | undefined {
@@ -48,6 +50,11 @@ function parseBookingStatus(value: unknown): TrialBookingStatus | undefined {
   return undefined;
 }
 
+function parseLearnerGender(value: unknown): "male" | "female" | undefined {
+  if (value === "male" || value === "female") return value;
+  return undefined;
+}
+
 export const submitTrialBooking = async (req: Request, res: Response): Promise<void> => {
   try {
     const learnerType = parseLearnerType(req.body.learnerType);
@@ -69,6 +76,8 @@ export const submitTrialBooking = async (req: Request, res: Response): Promise<v
       email: req.body.email,
       whatsapp: req.body.whatsapp,
       country: req.body.country,
+      age: typeof req.body.age === "string" ? req.body.age : undefined,
+      learnerGender: parseLearnerGender(req.body.learnerGender),
       learnerType,
       timeSlot: parseTimeSlot(req.body.timeSlot),
       teacherPreference: parseTeacherPreference(req.body.teacherPreference),
@@ -174,6 +183,93 @@ export const patchAdminTrialBookingStatus = async (
     res.status(500).json({
       success: false,
       message: "Failed to update trial booking",
+      data: null,
+    });
+  }
+};
+
+export const patchAdminTrialBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid booking ID",
+        data: null,
+      });
+      return;
+    }
+
+    const preferredDays = Array.isArray(req.body.preferredDays)
+      ? req.body.preferredDays.filter((d: unknown) => typeof d === "string")
+      : undefined;
+
+    const result = await updateTrialBooking(id, {
+      parentName: typeof req.body.parentName === "string" ? req.body.parentName : undefined,
+      email: typeof req.body.email === "string" ? req.body.email : undefined,
+      whatsapp: typeof req.body.whatsapp === "string" ? req.body.whatsapp : undefined,
+      country: typeof req.body.country === "string" ? req.body.country : undefined,
+      age: typeof req.body.age === "string" ? req.body.age : undefined,
+      learnerGender: parseLearnerGender(req.body.learnerGender),
+      learnerType: parseLearnerType(req.body.learnerType),
+      timeSlot: parseTimeSlot(req.body.timeSlot),
+      teacherPreference: parseTeacherPreference(req.body.teacherPreference),
+      preferredDays,
+      timezone: typeof req.body.timezone === "string" ? req.body.timezone : undefined,
+      courseSlug: typeof req.body.courseSlug === "string" ? req.body.courseSlug : undefined,
+      status: parseBookingStatus(req.body.status),
+    });
+
+    if ("error" in result) {
+      const statusCode = result.error === "Trial booking not found" ? 404 : 400;
+      res.status(statusCode).json({ success: false, message: result.error, data: null });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Trial booking updated",
+      data: result.booking,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update trial booking",
+      data: null,
+    });
+  }
+};
+
+export const deleteAdminTrialBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid booking ID",
+        data: null,
+      });
+      return;
+    }
+
+    const result = await deleteTrialBooking(id);
+
+    if ("error" in result) {
+      res.status(404).json({ success: false, message: result.error, data: null });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Trial booking deleted",
+      data: null,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete trial booking",
       data: null,
     });
   }

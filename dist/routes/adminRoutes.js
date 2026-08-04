@@ -73,7 +73,9 @@ router.get("/student-requests", studentRequestController_1.listAdminStudentReque
 router.patch("/student-requests/:id/approve", studentRequestController_1.approveStudentRequest);
 router.patch("/student-requests/:id/reject", studentRequestController_1.rejectStudentRequest);
 router.get("/trial-bookings", trialBookingController_1.listAdminTrialBookings);
+router.patch("/trial-bookings/:id", trialBookingController_1.patchAdminTrialBooking);
 router.patch("/trial-bookings/:id/status", trialBookingController_1.patchAdminTrialBookingStatus);
+router.delete("/trial-bookings/:id", trialBookingController_1.deleteAdminTrialBooking);
 router.get("/contact-messages", contactMessageController_1.listAdminContactMessages);
 router.patch("/contact-messages/:id/status", contactMessageController_1.patchAdminContactMessageStatus);
 router.get("/newsletter-subscribers", newsletterSubscriberController_1.listAdminNewsletterSubscribers);

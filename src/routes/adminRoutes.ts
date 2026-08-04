@@ -48,7 +48,7 @@ import {
   listAdminStudentRequestsHandler,
   rejectStudentRequest,
 } from "../controllers/studentRequestController";
-import { listAdminTrialBookings, patchAdminTrialBookingStatus } from "../controllers/trialBookingController";
+import { listAdminTrialBookings, patchAdminTrialBooking, patchAdminTrialBookingStatus, deleteAdminTrialBooking } from "../controllers/trialBookingController";
 import {
   listAdminContactMessages,
   patchAdminContactMessageStatus,
@@ -196,7 +196,9 @@ router.get("/student-requests", listAdminStudentRequestsHandler);
 router.patch("/student-requests/:id/approve", approveStudentRequest);
 router.patch("/student-requests/:id/reject", rejectStudentRequest);
 router.get("/trial-bookings", listAdminTrialBookings);
+router.patch("/trial-bookings/:id", patchAdminTrialBooking);
 router.patch("/trial-bookings/:id/status", patchAdminTrialBookingStatus);
+router.delete("/trial-bookings/:id", deleteAdminTrialBooking);
 router.get("/contact-messages", listAdminContactMessages);
 router.patch("/contact-messages/:id/status", patchAdminContactMessageStatus);
 router.get("/newsletter-subscribers", listAdminNewsletterSubscribers);
