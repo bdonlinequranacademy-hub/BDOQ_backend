@@ -86,6 +86,7 @@ const studentAdmissionApplicationSchema = new mongoose_1.Schema({
     monthlyFeeAmount: { type: Number, min: 0 },
     monthlyFeeCurrency: { type: String, enum: ["bdt", "usd"] },
     enrollmentSetupAt: { type: Date },
+    linkedUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });
 studentAdmissionApplicationSchema.index({ status: 1, createdAt: -1 });
 studentAdmissionApplicationSchema.index({ email: 1, createdAt: -1 });

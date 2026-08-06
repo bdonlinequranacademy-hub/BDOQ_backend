@@ -3,11 +3,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeStudentPassword = exports.updateStudentProfile = exports.getStudentProfile = void 0;
+exports.getStudentProfileHub = exports.changeStudentPassword = exports.updateStudentProfile = exports.getStudentProfile = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
+const Class_1 = require("../models/Class");
+const Attendance_1 = require("../models/Attendance");
+const Progress_1 = require("../models/Progress");
+const PaymentRecord_1 = require("../models/PaymentRecord");
+const StudentBilling_1 = require("../models/StudentBilling");
+const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
 const avatarFields_1 = require("../lib/avatarFields");
+const userProfileSyncService_1 = require("../services/userProfileSyncService");
 function toProfileView(user) {
     return {
         _id: user._id.toString(),
@@ -20,11 +27,12 @@ function toProfileView(user) {
         whatsapp: user.whatsapp || "",
         ...(0, avatarFields_1.avatarFieldsFromUser)(user),
         gender: user.gender,
+        parentInfo: user.parentInfo ?? undefined,
     };
 }
 const getStudentProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp avatarUrl gender");
+        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp avatarUrl gender parentInfo");
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -75,7 +83,7 @@ const updateStudentProfile = async (req, res) => {
         const user = await User_1.User.findByIdAndUpdate(req.user._id, update, {
             new: true,
             runValidators: true,
-        }).select("name email role studentId timezone country whatsapp");
+        }).select("name email role studentId timezone country whatsapp parentInfo gender avatarUrl");
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -145,3 +153,95 @@ const changeStudentPassword = async (req, res) => {
     }
 };
 exports.changeStudentPassword = changeStudentPassword;
+const getStudentProfileHub = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const user = await User_1.User.findById(userId).select("name email role studentId timezone country whatsapp avatarUrl gender parentInfo sourceAdmissionId");
+        if (!user) {
+            res.status(404).json({
+                success: false,
+                message: "User not found",
+                data: null,
+            });
+            return;
+        }
+        const [classes, attendanceDocs, progressCount, payments, billing, admission] = await Promise.all([
+            Class_1.Class.find({ students: userId })
+                .select("title schedule meetingLink meetingPlatform isActive teacher")
+                .populate("teacher", "name email whatsapp")
+                .sort({ createdAt: -1 })
+                .lean(),
+            Attendance_1.Attendance.find({ student: userId }).select("status").lean(),
+            Progress_1.Progress.countDocuments({ student: userId }),
+            PaymentRecord_1.PaymentRecord.find({ student: userId })
+                .select("amount currency status createdAt")
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
+            StudentBilling_1.StudentBilling.findOne({ student: userId }).lean(),
+            user.sourceAdmissionId
+                ? StudentAdmissionApplication_1.StudentAdmissionApplication.findById(user.sourceAdmissionId).lean()
+                : StudentAdmissionApplication_1.StudentAdmissionApplication.findOne({ linkedUserId: userId })
+                    .sort({ createdAt: -1 })
+                    .lean(),
+        ]);
+        const present = attendanceDocs.filter((a) => a.status === "present").length;
+        const late = attendanceDocs.filter((a) => a.status === "late").length;
+        const total = attendanceDocs.length;
+        const attendanceRate = total > 0 ? Math.round(((present + late) / total) * 100) : null;
+        res.status(200).json({
+            success: true,
+            message: "Profile hub fetched successfully",
+            data: {
+                profile: toProfileView(user),
+                enrollment: admission
+                    ? (0, userProfileSyncService_1.buildEnrollmentSummaryFromAdmission)(admission)
+                    : null,
+                classes: classes.map((cls) => {
+                    const teacher = cls.teacher;
+                    return {
+                        _id: String(cls._id),
+                        title: cls.title,
+                        schedule: cls.schedule ?? null,
+                        meetingLink: cls.meetingLink ?? "",
+                        meetingPlatform: cls.meetingPlatform ?? undefined,
+                        isActive: cls.isActive !== false,
+                        teacherName: teacher?.name ?? "Teacher",
+                        teacherEmail: teacher?.email ?? "",
+                        teacherWhatsapp: teacher?.whatsapp ?? "",
+                    };
+                }),
+                stats: {
+                    activeClasses: classes.filter((c) => c.isActive !== false).length,
+                    attendanceRate,
+                    progressRecords: progressCount,
+                    recentPayments: payments.length,
+                },
+                billing: billing
+                    ? {
+                        monthlyFee: billing.monthlyFee,
+                        currency: billing.currency,
+                        dueDay: billing.dueDayOfMonth,
+                        paidUntil: billing.paidUntil,
+                        isActive: billing.isActive !== false,
+                    }
+                    : null,
+                recentPayments: payments.map((p) => ({
+                    _id: String(p._id),
+                    amount: p.amount,
+                    currency: p.currency,
+                    status: p.status,
+                    createdAt: p.createdAt,
+                })),
+            },
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch profile hub",
+            data: null,
+        });
+    }
+};
+exports.getStudentProfileHub = getStudentProfileHub;

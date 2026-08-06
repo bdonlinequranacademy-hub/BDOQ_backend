@@ -326,7 +326,7 @@ export const updateUser = async (
   try {
     const actor = getActor(req);
     const { id } = req.params;
-    const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments, whatsapp } =
+    const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments, whatsapp, profileNotes } =
       req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -519,6 +519,10 @@ export const updateUser = async (
         return;
       }
       updateData.whatsapp = normalized.whatsapp;
+    }
+    if (profileNotes !== undefined) {
+      updateData.profileNotes =
+        typeof profileNotes === "string" ? profileNotes.trim() : "";
     }
 
     const mongoUpdate: Record<string, unknown> = { ...updateData };

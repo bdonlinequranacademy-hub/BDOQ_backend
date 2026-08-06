@@ -25,6 +25,7 @@ router.get("/weekly-report", weeklyReportController_1.getStudentWeeklyReport);
 router.get("/notifications", studentController_1.getMyNotifications);
 router.patch("/notifications/:id/read", studentController_1.markAsRead);
 router.get("/profile", studentProfileController_1.getStudentProfile);
+router.get("/profile/hub", studentProfileController_1.getStudentProfileHub);
 router.patch("/profile", studentProfileController_1.updateStudentProfile);
 router.patch("/profile/password", studentProfileController_1.changeStudentPassword);
 router.post("/profile/avatar", (req, res, next) => {

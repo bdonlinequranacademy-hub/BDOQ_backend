@@ -14,6 +14,9 @@ import { Certificate } from "../models/Certificate";
 import { canManageUser } from "../lib/adminRoles";
 import { avatarFieldsFromUser } from "../lib/avatarFields";
 import { getTeacherEarnings } from "../services/earningsService";
+import { StudentAdmissionApplication } from "../models/StudentAdmissionApplication";
+import { buildEnrollmentSummaryFromAdmission } from "../services/userProfileSyncService";
+import type { IParentInfo } from "../models/User";
 
 const getActor = (req: Request): IUser => req.user as IUser;
 
@@ -47,6 +50,9 @@ function formatBaseUser(user: IUser) {
     bankAccount: user.bankAccount ?? undefined,
     bKashNumber: user.bKashNumber ?? undefined,
     curriculumAssignments: user.curriculumAssignments ?? [],
+    parentInfo: user.parentInfo ?? undefined,
+    sourceAdmissionId: user.sourceAdmissionId?.toString(),
+    profileNotes: user.profileNotes ?? undefined,
     emailVerified: user.emailVerified === true,
     authProvider: user.authProvider ?? "local",
     createdAt: user.createdAt,
@@ -331,11 +337,17 @@ export const getUserProfileDetail = async (
     if (role === "student") {
       const classes = await Class.find({ students: user._id })
         .select(
-          "title description schedule meetingLink isActive teacher students sessionRateBdt createdAt"
+          "title description schedule meetingLink meetingPlatform isActive teacher students sessionRateBdt createdAt"
         )
         .populate("teacher", "name email whatsapp country gender")
         .sort({ createdAt: -1 })
         .lean();
+
+      const admission = user.sourceAdmissionId
+        ? await StudentAdmissionApplication.findById(user.sourceAdmissionId).lean()
+        : await StudentAdmissionApplication.findOne({ linkedUserId: user._id })
+            .sort({ createdAt: -1 })
+            .lean();
 
       const classIds = classes.map((cls) => cls._id);
 
@@ -431,6 +443,13 @@ export const getUserProfileDetail = async (
         data: {
           kind: "student" as const,
           user: base,
+          parentInfo: (user.parentInfo as IParentInfo | undefined) ?? undefined,
+          profileNotes: user.profileNotes ?? undefined,
+          enrollment: admission
+            ? buildEnrollmentSummaryFromAdmission(
+                admission as InstanceType<typeof StudentAdmissionApplication>
+              )
+            : null,
           stats: {
             activeClasses: classes.filter((c) => c.isActive !== false).length,
             totalClasses: classes.length,
@@ -474,6 +493,7 @@ export const getUserProfileDetail = async (
               description: cls.description ?? "",
               schedule: cls.schedule ?? null,
               meetingLink: cls.meetingLink ?? "",
+              meetingPlatform: cls.meetingPlatform ?? undefined,
               isActive: cls.isActive !== false,
               teacher: teacherObj,
               createdAt: cls.createdAt,

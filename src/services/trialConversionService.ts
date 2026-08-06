@@ -23,7 +23,11 @@ import {
   buildBrandEmailText,
 } from "../lib/email/brandEmailTemplate";
 import { EMAIL_BRAND } from "../lib/email/emailConfig";
-import { portalBaseUrl } from "./verificationTokens";
+import {
+  syncUserFromAdmission,
+  buildEnrollmentSummaryFromAdmission,
+} from "./userProfileSyncService";
+import { extractParentInfoFromFormData } from "../lib/parentInfoFromFormData";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -63,7 +67,7 @@ async function sendStudentWelcomeEmail(
   name: string,
   temporaryPassword: string
 ): Promise<void> {
-  const loginUrl = `${portalBaseUrl()}/login`;
+  const loginUrl = `${getPortalBaseUrl()}/login`;
   const content = {
     title: "Your student portal account is ready",
     greeting: `Assalamu Alaikum ${name},`,
@@ -122,6 +126,12 @@ async function createStudentUserFromTrial(
     whatsapp: normalizedWa.whatsapp,
     studentId: await generateStudentId(),
     gender: booking.learnerGender,
+    parentInfo: {
+      name: booking.parentName?.trim() || undefined,
+      relationship: "Parent/Guardian",
+      whatsapp: normalizedWa.whatsapp,
+      email: email.toLowerCase(),
+    },
   });
 
   return { user, temporaryPassword };
@@ -202,6 +212,7 @@ export async function convertTrialToAdmission(
     }
     createdUser = userResult;
     booking.convertedUserId = userResult.user._id;
+    await syncUserFromAdmission(userResult.user, admission);
     await sendStudentWelcomeEmail(email, studentName, userResult.temporaryPassword);
   }
 
@@ -339,6 +350,30 @@ export async function completePrefilledAdmission(
     enrollmentDefaults.monthlyFeeCurrency ?? application.monthlyFeeCurrency;
 
   await application.save();
+
+  const trial = application.sourceTrialBookingId
+    ? await TrialBooking.findById(application.sourceTrialBookingId)
+    : null;
+  if (trial?.convertedUserId) {
+    const user = await User.findById(trial.convertedUserId);
+    if (user) {
+      await syncUserFromAdmission(user, application);
+    }
+  } else {
+    const parentInfo = extractParentInfoFromFormData(application.formData);
+    const user = await User.findOne({
+      email: application.email,
+      role: "student",
+    });
+    if (user && parentInfo) {
+      user.parentInfo = parentInfo;
+      user.sourceAdmissionId = application._id;
+      await user.save();
+      application.linkedUserId = user._id;
+      await application.save();
+    }
+  }
+
   return { application: formatStudentAdmission(application) };
 }
 

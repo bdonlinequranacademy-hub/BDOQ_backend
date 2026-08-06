@@ -1,8 +1,16 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../models/User";
+import { Class } from "../models/Class";
+import { Attendance } from "../models/Attendance";
+import { Progress } from "../models/Progress";
+import { PaymentRecord } from "../models/PaymentRecord";
+import { StudentBilling } from "../models/StudentBilling";
+import { StudentAdmissionApplication } from "../models/StudentAdmissionApplication";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { avatarFieldsFromUser } from "../lib/avatarFields";
+import { buildEnrollmentSummaryFromAdmission } from "../services/userProfileSyncService";
+import type { IParentInfo } from "../models/User";
 
 export interface StudentProfileView {
   _id: string;
@@ -15,6 +23,7 @@ export interface StudentProfileView {
   whatsapp: string;
   avatarUrl: string;
   gender?: "male" | "female";
+  parentInfo?: IParentInfo;
 }
 
 function toProfileView(user: InstanceType<typeof User>): StudentProfileView {
@@ -29,6 +38,7 @@ function toProfileView(user: InstanceType<typeof User>): StudentProfileView {
     whatsapp: user.whatsapp || "",
     ...avatarFieldsFromUser(user),
     gender: user.gender,
+    parentInfo: user.parentInfo ?? undefined,
   };
 }
 
@@ -38,7 +48,7 @@ export const getStudentProfile = async (
 ): Promise<void> => {
   try {
     const user = await User.findById(req.user!._id).select(
-      "name email role studentId timezone country whatsapp avatarUrl gender"
+      "name email role studentId timezone country whatsapp avatarUrl gender parentInfo"
     );
     if (!user) {
       res.status(404).json({
@@ -94,7 +104,7 @@ export const updateStudentProfile = async (
     const user = await User.findByIdAndUpdate(req.user!._id, update, {
       new: true,
       runValidators: true,
-    }).select("name email role studentId timezone country whatsapp");
+    }).select("name email role studentId timezone country whatsapp parentInfo gender avatarUrl");
 
     if (!user) {
       res.status(404).json({
@@ -167,6 +177,112 @@ export const changeStudentPassword = async (
     res.status(500).json({
       success: false,
       message: "Failed to change password",
+      data: null,
+    });
+  }
+};
+
+export const getStudentProfileHub = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user!._id;
+    const user = await User.findById(userId).select(
+      "name email role studentId timezone country whatsapp avatarUrl gender parentInfo sourceAdmissionId"
+    );
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: null,
+      });
+      return;
+    }
+
+    const [classes, attendanceDocs, progressCount, payments, billing, admission] =
+      await Promise.all([
+        Class.find({ students: userId })
+          .select("title schedule meetingLink meetingPlatform isActive teacher")
+          .populate("teacher", "name email whatsapp")
+          .sort({ createdAt: -1 })
+          .lean(),
+        Attendance.find({ student: userId }).select("status").lean(),
+        Progress.countDocuments({ student: userId }),
+        PaymentRecord.find({ student: userId })
+          .select("amount currency status createdAt")
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .lean(),
+        StudentBilling.findOne({ student: userId }).lean(),
+        user.sourceAdmissionId
+          ? StudentAdmissionApplication.findById(user.sourceAdmissionId).lean()
+          : StudentAdmissionApplication.findOne({ linkedUserId: userId })
+              .sort({ createdAt: -1 })
+              .lean(),
+      ]);
+
+    const present = attendanceDocs.filter((a) => a.status === "present").length;
+    const late = attendanceDocs.filter((a) => a.status === "late").length;
+    const total = attendanceDocs.length;
+    const attendanceRate =
+      total > 0 ? Math.round(((present + late) / total) * 100) : null;
+
+    res.status(200).json({
+      success: true,
+      message: "Profile hub fetched successfully",
+      data: {
+        profile: toProfileView(user),
+        enrollment: admission
+          ? buildEnrollmentSummaryFromAdmission(
+              admission as InstanceType<typeof StudentAdmissionApplication>
+            )
+          : null,
+        classes: classes.map((cls) => {
+          const teacher = cls.teacher as
+            | { name?: string; email?: string; whatsapp?: string }
+            | null;
+          return {
+            _id: String(cls._id),
+            title: cls.title,
+            schedule: cls.schedule ?? null,
+            meetingLink: cls.meetingLink ?? "",
+            meetingPlatform: cls.meetingPlatform ?? undefined,
+            isActive: cls.isActive !== false,
+            teacherName: teacher?.name ?? "Teacher",
+            teacherEmail: teacher?.email ?? "",
+            teacherWhatsapp: teacher?.whatsapp ?? "",
+          };
+        }),
+        stats: {
+          activeClasses: classes.filter((c) => c.isActive !== false).length,
+          attendanceRate,
+          progressRecords: progressCount,
+          recentPayments: payments.length,
+        },
+        billing: billing
+          ? {
+              monthlyFee: billing.monthlyFee,
+              currency: billing.currency,
+              dueDay: billing.dueDayOfMonth,
+              paidUntil: billing.paidUntil,
+              isActive: billing.isActive !== false,
+            }
+          : null,
+        recentPayments: payments.map((p) => ({
+          _id: String(p._id),
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          createdAt: p.createdAt,
+        })),
+      },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile hub",
       data: null,
     });
   }

@@ -12,6 +12,13 @@ export interface ICurriculumAssignment {
   completedAt?: Date;
 }
 
+export interface IParentInfo {
+  name?: string;
+  relationship?: string;
+  whatsapp?: string;
+  email?: string;
+}
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -26,6 +33,9 @@ export interface IUser extends Document {
   timezone?: string;
   country?: string;
   curriculumAssignments?: ICurriculumAssignment[];
+  parentInfo?: IParentInfo;
+  sourceAdmissionId?: Types.ObjectId;
+  profileNotes?: string;
   meetingLink?: string;
   bankName?: string;
   bankAccount?: string;
@@ -114,6 +124,14 @@ const userSchema = new Schema<IUser>(
       ],
       default: [],
     },
+    parentInfo: {
+      name: { type: String, trim: true },
+      relationship: { type: String, trim: true },
+      whatsapp: { type: String, trim: true },
+      email: { type: String, trim: true, lowercase: true },
+    },
+    sourceAdmissionId: { type: Schema.Types.ObjectId, ref: "StudentAdmissionApplication" },
+    profileNotes: { type: String, trim: true, maxlength: 2000 },
     meetingLink: {
       type: String,
       trim: true,

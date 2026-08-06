@@ -107,6 +107,14 @@ const userSchema = new mongoose_1.Schema({
         ],
         default: [],
     },
+    parentInfo: {
+        name: { type: String, trim: true },
+        relationship: { type: String, trim: true },
+        whatsapp: { type: String, trim: true },
+        email: { type: String, trim: true, lowercase: true },
+    },
+    sourceAdmissionId: { type: mongoose_1.Schema.Types.ObjectId, ref: "StudentAdmissionApplication" },
+    profileNotes: { type: String, trim: true, maxlength: 2000 },
     meetingLink: {
         type: String,
         trim: true,

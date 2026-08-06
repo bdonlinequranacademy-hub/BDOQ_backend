@@ -17,6 +17,7 @@ import { getStudentWeeklyReport } from "../controllers/weeklyReportController";
 import {
   changeStudentPassword,
   getStudentProfile,
+  getStudentProfileHub,
   updateStudentProfile,
 } from "../controllers/studentProfileController";
 import { uploadProfileAvatar } from "../controllers/avatarController";
@@ -46,6 +47,7 @@ router.get("/weekly-report", getStudentWeeklyReport);
 router.get("/notifications", getMyNotifications);
 router.patch("/notifications/:id/read", markAsRead);
 router.get("/profile", getStudentProfile);
+router.get("/profile/hub", getStudentProfileHub);
 router.patch("/profile", updateStudentProfile);
 router.patch("/profile/password", changeStudentPassword);
 router.post("/profile/avatar", (req, res, next) => {

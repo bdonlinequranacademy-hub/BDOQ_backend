@@ -50,6 +50,7 @@ function formatStudentAdmission(app) {
         monthlyFeeAmount: app.monthlyFeeAmount,
         monthlyFeeCurrency: app.monthlyFeeCurrency,
         enrollmentSetupAt: app.enrollmentSetupAt,
+        linkedUserId: app.linkedUserId?.toString(),
         createdAt: app.createdAt,
         updatedAt: app.updatedAt,
     };

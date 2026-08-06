@@ -283,7 +283,7 @@ const updateUser = async (req, res) => {
     try {
         const actor = getActor(req);
         const { id } = req.params;
-        const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments, whatsapp } = req.body;
+        const { name, email, role, isActive, children, gender, timezone, country, curriculumAssignments, whatsapp, profileNotes } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
@@ -464,6 +464,10 @@ const updateUser = async (req, res) => {
                 return;
             }
             updateData.whatsapp = normalized.whatsapp;
+        }
+        if (profileNotes !== undefined) {
+            updateData.profileNotes =
+                typeof profileNotes === "string" ? profileNotes.trim() : "";
         }
         const mongoUpdate = { ...updateData };
         if (Object.keys(unsetData).length > 0) {

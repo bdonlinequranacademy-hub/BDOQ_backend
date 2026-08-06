@@ -19,6 +19,8 @@ const Certificate_1 = require("../models/Certificate");
 const adminRoles_1 = require("../lib/adminRoles");
 const avatarFields_1 = require("../lib/avatarFields");
 const earningsService_1 = require("../services/earningsService");
+const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
+const userProfileSyncService_1 = require("../services/userProfileSyncService");
 const getActor = (req) => req.user;
 function yearsSince(date) {
     if (!date)
@@ -49,6 +51,9 @@ function formatBaseUser(user) {
         bankAccount: user.bankAccount ?? undefined,
         bKashNumber: user.bKashNumber ?? undefined,
         curriculumAssignments: user.curriculumAssignments ?? [],
+        parentInfo: user.parentInfo ?? undefined,
+        sourceAdmissionId: user.sourceAdmissionId?.toString(),
+        profileNotes: user.profileNotes ?? undefined,
         emailVerified: user.emailVerified === true,
         authProvider: user.authProvider ?? "local",
         createdAt: user.createdAt,
@@ -273,10 +278,15 @@ const getUserProfileDetail = async (req, res) => {
         }
         if (role === "student") {
             const classes = await Class_1.Class.find({ students: user._id })
-                .select("title description schedule meetingLink isActive teacher students sessionRateBdt createdAt")
+                .select("title description schedule meetingLink meetingPlatform isActive teacher students sessionRateBdt createdAt")
                 .populate("teacher", "name email whatsapp country gender")
                 .sort({ createdAt: -1 })
                 .lean();
+            const admission = user.sourceAdmissionId
+                ? await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(user.sourceAdmissionId).lean()
+                : await StudentAdmissionApplication_1.StudentAdmissionApplication.findOne({ linkedUserId: user._id })
+                    .sort({ createdAt: -1 })
+                    .lean();
             const classIds = classes.map((cls) => cls._id);
             const [attendanceDocs, recentAttendance, progressDocs, homeworkDocs, billing, payments, certificates,] = await Promise.all([
                 Attendance_1.Attendance.find({ student: user._id }).select("status date").lean(),
@@ -349,6 +359,11 @@ const getUserProfileDetail = async (req, res) => {
                 data: {
                     kind: "student",
                     user: base,
+                    parentInfo: user.parentInfo ?? undefined,
+                    profileNotes: user.profileNotes ?? undefined,
+                    enrollment: admission
+                        ? (0, userProfileSyncService_1.buildEnrollmentSummaryFromAdmission)(admission)
+                        : null,
                     stats: {
                         activeClasses: classes.filter((c) => c.isActive !== false).length,
                         totalClasses: classes.length,
@@ -381,6 +396,7 @@ const getUserProfileDetail = async (req, res) => {
                             description: cls.description ?? "",
                             schedule: cls.schedule ?? null,
                             meetingLink: cls.meetingLink ?? "",
+                            meetingPlatform: cls.meetingPlatform ?? undefined,
                             isActive: cls.isActive !== false,
                             teacher: teacherObj,
                             createdAt: cls.createdAt,

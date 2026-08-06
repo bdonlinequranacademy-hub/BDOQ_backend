@@ -22,7 +22,8 @@ const resolveAuthOrigin_1 = require("../lib/email/resolveAuthOrigin");
 const emailService_1 = require("./emailService");
 const brandEmailTemplate_1 = require("../lib/email/brandEmailTemplate");
 const emailConfig_1 = require("../lib/email/emailConfig");
-const verificationTokens_1 = require("./verificationTokens");
+const userProfileSyncService_1 = require("./userProfileSyncService");
+const parentInfoFromFormData_1 = require("../lib/parentInfoFromFormData");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function generateToken() {
     return crypto_1.default.randomBytes(24).toString("hex");
@@ -36,7 +37,7 @@ function generateTemporaryPassword() {
     return password;
 }
 async function sendStudentWelcomeEmail(email, name, temporaryPassword) {
-    const loginUrl = `${(0, verificationTokens_1.portalBaseUrl)()}/login`;
+    const loginUrl = `${(0, resolveAuthOrigin_1.getPortalBaseUrl)()}/login`;
     const content = {
         title: "Your student portal account is ready",
         greeting: `Assalamu Alaikum ${name},`,
@@ -87,6 +88,12 @@ async function createStudentUserFromTrial(booking, email) {
         whatsapp: normalizedWa.whatsapp,
         studentId: await (0, studentId_1.generateStudentId)(),
         gender: booking.learnerGender,
+        parentInfo: {
+            name: booking.parentName?.trim() || undefined,
+            relationship: "Parent/Guardian",
+            whatsapp: normalizedWa.whatsapp,
+            email: email.toLowerCase(),
+        },
     });
     return { user, temporaryPassword };
 }
@@ -152,6 +159,7 @@ async function convertTrialToAdmission(trialId, input) {
         }
         createdUser = userResult;
         booking.convertedUserId = userResult.user._id;
+        await (0, userProfileSyncService_1.syncUserFromAdmission)(userResult.user, admission);
         await sendStudentWelcomeEmail(email, studentName, userResult.temporaryPassword);
     }
     booking.convertedAdmissionId = admission._id;
@@ -257,6 +265,29 @@ async function completePrefilledAdmission(token, input) {
     application.monthlyFeeCurrency =
         enrollmentDefaults.monthlyFeeCurrency ?? application.monthlyFeeCurrency;
     await application.save();
+    const trial = application.sourceTrialBookingId
+        ? await TrialBooking_1.TrialBooking.findById(application.sourceTrialBookingId)
+        : null;
+    if (trial?.convertedUserId) {
+        const user = await User_1.User.findById(trial.convertedUserId);
+        if (user) {
+            await (0, userProfileSyncService_1.syncUserFromAdmission)(user, application);
+        }
+    }
+    else {
+        const parentInfo = (0, parentInfoFromFormData_1.extractParentInfoFromFormData)(application.formData);
+        const user = await User_1.User.findOne({
+            email: application.email,
+            role: "student",
+        });
+        if (user && parentInfo) {
+            user.parentInfo = parentInfo;
+            user.sourceAdmissionId = application._id;
+            await user.save();
+            application.linkedUserId = user._id;
+            await application.save();
+        }
+    }
     return { application: (0, studentAdmissionService_1.formatStudentAdmission)(application) };
 }
 function findPrefilledAdmissionByToken(token) {
