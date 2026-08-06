@@ -5,48 +5,9 @@ exports.parseWhatsApp = parseWhatsApp;
 exports.buildWaMeUrl = buildWaMeUrl;
 exports.waMeUrlFromRaw = waMeUrlFromRaw;
 exports.normalizeWhatsAppForStorage = normalizeWhatsAppForStorage;
-/** Country name → international dial code (no +). */
-exports.DIAL_CODE_BY_COUNTRY = {
-    Bangladesh: "880",
-    "United States": "1",
-    "United Kingdom": "44",
-    Canada: "1",
-    Australia: "61",
-    "Saudi Arabia": "966",
-    UAE: "971",
-    "United Arab Emirates": "971",
-    Qatar: "974",
-    Kuwait: "965",
-    Malaysia: "60",
-    Singapore: "65",
-    Indonesia: "62",
-    Pakistan: "92",
-    India: "91",
-    Egypt: "20",
-    Turkey: "90",
-    Germany: "49",
-    France: "33",
-    Italy: "39",
-    Spain: "34",
-    Netherlands: "31",
-    Sweden: "46",
-    Norway: "47",
-    Japan: "81",
-    "South Korea": "82",
-    China: "86",
-    "New Zealand": "64",
-    Ireland: "353",
-    Belgium: "32",
-    Switzerland: "41",
-    Oman: "968",
-    Bahrain: "973",
-    Jordan: "962",
-    Morocco: "212",
-    Nigeria: "234",
-    Kenya: "254",
-    "South Africa": "27",
-};
-const SORTED_DIAL_CODES = [...new Set(Object.values(exports.DIAL_CODE_BY_COUNTRY))].sort((a, b) => b.length - a.length);
+const countryTimezone_1 = require("./countryTimezone");
+Object.defineProperty(exports, "DIAL_CODE_BY_COUNTRY", { enumerable: true, get: function () { return countryTimezone_1.DIAL_CODE_BY_COUNTRY; } });
+const SORTED_DIAL_CODES = [...new Set(Object.values(countryTimezone_1.DIAL_CODE_BY_COUNTRY))].sort((a, b) => b.length - a.length);
 function digitsOnly(raw) {
     return raw.replace(/\D/g, "");
 }
@@ -54,10 +15,10 @@ function dialCodeForCountry(country) {
     if (!country?.trim())
         return undefined;
     const trimmed = country.trim();
-    if (exports.DIAL_CODE_BY_COUNTRY[trimmed])
-        return exports.DIAL_CODE_BY_COUNTRY[trimmed];
+    if (countryTimezone_1.DIAL_CODE_BY_COUNTRY[trimmed])
+        return countryTimezone_1.DIAL_CODE_BY_COUNTRY[trimmed];
     const lower = trimmed.toLowerCase();
-    const match = Object.entries(exports.DIAL_CODE_BY_COUNTRY).find(([name]) => name.toLowerCase() === lower);
+    const match = Object.entries(countryTimezone_1.DIAL_CODE_BY_COUNTRY).find(([name]) => name.toLowerCase() === lower);
     return match?.[1];
 }
 function detectInternationalDigits(digits) {

@@ -1,44 +1,6 @@
-/** Country name → international dial code (no +). */
-export const DIAL_CODE_BY_COUNTRY: Record<string, string> = {
-  Bangladesh: "880",
-  "United States": "1",
-  "United Kingdom": "44",
-  Canada: "1",
-  Australia: "61",
-  "Saudi Arabia": "966",
-  UAE: "971",
-  "United Arab Emirates": "971",
-  Qatar: "974",
-  Kuwait: "965",
-  Malaysia: "60",
-  Singapore: "65",
-  Indonesia: "62",
-  Pakistan: "92",
-  India: "91",
-  Egypt: "20",
-  Turkey: "90",
-  Germany: "49",
-  France: "33",
-  Italy: "39",
-  Spain: "34",
-  Netherlands: "31",
-  Sweden: "46",
-  Norway: "47",
-  Japan: "81",
-  "South Korea": "82",
-  China: "86",
-  "New Zealand": "64",
-  Ireland: "353",
-  Belgium: "32",
-  Switzerland: "41",
-  Oman: "968",
-  Bahrain: "973",
-  Jordan: "962",
-  Morocco: "212",
-  Nigeria: "234",
-  Kenya: "254",
-  "South Africa": "27",
-};
+import { DIAL_CODE_BY_COUNTRY } from "./countryTimezone";
+
+export { DIAL_CODE_BY_COUNTRY };
 
 const SORTED_DIAL_CODES = [...new Set(Object.values(DIAL_CODE_BY_COUNTRY))].sort(
   (a, b) => b.length - a.length
@@ -50,7 +12,7 @@ export type ParsedWhatsApp = {
   display: string;
 };
 
-export type ParseWhatsAppResult =
+type ParseResult =
   | { ok: true; value: ParsedWhatsApp }
   | { ok: false; error: string };
 
@@ -97,10 +59,7 @@ function validateLength(waMeDigits: string): string | null {
  * @param raw User input e.g. 01712-345678 or +44 7123 456789
  * @param countryHint Profile country e.g. Bangladesh — used when no + prefix
  */
-export function parseWhatsApp(
-  raw: string,
-  countryHint?: string
-): ParseWhatsAppResult {
+export function parseWhatsApp(raw: string, countryHint?: string): ParseResult {
   const trimmed = raw?.trim() ?? "";
   if (!trimmed) {
     return { ok: false, error: "WhatsApp number is required." };
@@ -125,8 +84,10 @@ export function parseWhatsApp(
           "Include country code (e.g. +880…) or set your country on your profile first.",
       };
     }
+
     let local = digits;
     if (local.startsWith("0")) local = local.slice(1);
+
     if (local.startsWith(dial)) {
       waMeDigits = local;
     } else {
@@ -144,7 +105,6 @@ export function parseWhatsApp(
     waMeDigits,
     display: formatDisplay(waMeDigits),
   };
-
   return { ok: true, value: parsed };
 }
 
@@ -175,13 +135,16 @@ export function normalizeWhatsAppForStorage(
   if (typeof raw !== "string") {
     return { ok: false, error: "WhatsApp must be a text value." };
   }
+
   const trimmed = raw.trim();
   if (!trimmed) {
     return { ok: true, whatsapp: "" };
   }
+
   const parsed = parseWhatsApp(trimmed, countryHint);
   if (!parsed.ok) {
     return { ok: false, error: parsed.error };
   }
+
   return { ok: true, whatsapp: parsed.value.e164 };
 }

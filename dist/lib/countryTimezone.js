@@ -1,33 +1,33 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_TIMEZONE = exports.BD_TIMEZONE = exports.COUNTRY_TIMEZONE_MAP = void 0;
+exports.DEFAULT_TIMEZONE = exports.BD_TIMEZONE = exports.COUNTRY_TIMEZONE_MAP = exports.DIAL_CODE_BY_COUNTRY = void 0;
 exports.resolveTimezoneFromCountry = resolveTimezoneFromCountry;
 exports.formatTrialLocalSchedule = formatTrialLocalSchedule;
 exports.formatTrialBangladeshSchedule = formatTrialBangladeshSchedule;
-exports.COUNTRY_TIMEZONE_MAP = {
-    Bangladesh: "Asia/Dhaka",
-    Australia: "Australia/Sydney",
-    "United Kingdom": "Europe/London",
-    "United States": "America/New_York",
-    Canada: "America/Toronto",
-    "Saudi Arabia": "Asia/Riyadh",
-    UAE: "Asia/Dubai",
-    Qatar: "Asia/Qatar",
-    Malaysia: "Asia/Kuala_Lumpur",
-    Japan: "Asia/Tokyo",
-    Germany: "Europe/Berlin",
-    Pakistan: "Asia/Karachi",
-    Indonesia: "Asia/Jakarta",
-    Turkey: "Europe/Istanbul",
-    Egypt: "Africa/Cairo",
-    India: "Asia/Kolkata",
-    Singapore: "Asia/Singapore",
-    "New Zealand": "Pacific/Auckland",
-    Mexico: "America/Mexico_City",
-    France: "Europe/Paris",
-};
+const worldDialCodes_json_1 = __importDefault(require("./data/worldDialCodes.json"));
+const worldTimezones_json_1 = __importDefault(require("./data/worldTimezones.json"));
+const timezoneByIso = new Map();
+for (const tz of worldTimezones_json_1.default) {
+    if (!timezoneByIso.has(tz.iso)) {
+        timezoneByIso.set(tz.iso, tz.value);
+    }
+}
+const entries = worldDialCodes_json_1.default.map((row) => ({
+    name: row.country,
+    dialCode: row.dialCode.replace(/\D/g, ""),
+    timezone: timezoneByIso.get(row.iso) ?? "UTC",
+}));
+/** Country name → international dial code (no +). */
+exports.DIAL_CODE_BY_COUNTRY = Object.fromEntries(entries.map((entry) => [entry.name, entry.dialCode]));
+exports.DIAL_CODE_BY_COUNTRY.UAE = exports.DIAL_CODE_BY_COUNTRY["United Arab Emirates"] ?? "971";
+exports.COUNTRY_TIMEZONE_MAP = Object.fromEntries(entries.map((entry) => [entry.name, entry.timezone]));
+exports.COUNTRY_TIMEZONE_MAP.UAE =
+    exports.COUNTRY_TIMEZONE_MAP["United Arab Emirates"] ?? "Asia/Dubai";
 exports.BD_TIMEZONE = "Asia/Dhaka";
-exports.DEFAULT_TIMEZONE = exports.COUNTRY_TIMEZONE_MAP.Bangladesh;
+exports.DEFAULT_TIMEZONE = exports.BD_TIMEZONE;
 function resolveTimezoneFromCountry(country) {
     const trimmed = country.trim();
     return exports.COUNTRY_TIMEZONE_MAP[trimmed] ?? exports.DEFAULT_TIMEZONE;

@@ -1,28 +1,36 @@
-export const COUNTRY_TIMEZONE_MAP: Record<string, string> = {
-  Bangladesh: "Asia/Dhaka",
-  Australia: "Australia/Sydney",
-  "United Kingdom": "Europe/London",
-  "United States": "America/New_York",
-  Canada: "America/Toronto",
-  "Saudi Arabia": "Asia/Riyadh",
-  UAE: "Asia/Dubai",
-  Qatar: "Asia/Qatar",
-  Malaysia: "Asia/Kuala_Lumpur",
-  Japan: "Asia/Tokyo",
-  Germany: "Europe/Berlin",
-  Pakistan: "Asia/Karachi",
-  Indonesia: "Asia/Jakarta",
-  Turkey: "Europe/Istanbul",
-  Egypt: "Africa/Cairo",
-  India: "Asia/Kolkata",
-  Singapore: "Asia/Singapore",
-  "New Zealand": "Pacific/Auckland",
-  Mexico: "America/Mexico_City",
-  France: "Europe/Paris",
-};
+import worldDialCodes from "./data/worldDialCodes.json";
+import worldTimezones from "./data/worldTimezones.json";
+
+type IDialRow = { iso: string; country: string; dialCode: string };
+type ITzRow = { iso: string; value: string; country: string };
+
+const timezoneByIso = new Map<string, string>();
+for (const tz of worldTimezones as ITzRow[]) {
+  if (!timezoneByIso.has(tz.iso)) {
+    timezoneByIso.set(tz.iso, tz.value);
+  }
+}
+
+const entries = (worldDialCodes as IDialRow[]).map((row) => ({
+  name: row.country,
+  dialCode: row.dialCode.replace(/\D/g, ""),
+  timezone: timezoneByIso.get(row.iso) ?? "UTC",
+}));
+
+/** Country name → international dial code (no +). */
+export const DIAL_CODE_BY_COUNTRY: Record<string, string> = Object.fromEntries(
+  entries.map((entry) => [entry.name, entry.dialCode])
+);
+DIAL_CODE_BY_COUNTRY.UAE = DIAL_CODE_BY_COUNTRY["United Arab Emirates"] ?? "971";
+
+export const COUNTRY_TIMEZONE_MAP: Record<string, string> = Object.fromEntries(
+  entries.map((entry) => [entry.name, entry.timezone])
+);
+COUNTRY_TIMEZONE_MAP.UAE =
+  COUNTRY_TIMEZONE_MAP["United Arab Emirates"] ?? "Asia/Dubai";
 
 export const BD_TIMEZONE = "Asia/Dhaka";
-export const DEFAULT_TIMEZONE = COUNTRY_TIMEZONE_MAP.Bangladesh;
+export const DEFAULT_TIMEZONE = BD_TIMEZONE;
 
 export function resolveTimezoneFromCountry(country: string): string {
   const trimmed = country.trim();
