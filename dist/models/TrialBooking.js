@@ -37,6 +37,7 @@ exports.TrialBooking = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const trialBookingSchema = new mongoose_1.Schema({
     parentName: { type: String, required: true, trim: true },
+    studentName: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
     country: { type: String, trim: true },
@@ -50,6 +51,9 @@ const trialBookingSchema = new mongoose_1.Schema({
         enum: ["child", "teen", "adult"],
         required: true,
     },
+    preferredTrialDate: { type: String, trim: true },
+    preferredTrialTime: { type: String, trim: true },
+    additionalNote: { type: String, trim: true },
     timeSlot: {
         type: String,
         enum: ["anytime", "early_morning", "morning", "afternoon", "evening", "late_evening"],
@@ -64,6 +68,15 @@ const trialBookingSchema = new mongoose_1.Schema({
     source: { type: String, trim: true },
     courseSlug: { type: String, trim: true },
     teacherSlug: { type: String, trim: true },
+    meetingPlatform: {
+        type: String,
+        enum: ["google_meet", "zoom", "teams", "whatsapp", "custom"],
+    },
+    meetingLink: { type: String, trim: true },
+    invitationSentAt: { type: Date },
+    convertedAdmissionId: { type: mongoose_1.Schema.Types.ObjectId, ref: "StudentAdmissionApplication" },
+    convertedUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
+    convertedAt: { type: Date },
     utmSource: { type: String, trim: true },
     utmMedium: { type: String, trim: true },
     utmCampaign: { type: String, trim: true },

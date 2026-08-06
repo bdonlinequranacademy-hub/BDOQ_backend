@@ -28,6 +28,7 @@ router.get("/stats", publicContentController_1.getPublicStatsHandler);
 router.get("/progress-highlights", publicContentController_1.getPublicProgressHighlightsHandler);
 router.get("/live-dashboard", liveMonitorController_1.getPublicLiveDashboardHandler);
 router.post("/trial-bookings", trialBookingController_1.submitTrialBooking);
+router.get("/admission-prefill/:token", studentAdmissionController_1.getPublicAdmissionPrefill);
 router.post("/contact-messages", contactMessageController_1.submitContactMessage);
 router.post("/newsletter-subscribers", newsletterSubscriberController_1.submitNewsletterSubscriber);
 router.post("/student-admissions", (req, res, next) => {

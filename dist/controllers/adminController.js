@@ -23,6 +23,7 @@ const studentId_1 = require("../utils/studentId");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
 const scheduleService_1 = require("../services/scheduleService");
 const meetingLink_1 = require("../utils/meetingLink");
+const trialMeetingPlatform_1 = require("../lib/trialMeetingPlatform");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const curriculumService_1 = require("../services/curriculumService");
 const liveMonitorService_1 = require("../services/liveMonitorService");
@@ -586,7 +587,7 @@ const deleteClass = async (req, res) => {
 exports.deleteClass = deleteClass;
 const createClass = async (req, res) => {
     try {
-        const { title, description, teacherId, studentIds, schedule, meetingLink, sessionRateBdt, } = req.body;
+        const { title, description, teacherId, studentIds, schedule, meetingLink, meetingPlatform, sessionRateBdt, } = req.body;
         if (!title || !teacherId) {
             res.status(400).json({
                 success: false,
@@ -622,6 +623,7 @@ const createClass = async (req, res) => {
             students: studentIds || [],
             schedule: parsedSchedule,
             meetingLink: (0, meetingLink_1.normalizeMeetingLink)(meetingLink),
+            meetingPlatform: (0, trialMeetingPlatform_1.parseTrialMeetingPlatform)(meetingPlatform),
             sessionRateBdt,
         });
         const students = studentIds || [];
@@ -658,7 +660,7 @@ exports.createClass = createClass;
 const updateClass = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, teacherId, studentIds, schedule, meetingLink, isActive, sessionRateBdt, } = req.body;
+        const { title, description, teacherId, studentIds, schedule, meetingLink, meetingPlatform, isActive, sessionRateBdt, } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
@@ -701,6 +703,9 @@ const updateClass = async (req, res) => {
         }
         if (meetingLink !== undefined) {
             updateData.meetingLink = (0, meetingLink_1.normalizeMeetingLink)(meetingLink);
+        }
+        if (meetingPlatform !== undefined) {
+            updateData.meetingPlatform = (0, trialMeetingPlatform_1.parseTrialMeetingPlatform)(meetingPlatform);
         }
         if (isActive !== undefined)
             updateData.isActive = isActive;

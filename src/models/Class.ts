@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
+import type { TrialMeetingPlatform } from "../lib/trialMeetingPlatform";
 
 export type ScheduleDay =
   | "Saturday"
@@ -24,6 +25,7 @@ export interface IClass extends Document {
   students: Types.ObjectId[];
   schedule?: ISchedule;
   meetingLink?: string;
+  meetingPlatform?: TrialMeetingPlatform;
   sessionRateBdt?: number;
   isActive: boolean;
   createdAt: Date;
@@ -87,6 +89,10 @@ const classSchema = new Schema<IClass>(
     meetingLink: {
       type: String,
       trim: true,
+    },
+    meetingPlatform: {
+      type: String,
+      enum: ["google_meet", "zoom", "teams", "whatsapp", "custom"],
     },
     sessionRateBdt: {
       type: Number,

@@ -3,9 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAdminTrialBooking = exports.patchAdminTrialBooking = exports.patchAdminTrialBookingStatus = exports.listAdminTrialBookings = exports.submitTrialBooking = void 0;
+exports.deleteAdminTrialBooking = exports.postAdminConvertTrialToAdmission = exports.postAdminSendTrialInvitation = exports.patchAdminTrialBooking = exports.patchAdminTrialBookingStatus = exports.listAdminTrialBookings = exports.submitTrialBooking = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const trialBookingService_1 = require("../services/trialBookingService");
+const trialConversionService_1 = require("../services/trialConversionService");
+const trialMeetingPlatform_1 = require("../lib/trialMeetingPlatform");
 function parseLearnerType(value) {
     if (value === "child" || value === "teen" || value === "adult")
         return value;
@@ -57,16 +59,24 @@ const submitTrialBooking = async (req, res) => {
             : [];
         const result = await (0, trialBookingService_1.createTrialBooking)({
             parentName: req.body.parentName,
+            studentName: req.body.studentName,
             email: req.body.email,
             whatsapp: req.body.whatsapp,
             country: req.body.country,
             age: typeof req.body.age === "string" ? req.body.age : undefined,
             learnerGender: parseLearnerGender(req.body.learnerGender),
             learnerType,
+            preferredTrialDate: typeof req.body.preferredTrialDate === "string"
+                ? req.body.preferredTrialDate
+                : undefined,
+            preferredTrialTime: typeof req.body.preferredTrialTime === "string"
+                ? req.body.preferredTrialTime
+                : undefined,
+            additionalNote: typeof req.body.additionalNote === "string" ? req.body.additionalNote : undefined,
             timeSlot: parseTimeSlot(req.body.timeSlot),
             teacherPreference: parseTeacherPreference(req.body.teacherPreference),
             preferredDays,
-            timezone: req.body.timezone,
+            timezone: typeof req.body.timezone === "string" ? req.body.timezone : undefined,
             source: req.body.source,
             courseSlug: req.body.courseSlug,
             teacherSlug: req.body.teacherSlug,
@@ -179,17 +189,28 @@ const patchAdminTrialBooking = async (req, res) => {
             : undefined;
         const result = await (0, trialBookingService_1.updateTrialBooking)(id, {
             parentName: typeof req.body.parentName === "string" ? req.body.parentName : undefined,
+            studentName: typeof req.body.studentName === "string" ? req.body.studentName : undefined,
             email: typeof req.body.email === "string" ? req.body.email : undefined,
             whatsapp: typeof req.body.whatsapp === "string" ? req.body.whatsapp : undefined,
             country: typeof req.body.country === "string" ? req.body.country : undefined,
             age: typeof req.body.age === "string" ? req.body.age : undefined,
             learnerGender: parseLearnerGender(req.body.learnerGender),
             learnerType: parseLearnerType(req.body.learnerType),
+            preferredTrialDate: typeof req.body.preferredTrialDate === "string"
+                ? req.body.preferredTrialDate
+                : undefined,
+            preferredTrialTime: typeof req.body.preferredTrialTime === "string"
+                ? req.body.preferredTrialTime
+                : undefined,
+            additionalNote: typeof req.body.additionalNote === "string" ? req.body.additionalNote : undefined,
             timeSlot: parseTimeSlot(req.body.timeSlot),
             teacherPreference: parseTeacherPreference(req.body.teacherPreference),
             preferredDays,
             timezone: typeof req.body.timezone === "string" ? req.body.timezone : undefined,
             courseSlug: typeof req.body.courseSlug === "string" ? req.body.courseSlug : undefined,
+            teacherSlug: typeof req.body.teacherSlug === "string" ? req.body.teacherSlug : undefined,
+            meetingPlatform: (0, trialMeetingPlatform_1.parseTrialMeetingPlatform)(req.body.meetingPlatform),
+            meetingLink: typeof req.body.meetingLink === "string" ? req.body.meetingLink : undefined,
             status: parseBookingStatus(req.body.status),
         });
         if ("error" in result) {
@@ -212,6 +233,78 @@ const patchAdminTrialBooking = async (req, res) => {
     }
 };
 exports.patchAdminTrialBooking = patchAdminTrialBooking;
+const postAdminSendTrialInvitation = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid booking ID",
+                data: null,
+            });
+            return;
+        }
+        const result = await (0, trialBookingService_1.sendTrialInvitation)(id, {
+            teacherSlug: typeof req.body.teacherSlug === "string" ? req.body.teacherSlug : undefined,
+            meetingPlatform: (0, trialMeetingPlatform_1.parseTrialMeetingPlatform)(req.body.meetingPlatform),
+            meetingLink: typeof req.body.meetingLink === "string" ? req.body.meetingLink : undefined,
+        });
+        if ("error" in result) {
+            const statusCode = result.error === "Trial booking not found" ? 404 : 400;
+            res.status(statusCode).json({ success: false, message: result.error, data: null });
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            message: "Trial invitation prepared",
+            data: result,
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to send trial invitation",
+            data: null,
+        });
+    }
+};
+exports.postAdminSendTrialInvitation = postAdminSendTrialInvitation;
+const postAdminConvertTrialToAdmission = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid booking ID",
+                data: null,
+            });
+            return;
+        }
+        const result = await (0, trialConversionService_1.convertTrialToAdmission)(id, {
+            email: typeof req.body.email === "string" ? req.body.email : "",
+            createUser: req.body.createUser !== false,
+            locale: req.body.locale === "bn" ? "bn" : req.body.locale === "en" ? "en" : undefined,
+        });
+        if ("error" in result) {
+            const statusCode = result.error === "Trial booking not found" ? 404 : 400;
+            res.status(statusCode).json({ success: false, message: result.error, data: null });
+            return;
+        }
+        res.status(201).json({
+            success: true,
+            message: "Trial lead converted to admission",
+            data: result,
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to convert trial lead",
+            data: null,
+        });
+    }
+};
+exports.postAdminConvertTrialToAdmission = postAdminConvertTrialToAdmission;
 const deleteAdminTrialBooking = async (req, res) => {
     try {
         const { id } = req.params;

@@ -88,6 +88,10 @@ const classSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    meetingPlatform: {
+        type: String,
+        enum: ["google_meet", "zoom", "teams", "whatsapp", "custom"],
+    },
     sessionRateBdt: {
         type: Number,
         min: 0,

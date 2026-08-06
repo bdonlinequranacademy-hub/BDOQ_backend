@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { submitContactMessage } from "../controllers/contactMessageController";
 import { submitNewsletterSubscriber } from "../controllers/newsletterSubscriberController";
-import { submitStudentAdmission } from "../controllers/studentAdmissionController";
+import { submitStudentAdmission, getPublicAdmissionPrefill } from "../controllers/studentAdmissionController";
 import { submitTeacherApplication } from "../controllers/teacherApplicationController";
 import { submitTrialBooking } from "../controllers/trialBookingController";
 import { verifyPublicCertificate } from "../controllers/certificateController";
@@ -42,6 +42,7 @@ router.get("/stats", getPublicStatsHandler);
 router.get("/progress-highlights", getPublicProgressHighlightsHandler);
 router.get("/live-dashboard", getPublicLiveDashboardHandler);
 router.post("/trial-bookings", submitTrialBooking);
+router.get("/admission-prefill/:token", getPublicAdmissionPrefill);
 router.post("/contact-messages", submitContactMessage);
 router.post("/newsletter-subscribers", submitNewsletterSubscriber);
 router.post(

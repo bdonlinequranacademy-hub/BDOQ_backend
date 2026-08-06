@@ -47,6 +47,45 @@ const studentAdmissionApplicationSchema = new mongoose_1.Schema({
         default: "new",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
+    sourceTrialBookingId: { type: mongoose_1.Schema.Types.ObjectId, ref: "TrialBooking" },
+    prefillToken: { type: String, trim: true, unique: true, sparse: true },
+    convertedFromTrial: { type: Boolean, default: false },
+    paymentStatus: {
+        type: String,
+        enum: ["pending", "verified", "rejected"],
+        default: "pending",
+    },
+    paymentVerifiedAt: { type: Date },
+    paymentRejectedAt: { type: Date },
+    paymentRejectReason: { type: String, trim: true, maxlength: 500 },
+    classStartDate: { type: String, trim: true },
+    classDays: [
+        {
+            type: String,
+            enum: [
+                "Saturday",
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+            ],
+        },
+    ],
+    classesPerWeek: { type: Number, min: 1, max: 7 },
+    classDurationMinutes: { type: Number, min: 15, max: 180 },
+    classTime: { type: String, trim: true },
+    assignedTeacherSlug: { type: String, trim: true },
+    assignedTeacherName: { type: String, trim: true },
+    meetingPlatform: {
+        type: String,
+        enum: ["google_meet", "zoom", "teams", "whatsapp", "custom"],
+    },
+    meetingLink: { type: String, trim: true },
+    monthlyFeeAmount: { type: Number, min: 0 },
+    monthlyFeeCurrency: { type: String, enum: ["bdt", "usd"] },
+    enrollmentSetupAt: { type: Date },
 }, { timestamps: true });
 studentAdmissionApplicationSchema.index({ status: 1, createdAt: -1 });
 studentAdmissionApplicationSchema.index({ email: 1, createdAt: -1 });

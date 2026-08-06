@@ -1,18 +1,42 @@
-import { TrialBooking, type ITrialBooking, type TrialBookingStatus } from "../models/TrialBooking";
+import {
+  TrialBooking,
+  type ITrialBooking,
+  type TrialBookingStatus,
+  type TrialMeetingPlatform,
+} from "../models/TrialBooking";
+import { TeacherProfile } from "../models/TeacherProfile";
 import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
-import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
+import { normalizeWhatsAppForStorage, buildWaMeUrl, parseWhatsApp } from "../lib/whatsappPhone";
+import {
+  formatTrialBangladeshSchedule,
+  formatTrialLocalSchedule,
+  resolveTimezoneFromCountry,
+} from "../lib/countryTimezone";
+import { buildTrialInvitationContent } from "../lib/trialInvitationContent";
+import {
+  normalizeMeetingLink,
+  formatTrialMeetingPlatform,
+} from "../lib/trialMeetingPlatform";
+import {
+  buildBrandEmailHtml,
+  buildBrandEmailText,
+} from "../lib/email/brandEmailTemplate";
 
 export type { TrialBookingStatus };
 
 export interface CreateTrialBookingInput {
   parentName: string;
+  studentName?: string;
   email?: string;
   whatsapp: string;
   country?: string;
   age?: string;
   learnerGender?: "male" | "female";
   learnerType: "child" | "teen" | "adult";
+  preferredTrialDate?: string;
+  preferredTrialTime?: string;
+  additionalNote?: string;
   timeSlot?: "anytime" | "early_morning" | "morning" | "afternoon" | "evening" | "late_evening";
   teacherPreference?: "any" | "female" | "male";
   preferredDays?: string[];
@@ -28,17 +52,24 @@ export interface CreateTrialBookingInput {
 
 export interface UpdateTrialBookingInput {
   parentName?: string;
+  studentName?: string;
   email?: string;
   whatsapp?: string;
   country?: string;
   age?: string;
   learnerGender?: "male" | "female";
   learnerType?: "child" | "teen" | "adult";
+  preferredTrialDate?: string;
+  preferredTrialTime?: string;
+  additionalNote?: string;
   timeSlot?: "anytime" | "early_morning" | "morning" | "afternoon" | "evening" | "late_evening";
   teacherPreference?: "any" | "female" | "male";
   preferredDays?: string[];
   timezone?: string;
   courseSlug?: string;
+  teacherSlug?: string;
+  meetingPlatform?: TrialMeetingPlatform;
+  meetingLink?: string;
   status?: TrialBookingStatus;
 }
 
@@ -62,8 +93,20 @@ function deriveLearnerTypeFromAge(age: string): "child" | "teen" | "adult" {
 }
 
 function formatBookingText(booking: ITrialBooking): string {
+  const localSchedule = formatTrialLocalSchedule(
+    booking.preferredTrialDate,
+    booking.preferredTrialTime,
+    booking.timezone
+  );
+  const bdSchedule = formatTrialBangladeshSchedule(
+    booking.preferredTrialDate,
+    booking.preferredTrialTime,
+    booking.timezone
+  );
+
   const lines = [
-    `Name: ${booking.parentName}`,
+    `Parent: ${booking.parentName}`,
+    booking.studentName ? `Student: ${booking.studentName}` : null,
     booking.email ? `Email: ${booking.email}` : null,
     `WhatsApp: ${booking.whatsapp}`,
     booking.country ? `Country: ${booking.country}` : null,
@@ -71,14 +114,24 @@ function formatBookingText(booking: ITrialBooking): string {
     booking.learnerGender ? `Gender: ${booking.learnerGender}` : null,
     `Learner type: ${booking.learnerType}`,
     `Teacher preference: ${booking.teacherPreference}`,
-    booking.timeSlot ? `Preferred time: ${booking.timeSlot}` : null,
+    localSchedule ? `Trial (parent local): ${localSchedule}` : null,
+    bdSchedule ? `Trial (Bangladesh): ${bdSchedule}` : null,
+    booking.timeSlot ? `Preferred time (legacy): ${booking.timeSlot}` : null,
     booking.preferredDays.length
-      ? `Preferred days: ${booking.preferredDays.join(", ")}`
+      ? `Preferred days (legacy): ${booking.preferredDays.join(", ")}`
       : null,
     booking.timezone ? `Timezone: ${booking.timezone}` : null,
+    booking.additionalNote ? `Note: ${booking.additionalNote}` : null,
     booking.source ? `How they heard: ${booking.source}` : null,
     booking.courseSlug ? `Course: ${booking.courseSlug}` : null,
-    booking.teacherSlug ? `Teacher: ${booking.teacherSlug}` : null,
+    booking.teacherSlug ? `Assigned teacher: ${booking.teacherSlug}` : null,
+    booking.meetingPlatform
+      ? `Platform: ${formatTrialMeetingPlatform(booking.meetingPlatform)}`
+      : null,
+    booking.meetingLink ? `Meeting link: ${booking.meetingLink}` : null,
+    booking.invitationSentAt
+      ? `Invitation sent: ${booking.invitationSentAt.toISOString()}`
+      : null,
     booking.utmSource ? `UTM: ${booking.utmSource} / ${booking.utmMedium ?? ""}` : null,
     `Submitted: ${booking.createdAt.toISOString()}`,
   ].filter(Boolean);
@@ -90,12 +143,16 @@ export function formatTrialBooking(booking: ITrialBooking) {
   return {
     _id: booking._id.toString(),
     parentName: booking.parentName,
+    studentName: booking.studentName,
     email: booking.email,
     whatsapp: booking.whatsapp,
     country: booking.country,
     age: booking.age,
     learnerGender: booking.learnerGender,
     learnerType: booking.learnerType,
+    preferredTrialDate: booking.preferredTrialDate,
+    preferredTrialTime: booking.preferredTrialTime,
+    additionalNote: booking.additionalNote,
     timeSlot: booking.timeSlot,
     teacherPreference: booking.teacherPreference,
     preferredDays: booking.preferredDays ?? [],
@@ -103,6 +160,12 @@ export function formatTrialBooking(booking: ITrialBooking) {
     source: booking.source,
     courseSlug: booking.courseSlug,
     teacherSlug: booking.teacherSlug,
+    meetingPlatform: booking.meetingPlatform,
+    meetingLink: booking.meetingLink,
+    invitationSentAt: booking.invitationSentAt,
+    convertedAdmissionId: booking.convertedAdmissionId?.toString(),
+    convertedUserId: booking.convertedUserId?.toString(),
+    convertedAt: booking.convertedAt,
     utmSource: booking.utmSource,
     utmMedium: booking.utmMedium,
     utmCampaign: booking.utmCampaign,
@@ -117,12 +180,22 @@ export async function createTrialBooking(
   input: CreateTrialBookingInput
 ): Promise<{ booking: ITrialBooking } | { error: string }> {
   const parentName = input.parentName?.trim();
+  const studentName = input.studentName?.trim();
   const email = input.email?.trim().toLowerCase();
   const whatsappRaw = input.whatsapp?.trim();
   const country = input.country?.trim();
+  const preferredTrialDate = input.preferredTrialDate?.trim();
+  const preferredTrialTime = input.preferredTrialTime?.trim();
+  const additionalNote = input.additionalNote?.trim();
+  const timezone =
+    input.timezone?.trim() || resolveTimezoneFromCountry(country ?? "");
 
   if (!parentName || !whatsappRaw) {
-    return { error: "Name and WhatsApp are required." };
+    return { error: "Parent name and WhatsApp are required." };
+  }
+
+  if (!studentName) {
+    return { error: "Student name is required." };
   }
 
   if (email && !EMAIL_RE.test(email)) {
@@ -131,6 +204,10 @@ export async function createTrialBooking(
 
   if (!country) {
     return { error: "Country is required." };
+  }
+
+  if (!preferredTrialDate || !preferredTrialTime) {
+    return { error: "Preferred trial date and time are required." };
   }
 
   const normalizedWa = normalizeWhatsAppForStorage(whatsappRaw, country);
@@ -144,16 +221,20 @@ export async function createTrialBooking(
 
   const booking = await TrialBooking.create({
     parentName,
+    studentName,
     email: email || undefined,
     whatsapp: normalizedWa.whatsapp,
     country,
     age: input.age?.trim() || undefined,
     learnerGender: input.learnerGender,
     learnerType: input.learnerType,
+    preferredTrialDate,
+    preferredTrialTime,
+    additionalNote: additionalNote || undefined,
     timeSlot: input.timeSlot,
     teacherPreference: input.teacherPreference ?? "any",
     preferredDays: input.preferredDays ?? [],
-    timezone: input.timezone?.trim(),
+    timezone,
     source: input.source?.trim(),
     courseSlug: input.courseSlug?.trim(),
     teacherSlug: input.teacherSlug?.trim(),
@@ -219,8 +300,14 @@ export async function updateTrialBooking(
 
   if (input.parentName !== undefined) {
     const parentName = input.parentName.trim();
-    if (!parentName) return { error: "Name is required." };
+    if (!parentName) return { error: "Parent name is required." };
     booking.parentName = parentName;
+  }
+
+  if (input.studentName !== undefined) {
+    const studentName = input.studentName.trim();
+    if (!studentName) return { error: "Student name is required." };
+    booking.studentName = studentName;
   }
 
   if (input.email !== undefined) {
@@ -235,6 +322,9 @@ export async function updateTrialBooking(
     const country = input.country.trim();
     if (!country) return { error: "Country is required." };
     booking.country = country;
+    if (input.timezone === undefined) {
+      booking.timezone = resolveTimezoneFromCountry(country);
+    }
   }
 
   if (input.whatsapp !== undefined) {
@@ -262,6 +352,18 @@ export async function updateTrialBooking(
     booking.learnerType = input.learnerType;
   }
 
+  if (input.preferredTrialDate !== undefined) {
+    booking.preferredTrialDate = input.preferredTrialDate.trim() || undefined;
+  }
+
+  if (input.preferredTrialTime !== undefined) {
+    booking.preferredTrialTime = input.preferredTrialTime.trim() || undefined;
+  }
+
+  if (input.additionalNote !== undefined) {
+    booking.additionalNote = input.additionalNote.trim() || undefined;
+  }
+
   if (input.timeSlot !== undefined) {
     booking.timeSlot = input.timeSlot;
   }
@@ -284,12 +386,144 @@ export async function updateTrialBooking(
     booking.courseSlug = input.courseSlug.trim() || undefined;
   }
 
+  if (input.teacherSlug !== undefined) {
+    booking.teacherSlug = input.teacherSlug.trim() || undefined;
+  }
+
+  if (input.meetingPlatform !== undefined) {
+    booking.meetingPlatform = input.meetingPlatform;
+  }
+
+  if (input.meetingLink !== undefined) {
+    booking.meetingLink = normalizeMeetingLink(input.meetingLink) || undefined;
+  }
+
   if (input.status !== undefined) {
     booking.status = input.status;
   }
 
   await booking.save();
   return { booking: formatTrialBooking(booking) };
+}
+
+function formatCourseLabel(slug: string | undefined): string {
+  if (!slug?.trim()) return "General trial class";
+  return slug
+    .trim()
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export interface ISendTrialInvitationResult {
+  booking: ReturnType<typeof formatTrialBooking>;
+  delivery: {
+    emailSent: boolean;
+    emailError?: string;
+    whatsappUrl: string | null;
+  };
+}
+
+export async function sendTrialInvitation(
+  id: string,
+  input?: Pick<UpdateTrialBookingInput, "teacherSlug" | "meetingPlatform" | "meetingLink">
+): Promise<ISendTrialInvitationResult | { error: string }> {
+  const booking = await TrialBooking.findById(id);
+  if (!booking) {
+    return { error: "Trial booking not found" };
+  }
+
+  if (input?.teacherSlug !== undefined) {
+    booking.teacherSlug = input.teacherSlug.trim() || undefined;
+  }
+
+  if (input?.meetingPlatform !== undefined) {
+    booking.meetingPlatform = input.meetingPlatform;
+  }
+
+  if (input?.meetingLink !== undefined) {
+    booking.meetingLink = normalizeMeetingLink(input.meetingLink) || undefined;
+  }
+
+  if (!booking.teacherSlug?.trim()) {
+    return { error: "Assign a teacher before sending the invitation." };
+  }
+
+  if (!booking.meetingPlatform) {
+    return { error: "Select a meeting platform before sending the invitation." };
+  }
+
+  if (!booking.meetingLink?.trim()) {
+    return { error: "Add a meeting link before sending the invitation." };
+  }
+
+  if (!booking.preferredTrialDate?.trim() || !booking.preferredTrialTime?.trim()) {
+    return { error: "Trial date and time are required before sending the invitation." };
+  }
+
+  const teacher = await TeacherProfile.findOne({ slug: booking.teacherSlug.trim() });
+  const teacherName = teacher?.name?.trim() || booking.teacherSlug.trim();
+  const courseLabel = formatCourseLabel(booking.courseSlug);
+
+  const invitation = buildTrialInvitationContent({
+    booking,
+    teacherName,
+    courseLabel,
+  });
+
+  let emailSent = false;
+  let emailError: string | undefined;
+
+  const recipientEmail = booking.email?.trim();
+  if (recipientEmail && EMAIL_RE.test(recipientEmail)) {
+    const html = buildBrandEmailHtml({
+      title: invitation.emailTitle,
+      greeting: invitation.greeting,
+      messageBody: invitation.messageBody,
+      buttonText: invitation.meetingLink ? "Join Trial Class" : undefined,
+      buttonLink: invitation.meetingLink,
+      preheader: invitation.emailTitle,
+    });
+    const text = buildBrandEmailText({
+      title: invitation.emailTitle,
+      greeting: invitation.greeting,
+      messageBody: invitation.messageBody,
+      buttonText: invitation.meetingLink ? "Join Trial Class" : undefined,
+      buttonLink: invitation.meetingLink,
+    });
+
+    const emailResult = await sendEmail({
+      to: recipientEmail,
+      subject: invitation.subject,
+      text,
+      html,
+    });
+    emailSent = emailResult.sent;
+    if (!emailResult.sent) {
+      emailError = emailResult.error ?? "Email could not be sent.";
+    }
+  }
+
+  const waParsed = parseWhatsApp(booking.whatsapp, booking.country);
+  const whatsappUrl =
+    waParsed.ok && waParsed.value.waMeDigits
+      ? buildWaMeUrl(waParsed.value.waMeDigits, invitation.whatsappMessage)
+      : null;
+
+  booking.invitationSentAt = new Date();
+  if (booking.status !== "closed") {
+    booking.status = "scheduled";
+  }
+  await booking.save();
+
+  return {
+    booking: formatTrialBooking(booking),
+    delivery: {
+      emailSent,
+      emailError,
+      whatsappUrl,
+    },
+  };
 }
 
 export async function deleteTrialBooking(

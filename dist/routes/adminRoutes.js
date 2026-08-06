@@ -74,6 +74,8 @@ router.patch("/student-requests/:id/approve", studentRequestController_1.approve
 router.patch("/student-requests/:id/reject", studentRequestController_1.rejectStudentRequest);
 router.get("/trial-bookings", trialBookingController_1.listAdminTrialBookings);
 router.patch("/trial-bookings/:id", trialBookingController_1.patchAdminTrialBooking);
+router.post("/trial-bookings/:id/send-invitation", trialBookingController_1.postAdminSendTrialInvitation);
+router.post("/trial-bookings/:id/convert-to-admission", trialBookingController_1.postAdminConvertTrialToAdmission);
 router.patch("/trial-bookings/:id/status", trialBookingController_1.patchAdminTrialBookingStatus);
 router.delete("/trial-bookings/:id", trialBookingController_1.deleteAdminTrialBooking);
 router.get("/contact-messages", contactMessageController_1.listAdminContactMessages);
@@ -82,6 +84,8 @@ router.get("/newsletter-subscribers", newsletterSubscriberController_1.listAdmin
 router.patch("/newsletter-subscribers/:id/status", newsletterSubscriberController_1.patchAdminNewsletterSubscriberStatus);
 router.get("/student-admissions", studentAdmissionController_1.listAdminStudentAdmissions);
 router.patch("/student-admissions/:id/status", studentAdmissionController_1.patchAdminStudentAdmissionStatus);
+router.patch("/student-admissions/:id/payment-status", studentAdmissionController_1.patchAdminStudentAdmissionPaymentStatus);
+router.patch("/student-admissions/:id/enrollment", studentAdmissionController_1.patchAdminStudentAdmissionEnrollment);
 router.get("/teacher-applications", teacherApplicationController_1.listAdminTeacherApplications);
 router.patch("/teacher-applications/:id/status", teacherApplicationController_1.patchAdminTeacherApplicationStatus);
 router.get("/curriculum", curriculumAdminController_1.getAdminCurriculumTree);

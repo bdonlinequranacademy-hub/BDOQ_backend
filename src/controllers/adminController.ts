@@ -18,6 +18,7 @@ import { generateStudentId } from "../utils/studentId";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { syncSlotsFromClass } from "../services/scheduleService";
 import { normalizeMeetingLink } from "../utils/meetingLink";
+import { parseTrialMeetingPlatform } from "../lib/trialMeetingPlatform";
 import { parseClassSchedule } from "../utils/scheduleUtils";
 import { parseCurriculumAssignments, mapProgressDocsWithLabels, resolveCurriculumLabels } from "../services/curriculumService";
 import { getLiveMonitorPayload } from "../services/liveMonitorService";
@@ -677,6 +678,7 @@ export const createClass = async (
       studentIds,
       schedule,
       meetingLink,
+      meetingPlatform,
       sessionRateBdt,
     } = req.body;
 
@@ -721,6 +723,7 @@ export const createClass = async (
       students: studentIds || [],
       schedule: parsedSchedule,
       meetingLink: normalizeMeetingLink(meetingLink),
+      meetingPlatform: parseTrialMeetingPlatform(meetingPlatform),
       sessionRateBdt,
     });
 
@@ -773,6 +776,7 @@ export const updateClass = async (
       studentIds,
       schedule,
       meetingLink,
+      meetingPlatform,
       isActive,
       sessionRateBdt,
     } = req.body;
@@ -819,6 +823,9 @@ export const updateClass = async (
     }
     if (meetingLink !== undefined) {
       updateData.meetingLink = normalizeMeetingLink(meetingLink);
+    }
+    if (meetingPlatform !== undefined) {
+      updateData.meetingPlatform = parseTrialMeetingPlatform(meetingPlatform);
     }
     if (isActive !== undefined) updateData.isActive = isActive;
     if (sessionRateBdt !== undefined) updateData.sessionRateBdt = sessionRateBdt;

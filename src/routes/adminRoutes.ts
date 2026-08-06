@@ -48,7 +48,7 @@ import {
   listAdminStudentRequestsHandler,
   rejectStudentRequest,
 } from "../controllers/studentRequestController";
-import { listAdminTrialBookings, patchAdminTrialBooking, patchAdminTrialBookingStatus, deleteAdminTrialBooking } from "../controllers/trialBookingController";
+import { listAdminTrialBookings, patchAdminTrialBooking, patchAdminTrialBookingStatus, deleteAdminTrialBooking, postAdminSendTrialInvitation, postAdminConvertTrialToAdmission } from "../controllers/trialBookingController";
 import {
   listAdminContactMessages,
   patchAdminContactMessageStatus,
@@ -60,6 +60,8 @@ import {
 import {
   listAdminStudentAdmissions,
   patchAdminStudentAdmissionStatus,
+  patchAdminStudentAdmissionPaymentStatus,
+  patchAdminStudentAdmissionEnrollment,
 } from "../controllers/studentAdmissionController";
 import {
   listAdminTeacherApplications,
@@ -197,6 +199,8 @@ router.patch("/student-requests/:id/approve", approveStudentRequest);
 router.patch("/student-requests/:id/reject", rejectStudentRequest);
 router.get("/trial-bookings", listAdminTrialBookings);
 router.patch("/trial-bookings/:id", patchAdminTrialBooking);
+router.post("/trial-bookings/:id/send-invitation", postAdminSendTrialInvitation);
+router.post("/trial-bookings/:id/convert-to-admission", postAdminConvertTrialToAdmission);
 router.patch("/trial-bookings/:id/status", patchAdminTrialBookingStatus);
 router.delete("/trial-bookings/:id", deleteAdminTrialBooking);
 router.get("/contact-messages", listAdminContactMessages);
@@ -208,6 +212,11 @@ router.patch(
 );
 router.get("/student-admissions", listAdminStudentAdmissions);
 router.patch("/student-admissions/:id/status", patchAdminStudentAdmissionStatus);
+router.patch(
+  "/student-admissions/:id/payment-status",
+  patchAdminStudentAdmissionPaymentStatus
+);
+router.patch("/student-admissions/:id/enrollment", patchAdminStudentAdmissionEnrollment);
 router.get("/teacher-applications", listAdminTeacherApplications);
 router.patch("/teacher-applications/:id/status", patchAdminTeacherApplicationStatus);
 
