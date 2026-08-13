@@ -13,7 +13,6 @@ export const PAYMENT_METHODS = [
   "zelle",
   "wise",
   "bank_transfer",
-  "paypal",
   "cash_app",
   "other",
 ] as const;

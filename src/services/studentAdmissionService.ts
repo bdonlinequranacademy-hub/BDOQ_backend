@@ -239,7 +239,7 @@ export async function createStudentAdmissionApplication(input: {
   const passwordHash = await hashApplicationPassword(passwordResult.password);
   const sanitizedFormData = stripPasswordFields(input.formData);
 
-  const allowedMethods = new Set(["bkash", "nagad", "bank", "paypal", "cash"]);
+  const allowedMethods = new Set(["bkash", "nagad", "bank", "cash"]);
   if (!allowedMethods.has(feeMethod)) {
     return { error: "Invalid admission fee payment method." };
   }

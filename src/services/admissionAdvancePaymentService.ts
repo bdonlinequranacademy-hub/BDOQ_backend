@@ -24,7 +24,6 @@ function wantsAdvanceMonth(formData: Record<string, unknown> | undefined): boole
 
 function mapAdmissionMethod(raw: string): PaymentMethod {
   const method = raw.toLowerCase();
-  if (method === "paypal") return "paypal";
   if (method === "bank" || method === "bank_transfer") return "bank_transfer";
   return "other";
 }

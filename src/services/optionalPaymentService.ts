@@ -162,9 +162,6 @@ export async function createOptionalPayment(
 
   const whatsapp =
     typeof input.whatsapp === "string" ? input.whatsapp.trim() : "";
-  if (!email && !whatsapp) {
-    return { error: "Provide an email or WhatsApp number." };
-  }
 
   const reference =
     typeof input.reference === "string" ? input.reference.trim() : "";
