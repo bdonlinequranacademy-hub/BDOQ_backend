@@ -1,11 +1,10 @@
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
-import { TrialBooking, type ITrialBooking } from "../models/TrialBooking";
+import { TrialBooking } from "../models/TrialBooking";
 import {
   StudentAdmissionApplication,
   type IStudentAdmissionApplication,
 } from "../models/StudentAdmissionApplication";
-import { User, type IUser } from "../models/User";
+import { User } from "../models/User";
 import { resolveTeacherAssignment } from "../lib/resolveTeacherAssignment";
 import { buildAdmissionFormDataFromTrial } from "../lib/trialToAdmissionMapper";
 import {
@@ -14,19 +13,8 @@ import {
   type StudentAdmissionStatus,
 } from "./studentAdmissionService";
 import { formatTrialBooking } from "./trialBookingService";
-import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
-import { generateStudentId } from "../utils/studentId";
 import { getPublicSiteBaseUrl, getPortalBaseUrl } from "../lib/email/resolveAuthOrigin";
-import { sendEmail } from "./emailService";
-import {
-  buildBrandEmailHtml,
-  buildBrandEmailText,
-} from "../lib/email/brandEmailTemplate";
-import { EMAIL_BRAND } from "../lib/email/emailConfig";
-import {
-  syncUserFromAdmission,
-  buildEnrollmentSummaryFromAdmission,
-} from "./userProfileSyncService";
+import { syncUserFromAdmission } from "./userProfileSyncService";
 import { extractParentInfoFromFormData } from "../lib/parentInfoFromFormData";
 import {
   hashApplicationPassword,
@@ -38,108 +26,18 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface ConvertTrialToAdmissionInput {
   email: string;
-  createUser?: boolean;
   locale?: "en" | "bn";
 }
 
 export interface IConvertTrialToAdmissionResult {
   booking: ReturnType<typeof formatTrialBooking>;
   admission: ReturnType<typeof formatStudentAdmission>;
-  user?: {
-    _id: string;
-    email: string;
-    temporaryPassword?: string;
-  };
   prefillUrl: string;
   portalAdmissionPath: string;
 }
 
 function generateToken(): string {
   return crypto.randomBytes(24).toString("hex");
-}
-
-function generateTemporaryPassword(): string {
-  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  let password = "";
-  for (let i = 0; i < 10; i += 1) {
-    password += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return password;
-}
-
-async function sendStudentWelcomeEmail(
-  email: string,
-  name: string,
-  temporaryPassword: string
-): Promise<void> {
-  const loginUrl = `${getPortalBaseUrl()}/login`;
-  const content = {
-    title: "Your student portal account is ready",
-    greeting: `Assalamu Alaikum ${name},`,
-    messageBody: [
-      `Welcome to ${EMAIL_BRAND.legalName}.`,
-      "",
-      "Your student portal account has been created after your free trial class.",
-      "",
-      `Email: ${email}`,
-      `Temporary password: ${temporaryPassword}`,
-      "",
-      "Please sign in and change your password after first login.",
-    ].join("\n"),
-    buttonText: "Sign in to portal",
-    buttonLink: loginUrl,
-    preheader: "Your BDOQ Academy student account is ready",
-  };
-
-  await sendEmail({
-    to: email,
-    subject: `Welcome to ${EMAIL_BRAND.name} — Student Portal`,
-    text: buildBrandEmailText(content),
-    html: buildBrandEmailHtml(content),
-  }).catch((err) => {
-    console.warn("[trial-convert] Welcome email failed:", err);
-  });
-}
-
-async function createStudentUserFromTrial(
-  booking: ITrialBooking,
-  email: string
-): Promise<{ user: IUser; temporaryPassword: string } | { error: string }> {
-  const studentName = booking.studentName?.trim() || booking.parentName;
-  const country = booking.country?.trim() || "Bangladesh";
-  const existing = await User.findOne({ email: email.toLowerCase() });
-  if (existing) {
-    return { error: "A portal user with this email already exists." };
-  }
-
-  const normalizedWa = normalizeWhatsAppForStorage(booking.whatsapp, country);
-  if (!normalizedWa.ok) {
-    return { error: normalizedWa.error };
-  }
-
-  const temporaryPassword = generateTemporaryPassword();
-  const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
-
-  const user = await User.create({
-    name: studentName,
-    email: email.toLowerCase(),
-    password: hashedPassword,
-    role: "student",
-    emailVerified: true,
-    country,
-    timezone: booking.timezone?.trim() || "Asia/Dhaka",
-    whatsapp: normalizedWa.whatsapp,
-    studentId: await generateStudentId(),
-    gender: booking.learnerGender,
-    parentInfo: {
-      name: booking.parentName?.trim() || undefined,
-      relationship: "Parent/Guardian",
-      whatsapp: normalizedWa.whatsapp,
-      email: email.toLowerCase(),
-    },
-  });
-
-  return { user, temporaryPassword };
 }
 
 export async function convertTrialToAdmission(
@@ -206,23 +104,6 @@ export async function convertTrialToAdmission(
     monthlyFeeCurrency: enrollmentDefaults.monthlyFeeCurrency,
   });
 
-  let createdUser:
-    | { user: IUser; temporaryPassword: string }
-    | undefined;
-
-  const shouldCreateUser = input.createUser !== false;
-  if (shouldCreateUser) {
-    const userResult = await createStudentUserFromTrial(booking, email);
-    if ("error" in userResult) {
-      await StudentAdmissionApplication.findByIdAndDelete(admission._id);
-      return { error: userResult.error };
-    }
-    createdUser = userResult;
-    booking.convertedUserId = userResult.user._id;
-    await syncUserFromAdmission(userResult.user, admission);
-    await sendStudentWelcomeEmail(email, studentName, userResult.temporaryPassword);
-  }
-
   booking.convertedAdmissionId = admission._id;
   booking.convertedAt = new Date();
   booking.admissionPrefillToken = prefillToken;
@@ -236,13 +117,6 @@ export async function convertTrialToAdmission(
   return {
     booking: formatTrialBooking(booking),
     admission: formatStudentAdmission(admission),
-    user: createdUser
-      ? {
-          _id: createdUser.user._id.toString(),
-          email: createdUser.user.email,
-          temporaryPassword: createdUser.temporaryPassword,
-        }
-      : undefined,
     prefillUrl,
     portalAdmissionPath: `${getPortalBaseUrl()}/admin/student-admissions`,
   };

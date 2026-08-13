@@ -329,7 +329,6 @@ export const postAdminConvertTrialToAdmission = async (
 
     const result = await convertTrialToAdmission(id, {
       email: typeof req.body.email === "string" ? req.body.email : "",
-      createUser: req.body.createUser !== false,
       locale: req.body.locale === "bn" ? "bn" : req.body.locale === "en" ? "en" : undefined,
     });
 
