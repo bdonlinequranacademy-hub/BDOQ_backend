@@ -54,12 +54,20 @@ function parseFormData(raw: unknown): Record<string, unknown> | null {
   return null;
 }
 
+type MulterFiles = {
+  [fieldname: string]: Express.Multer.File[];
+};
+
 export const submitStudentAdmission = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const file = req.file;
+    const files = req.files as MulterFiles | undefined;
+    const admissionFile =
+      files?.admissionPaymentProof?.[0] ??
+      (req.file?.fieldname === "admissionPaymentProof" ? req.file : undefined);
+    const monthlyFile = files?.monthlyTuitionProof?.[0];
     const body = parseFormData(req.body.data ?? req.body) ?? {};
 
     const fullName =
@@ -70,25 +78,35 @@ export const submitStudentAdmission = async (
           : "";
 
     let proofUpload: { url: string; publicId: string } | undefined;
+    let monthlyProofUpload: { url: string; publicId: string } | undefined;
 
-    if (file) {
-      try {
+    try {
+      if (admissionFile) {
         proofUpload = await uploadApplicationFile(
-          file.buffer,
+          admissionFile.buffer,
           "student-admissions/payment-proofs",
-          file.mimetype || "image/jpeg",
+          admissionFile.mimetype || "image/jpeg",
           "image",
-          file.originalname
+          admissionFile.originalname
         );
-      } catch (uploadErr) {
-        const message =
-          uploadErr instanceof Error &&
-          uploadErr.message === "CLOUDINARY_NOT_CONFIGURED"
-            ? "File upload is not configured on the server"
-            : "Failed to upload payment proof";
-        res.status(503).json({ success: false, message, data: null });
-        return;
       }
+      if (monthlyFile) {
+        monthlyProofUpload = await uploadApplicationFile(
+          monthlyFile.buffer,
+          "student-admissions/monthly-tuition-proofs",
+          monthlyFile.mimetype || "image/jpeg",
+          "image",
+          monthlyFile.originalname
+        );
+      }
+    } catch (uploadErr) {
+      const message =
+        uploadErr instanceof Error &&
+        uploadErr.message === "CLOUDINARY_NOT_CONFIGURED"
+          ? "File upload is not configured on the server"
+          : "Failed to upload payment proof";
+      res.status(503).json({ success: false, message, data: null });
+      return;
     }
 
     const formData: Record<string, unknown> = {
@@ -99,9 +117,16 @@ export const submitStudentAdmission = async (
             admissionPaymentProofPublicId: proofUpload.publicId,
           }
         : {}),
+      ...(monthlyProofUpload
+        ? {
+            monthlyTuitionProofUrl: monthlyProofUpload.url,
+            monthlyTuitionProofPublicId: monthlyProofUpload.publicId,
+          }
+        : {}),
     };
 
     delete formData.admissionPaymentProofFile;
+    delete formData.monthlyTuitionProofFile;
 
     const prefillToken =
       typeof body.prefillToken === "string" ? body.prefillToken.trim() : "";

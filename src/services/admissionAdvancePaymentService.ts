@@ -15,6 +15,9 @@ function formString(formData: Record<string, unknown> | undefined, key: string):
 }
 
 function wantsAdvanceMonth(formData: Record<string, unknown> | undefined): boolean {
+  const choice = formData?.monthlyTuitionChoice;
+  if (choice === "yes") return true;
+  if (choice === "no") return false;
   const value = formData?.payCurrentMonthTuition;
   return value === true || value === "true" || value === "yes" || value === "on";
 }
@@ -73,14 +76,18 @@ export async function provisionBillingFromAdmission(
   }
 
   const amount = Number(formString(formData, "monthlyTuitionAmount")) || monthlyFee;
-  const proofUrl = formString(formData, "admissionPaymentProofUrl");
+  const proofUrl =
+    formString(formData, "monthlyTuitionProofUrl") ||
+    formString(formData, "admissionPaymentProofUrl");
   if (!proofUrl || amount <= 0) return;
 
   const reference =
     formString(formData, "monthlyTuitionReference") ||
     formString(formData, "admissionPaymentReference") ||
     `ADM-${application._id.toString().slice(-8)}`;
-  const dateRaw = formString(formData, "admissionPaymentDate");
+  const dateRaw =
+    formString(formData, "monthlyTuitionDate") ||
+    formString(formData, "admissionPaymentDate");
   const parsedDate = dateRaw ? new Date(`${dateRaw}T00:00:00`) : new Date();
   const verified = application.paymentStatus === "verified";
   const paidUntilAfter = verified ? computePaidUntil(billing.paidUntil, 1) : undefined;
@@ -97,14 +104,17 @@ export async function provisionBillingFromAdmission(
     paymentDate: Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
     monthsCovered: 1,
     method: mapAdmissionMethod(
-      formString(formData, "admissionFeePaymentMethod") ||
+      formString(formData, "monthlyTuitionPaymentMethod") ||
+        formString(formData, "admissionFeePaymentMethod") ||
         formString(formData, "paymentMethod")
     ),
     reference,
     note: "Running month tuition paid in advance with student admission.",
     screenshotUrl: proofUrl,
     screenshotPublicId:
-      formString(formData, "admissionPaymentProofPublicId") || "admission-proof",
+      formString(formData, "monthlyTuitionProofPublicId") ||
+      formString(formData, "admissionPaymentProofPublicId") ||
+      "admission-proof",
     status: verified ? "approved" : "pending",
     paidUntilAfter,
     sourceAdmissionId: application._id,
