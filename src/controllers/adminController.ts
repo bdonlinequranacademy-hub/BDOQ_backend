@@ -13,6 +13,7 @@ import { ContactMessage } from "../models/ContactMessage";
 import { StudentRequest } from "../models/StudentRequest";
 import { StudentAdmissionApplication } from "../models/StudentAdmissionApplication";
 import { TeacherApplication } from "../models/TeacherApplication";
+import { TeacherProfile } from "../models/TeacherProfile";
 import { countPendingPayments } from "../services/paymentReminderService";
 import { generateStudentId } from "../utils/studentId";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
@@ -588,30 +589,42 @@ export const deleteUser = async (
     if (!canManageUser(actor, target)) {
       res.status(403).json({
         success: false,
-        message: "You are not allowed to deactivate this user",
+        message: "You are not allowed to remove this user",
         data: null,
       });
       return;
     }
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { new: true }
-    ).select("-password");
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: "User not found",
+    if (target.isActive !== false) {
+      await User.findByIdAndUpdate(id, { isActive: false }).select("-password");
+      res.status(200).json({
+        success: true,
+        message: "User deactivated successfully",
         data: null,
       });
       return;
     }
+
+    await Promise.all([
+      StudentAdmissionApplication.updateMany(
+        { linkedUserId: target._id },
+        { $unset: { linkedUserId: 1 } }
+      ),
+      TeacherApplication.updateMany(
+        { linkedUserId: target._id },
+        { $unset: { linkedUserId: 1 } }
+      ),
+      TeacherProfile.updateMany(
+        { linkedUserId: target._id },
+        { $unset: { linkedUserId: 1 } }
+      ),
+    ]);
+
+    await User.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
-      message: "User deactivated successfully",
+      message: "User deleted successfully",
       data: null,
     });
   } catch {

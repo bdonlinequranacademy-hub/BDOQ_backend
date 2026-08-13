@@ -17,6 +17,19 @@ export type { TeacherApplicationStatus };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const OMITTED_TEACHER_FORM_KEYS = new Set([
+  "tajweedExperience",
+  "hifzExperience",
+]);
+
+function sanitizeTeacherFormData(
+  formData: Record<string, unknown>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(formData).filter(([key]) => !OMITTED_TEACHER_FORM_KEYS.has(key))
+  );
+}
+
 function notifyEmail(): string | null {
   const to =
     process.env.TEACHER_NOTIFY_EMAIL?.trim() ||
@@ -46,7 +59,7 @@ export function formatTeacherApplication(app: ITeacherApplication) {
     fullName: app.fullName,
     email: app.email,
     phone: app.phone,
-    formData: app.formData,
+    formData: sanitizeTeacherFormData(app.formData ?? {}),
     files: formatTeacherFiles(app.files),
     locale: app.locale,
     status: app.status,
@@ -102,7 +115,7 @@ export async function createTeacherApplication(input: {
     fullName,
     email,
     phone: normalizedPhone.whatsapp,
-    formData: input.formData,
+    formData: sanitizeTeacherFormData(input.formData),
     files: input.files,
     locale,
   });
