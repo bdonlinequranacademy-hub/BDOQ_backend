@@ -225,6 +225,7 @@ export async function convertTrialToAdmission(
 
   booking.convertedAdmissionId = admission._id;
   booking.convertedAt = new Date();
+  booking.admissionPrefillToken = prefillToken;
   if (booking.status !== "closed") {
     booking.status = "closed";
   }

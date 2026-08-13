@@ -34,6 +34,7 @@ export interface ITrialBooking extends Document {
   convertedAdmissionId?: mongoose.Types.ObjectId;
   convertedUserId?: mongoose.Types.ObjectId;
   convertedAt?: Date;
+  admissionPrefillToken?: string;
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
@@ -86,6 +87,7 @@ const trialBookingSchema = new Schema<ITrialBooking>(
     convertedAdmissionId: { type: Schema.Types.ObjectId, ref: "StudentAdmissionApplication" },
     convertedUserId: { type: Schema.Types.ObjectId, ref: "User" },
     convertedAt: { type: Date },
+    admissionPrefillToken: { type: String, trim: true },
     utmSource: { type: String, trim: true },
     utmMedium: { type: String, trim: true },
     utmCampaign: { type: String, trim: true },

@@ -22,6 +22,8 @@ import {
   buildBrandEmailHtml,
   buildBrandEmailText,
 } from "../lib/email/brandEmailTemplate";
+import { StudentAdmissionApplication } from "../models/StudentAdmissionApplication";
+import { getPublicSiteBaseUrl } from "../lib/email/resolveAuthOrigin";
 
 export type { TrialBookingStatus };
 
@@ -139,7 +141,15 @@ function formatBookingText(booking: ITrialBooking): string {
   return lines.join("\n");
 }
 
-export function formatTrialBooking(booking: ITrialBooking) {
+export function formatTrialBooking(
+  booking: ITrialBooking,
+  extra?: { prefillToken?: string }
+) {
+  const token = booking.admissionPrefillToken?.trim() || extra?.prefillToken?.trim();
+  const prefillUrl = token
+    ? `${getPublicSiteBaseUrl()}/student-admission?prefill=${token}`
+    : undefined;
+
   return {
     _id: booking._id.toString(),
     parentName: booking.parentName,
@@ -166,6 +176,7 @@ export function formatTrialBooking(booking: ITrialBooking) {
     convertedAdmissionId: booking.convertedAdmissionId?.toString(),
     convertedUserId: booking.convertedUserId?.toString(),
     convertedAt: booking.convertedAt,
+    prefillUrl,
     utmSource: booking.utmSource,
     utmMedium: booking.utmMedium,
     utmCampaign: booking.utmCampaign,
@@ -269,7 +280,27 @@ export async function createTrialBooking(
 export async function listTrialBookings(status?: TrialBookingStatus, limit = 100) {
   const filter = status ? { status } : {};
   const rows = await TrialBooking.find(filter).sort({ createdAt: -1 }).limit(limit);
-  return rows.map(formatTrialBooking);
+  const missingTokenIds = rows
+    .filter((row) => row.convertedAdmissionId && !row.admissionPrefillToken)
+    .map((row) => row.convertedAdmissionId);
+
+  const tokenByAdmissionId = new Map<string, string>();
+  if (missingTokenIds.length > 0) {
+    const admissions = await StudentAdmissionApplication.find({
+      _id: { $in: missingTokenIds },
+    }).select("_id prefillToken");
+    for (const admission of admissions) {
+      if (admission.prefillToken) {
+        tokenByAdmissionId.set(admission._id.toString(), admission.prefillToken);
+      }
+    }
+  }
+
+  return rows.map((row) =>
+    formatTrialBooking(row, {
+      prefillToken: tokenByAdmissionId.get(row.convertedAdmissionId?.toString() ?? ""),
+    })
+  );
 }
 
 export async function updateTrialBookingStatus(
