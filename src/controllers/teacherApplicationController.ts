@@ -4,6 +4,7 @@ import type { TeacherApplicationStatus } from "../models/TeacherApplication";
 import { uploadApplicationFile } from "../services/cloudinaryUploadService";
 import {
   createTeacherApplication,
+  deleteTeacherApplication,
   listTeacherApplications,
   updateTeacherApplicationStatus,
 } from "../services/teacherApplicationService";
@@ -57,17 +58,13 @@ async function uploadField(
   const file = files?.[field]?.[0];
   if (!file) return undefined;
 
-  const mimeType = file.mimetype || "application/octet-stream";
-  const isPdf =
-    mimeType === "application/pdf" ||
-    mimeType === "application/x-pdf" ||
-    file.originalname.toLowerCase().endsWith(".pdf");
+  const mimeType = file.mimetype || "image/jpeg";
 
   return uploadApplicationFile(
     file.buffer,
     folder,
     mimeType,
-    isPdf || mimeType.startsWith("image/") ? "image" : "raw",
+    "image",
     file.originalname
   );
 }
@@ -253,6 +250,43 @@ export const patchAdminTeacherApplicationStatus = async (
     res.status(500).json({
       success: false,
       message: "Failed to update teacher application",
+      data: null,
+    });
+  }
+};
+
+export const deleteAdminTeacherApplication = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid application ID",
+        data: null,
+      });
+      return;
+    }
+
+    const result = await deleteTeacherApplication(id);
+
+    if ("error" in result) {
+      res.status(404).json({ success: false, message: result.error, data: null });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Teacher application deleted",
+      data: null,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete teacher application",
       data: null,
     });
   }

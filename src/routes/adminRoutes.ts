@@ -62,10 +62,12 @@ import {
   patchAdminStudentAdmissionStatus,
   patchAdminStudentAdmissionPaymentStatus,
   patchAdminStudentAdmissionEnrollment,
+  deleteAdminStudentAdmission,
 } from "../controllers/studentAdmissionController";
 import {
   listAdminTeacherApplications,
   patchAdminTeacherApplicationStatus,
+  deleteAdminTeacherApplication,
 } from "../controllers/teacherApplicationController";
 import {
   getAdminCurriculumTree,
@@ -202,7 +204,11 @@ router.patch("/trial-bookings/:id", patchAdminTrialBooking);
 router.post("/trial-bookings/:id/send-invitation", postAdminSendTrialInvitation);
 router.post("/trial-bookings/:id/convert-to-admission", postAdminConvertTrialToAdmission);
 router.patch("/trial-bookings/:id/status", patchAdminTrialBookingStatus);
-router.delete("/trial-bookings/:id", deleteAdminTrialBooking);
+router.delete(
+  "/trial-bookings/:id",
+  checkRole("super_admin"),
+  deleteAdminTrialBooking
+);
 router.get("/contact-messages", listAdminContactMessages);
 router.patch("/contact-messages/:id/status", patchAdminContactMessageStatus);
 router.get("/newsletter-subscribers", listAdminNewsletterSubscribers);
@@ -217,8 +223,18 @@ router.patch(
   patchAdminStudentAdmissionPaymentStatus
 );
 router.patch("/student-admissions/:id/enrollment", patchAdminStudentAdmissionEnrollment);
+router.delete(
+  "/student-admissions/:id",
+  checkRole("super_admin"),
+  deleteAdminStudentAdmission
+);
 router.get("/teacher-applications", listAdminTeacherApplications);
 router.patch("/teacher-applications/:id/status", patchAdminTeacherApplicationStatus);
+router.delete(
+  "/teacher-applications/:id",
+  checkRole("super_admin"),
+  deleteAdminTeacherApplication
+);
 
 router.get("/curriculum", getAdminCurriculumTree);
 router.put("/curriculum", updateAdminCurriculumTree);

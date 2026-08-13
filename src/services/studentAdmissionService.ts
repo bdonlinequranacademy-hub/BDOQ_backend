@@ -456,3 +456,13 @@ export async function updateAdmissionEnrollment(
 
   return { application: formatStudentAdmission(application) };
 }
+
+export async function deleteStudentAdmissionApplication(
+  id: string
+): Promise<{ ok: true } | { error: string }> {
+  const deleted = await StudentAdmissionApplication.findByIdAndDelete(id);
+  if (!deleted) {
+    return { error: "Application not found" };
+  }
+  return { ok: true };
+}

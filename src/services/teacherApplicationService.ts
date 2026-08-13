@@ -7,6 +7,7 @@ import {
 import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
+import { toSignedMediaUrl } from "./cloudinaryUploadService";
 
 export type { TeacherApplicationStatus };
 
@@ -21,6 +22,20 @@ function notifyEmail(): string | null {
   return to || null;
 }
 
+function formatTeacherFiles(files?: ITeacherApplicationFiles) {
+  if (!files) return files;
+  return {
+    certificateUrl: toSignedMediaUrl(files.certificateUrl, files.certificatePublicId),
+    certificatePublicId: files.certificatePublicId,
+    cvUrl: toSignedMediaUrl(files.cvUrl, files.cvPublicId),
+    cvPublicId: files.cvPublicId,
+    profilePhotoUrl: files.profilePhotoUrl,
+    profilePhotoPublicId: files.profilePhotoPublicId,
+    screenshotUrl: files.screenshotUrl,
+    screenshotPublicId: files.screenshotPublicId,
+  };
+}
+
 export function formatTeacherApplication(app: ITeacherApplication) {
   return {
     _id: app._id.toString(),
@@ -28,7 +43,7 @@ export function formatTeacherApplication(app: ITeacherApplication) {
     email: app.email,
     phone: app.phone,
     formData: app.formData,
-    files: app.files,
+    files: formatTeacherFiles(app.files),
     locale: app.locale,
     status: app.status,
     adminNote: app.adminNote,
@@ -142,4 +157,14 @@ export async function updateTeacherApplicationStatus(
   }
 
   return { application: formatTeacherApplication(application) };
+}
+
+export async function deleteTeacherApplication(
+  id: string
+): Promise<{ ok: true } | { error: string }> {
+  const deleted = await TeacherApplication.findByIdAndDelete(id);
+  if (!deleted) {
+    return { error: "Application not found" };
+  }
+  return { ok: true };
 }

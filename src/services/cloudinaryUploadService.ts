@@ -106,7 +106,7 @@ export async function uploadApplicationFile(
     pdf
       ? {
           folder: `boq-academy/${folder}`,
-          resource_type: "image",
+          resource_type: "raw",
           format: "pdf",
           overwrite: false,
           unique_filename: true,
@@ -123,6 +123,52 @@ export async function uploadApplicationFile(
     url: result.secure_url,
     publicId: result.public_id,
   };
+}
+
+function extractCloudinaryPublicId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(
+      /\/(?:image|raw|video)\/upload\/(?:v\d+\/)?(.+)$/
+    );
+    if (!match?.[1]) return null;
+    return decodeURIComponent(match[1]).replace(/\.[a-z0-9]+$/i, "");
+  } catch {
+    return null;
+  }
+}
+
+export function toSignedMediaUrl(
+  url?: string,
+  publicId?: string
+): string | undefined {
+  if (!url) return url;
+  const lower = url.toLowerCase();
+  const looksPdf =
+    lower.includes(".pdf") ||
+    lower.includes("/raw/upload/") ||
+    lower.includes("f_pdf");
+  if (!looksPdf) return url;
+  if (!isCloudinaryConfigured()) return url;
+
+  const id = (publicId?.trim() || extractCloudinaryPublicId(url) || "").replace(
+    /\.[a-z0-9]+$/i,
+    ""
+  );
+  if (!id) return url;
+
+  const resourceType = url.includes("/raw/upload/") ? "raw" : "image";
+  try {
+    return cloudinary.url(id, {
+      resource_type: resourceType,
+      type: "upload",
+      sign_url: true,
+      secure: true,
+      ...(resourceType === "image" ? { format: "pdf" } : {}),
+    });
+  } catch {
+    return url;
+  }
 }
 
 const MAX_IMAGE_RESOURCE_BYTES = 15 * 1024 * 1024;

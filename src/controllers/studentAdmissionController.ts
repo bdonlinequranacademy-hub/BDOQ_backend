@@ -4,6 +4,7 @@ import type { StudentAdmissionStatus } from "../models/StudentAdmissionApplicati
 import { uploadApplicationFile } from "../services/cloudinaryUploadService";
 import {
   createStudentAdmissionApplication,
+  deleteStudentAdmissionApplication,
   listStudentAdmissionApplications,
   updateStudentAdmissionStatus,
   updateAdmissionPaymentStatus,
@@ -418,6 +419,43 @@ export const patchAdminStudentAdmissionEnrollment = async (
     res.status(500).json({
       success: false,
       message: "Failed to save enrollment setup",
+      data: null,
+    });
+  }
+};
+
+export const deleteAdminStudentAdmission = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid application ID",
+        data: null,
+      });
+      return;
+    }
+
+    const result = await deleteStudentAdmissionApplication(id);
+
+    if ("error" in result) {
+      res.status(404).json({ success: false, message: result.error, data: null });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Admission application deleted",
+      data: null,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete admission application",
       data: null,
     });
   }
