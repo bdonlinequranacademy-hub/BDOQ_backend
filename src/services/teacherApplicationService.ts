@@ -12,6 +12,11 @@ import {
   deactivateTeacherLinkedUser,
   provisionTeacherFromApplication,
 } from "./leadPortalAccountService";
+import {
+  hashApplicationPassword,
+  readApplicationPassword,
+  stripPasswordFields,
+} from "../lib/applicationPassword";
 
 export type { TeacherApplicationStatus };
 
@@ -20,6 +25,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const OMITTED_TEACHER_FORM_KEYS = new Set([
   "tajweedExperience",
   "hifzExperience",
+  "password",
+  "confirmPassword",
+  "passwordHash",
 ]);
 
 function sanitizeTeacherFormData(
@@ -98,6 +106,10 @@ export async function createTeacherApplication(input: {
     return { error: "CV, certificate, and profile photo are required." };
   }
 
+  const passwordResult = readApplicationPassword(input.formData);
+  if ("error" in passwordResult) return passwordResult;
+  const passwordHash = await hashApplicationPassword(passwordResult.password);
+
   const countryHint =
     typeof input.formData.country === "string"
       ? input.formData.country
@@ -115,9 +127,10 @@ export async function createTeacherApplication(input: {
     fullName,
     email,
     phone: normalizedPhone.whatsapp,
-    formData: sanitizeTeacherFormData(input.formData),
+    formData: sanitizeTeacherFormData(stripPasswordFields(input.formData)),
     files: input.files,
     locale,
+    passwordHash,
   });
 
   const notifyTo = notifyEmail();
@@ -161,7 +174,7 @@ export async function updateTeacherApplicationStatus(
 ): Promise<
   { application: ReturnType<typeof formatTeacherApplication> } | { error: string }
 > {
-  const application = await TeacherApplication.findById(id);
+  const application = await TeacherApplication.findById(id).select("+passwordHash");
   if (!application) {
     return { error: "Application not found" };
   }

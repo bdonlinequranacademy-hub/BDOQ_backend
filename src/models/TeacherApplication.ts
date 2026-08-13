@@ -28,6 +28,7 @@ export interface ITeacherApplication extends Document {
   status: TeacherApplicationStatus;
   adminNote?: string;
   linkedUserId?: mongoose.Types.ObjectId;
+  passwordHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +57,7 @@ const teacherApplicationSchema = new Schema<ITeacherApplication>(
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
     linkedUserId: { type: Schema.Types.ObjectId, ref: "User" },
+    passwordHash: { type: String, select: false },
   },
   { timestamps: true }
 );

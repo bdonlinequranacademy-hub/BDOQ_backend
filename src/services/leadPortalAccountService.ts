@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import { User, type IUser, type UserGender } from "../models/User";
-import type { IStudentAdmissionApplication } from "../models/StudentAdmissionApplication";
-import type { ITeacherApplication } from "../models/TeacherApplication";
+import {
+  StudentAdmissionApplication,
+  type IStudentAdmissionApplication,
+} from "../models/StudentAdmissionApplication";
+import {
+  TeacherApplication,
+  type ITeacherApplication,
+} from "../models/TeacherApplication";
 import { generateStudentId } from "../utils/studentId";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { extractParentInfoFromFormData } from "../lib/parentInfoFromFormData";
@@ -44,11 +50,24 @@ function storedWhatsApp(raw: string | undefined, country: string): string | unde
 async function sendWelcomeEmail(input: {
   email: string;
   name: string;
-  temporaryPassword: string;
   role: "student" | "teacher";
+  temporaryPassword?: string;
 }): Promise<void> {
   const loginUrl = `${getPortalBaseUrl()}/login`;
   const roleLabel = input.role === "teacher" ? "teacher" : "student";
+  const credentialLines = input.temporaryPassword
+    ? [
+        `Email: ${input.email}`,
+        `Temporary password: ${input.temporaryPassword}`,
+        "",
+        "Please sign in and change your password after first login.",
+      ]
+    : [
+        `Email: ${input.email}`,
+        "",
+        "Sign in with the password you created on your application form.",
+        "If you forgot it, use Forgot password on the login page.",
+      ];
   const content = {
     title: `Your ${roleLabel} portal account is ready`,
     greeting: `Assalamu Alaikum ${input.name},`,
@@ -57,10 +76,7 @@ async function sendWelcomeEmail(input: {
       "",
       `Your ${roleLabel} portal account has been created after admin approval.`,
       "",
-      `Email: ${input.email}`,
-      `Temporary password: ${input.temporaryPassword}`,
-      "",
-      "Please sign in and change your password after first login.",
+      ...credentialLines,
     ].join("\n"),
     buttonText: "Sign in to portal",
     buttonLink: loginUrl,
@@ -114,8 +130,18 @@ export async function provisionStudentFromAdmission(
     return { user: existing, created: false };
   }
 
-  const temporaryPassword = generateTemporaryPassword();
-  const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+  const storedHash =
+    typeof application.passwordHash === "string" && application.passwordHash
+      ? application.passwordHash
+      : (
+          await StudentAdmissionApplication.findById(application._id).select(
+            "+passwordHash"
+          )
+        )?.passwordHash;
+
+  const temporaryPassword = storedHash ? undefined : generateTemporaryPassword();
+  const hashedPassword =
+    storedHash ?? (await bcrypt.hash(temporaryPassword as string, 10));
   const user = await User.create({
     name: application.fullName.trim(),
     email,
@@ -137,8 +163,8 @@ export async function provisionStudentFromAdmission(
   await sendWelcomeEmail({
     email,
     name: application.fullName.trim(),
-    temporaryPassword,
     role: "student",
+    temporaryPassword,
   });
   return { user, created: true };
 }
@@ -194,8 +220,16 @@ export async function provisionTeacherFromApplication(
     return { user: existing, created: false };
   }
 
-  const temporaryPassword = generateTemporaryPassword();
-  const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+  const storedHash =
+    typeof application.passwordHash === "string" && application.passwordHash
+      ? application.passwordHash
+      : (
+          await TeacherApplication.findById(application._id).select("+passwordHash")
+        )?.passwordHash;
+
+  const temporaryPassword = storedHash ? undefined : generateTemporaryPassword();
+  const hashedPassword =
+    storedHash ?? (await bcrypt.hash(temporaryPassword as string, 10));
   const user = await User.create({
     name: application.fullName.trim(),
     email,
@@ -214,8 +248,8 @@ export async function provisionTeacherFromApplication(
   await sendWelcomeEmail({
     email,
     name: application.fullName.trim(),
-    temporaryPassword,
     role: "teacher",
+    temporaryPassword,
   });
   return { user, created: true };
 }

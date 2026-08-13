@@ -46,6 +46,7 @@ export interface IStudentAdmissionApplication extends Document {
   monthlyFeeCurrency?: "bdt" | "usd";
   enrollmentSetupAt?: Date;
   linkedUserId?: mongoose.Types.ObjectId;
+  passwordHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +104,7 @@ const studentAdmissionApplicationSchema = new Schema<IStudentAdmissionApplicatio
     monthlyFeeCurrency: { type: String, enum: ["bdt", "usd"] },
     enrollmentSetupAt: { type: Date },
     linkedUserId: { type: Schema.Types.ObjectId, ref: "User" },
+    passwordHash: { type: String, select: false },
   },
   { timestamps: true }
 );

@@ -21,6 +21,11 @@ import {
   deactivateAdmissionLinkedUser,
   provisionStudentFromAdmission,
 } from "./leadPortalAccountService";
+import {
+  hashApplicationPassword,
+  readApplicationPassword,
+  stripPasswordFields,
+} from "../lib/applicationPassword";
 
 export type { StudentAdmissionStatus, StudentAdmissionPaymentStatus };
 
@@ -41,7 +46,7 @@ export function formatStudentAdmission(app: IStudentAdmissionApplication) {
     fullName: app.fullName,
     email: app.email,
     whatsapp: app.whatsapp,
-    formData: app.formData,
+    formData: stripPasswordFields(app.formData ?? {}),
     locale: app.locale,
     status: app.status,
     adminNote: app.adminNote,
@@ -228,6 +233,11 @@ export async function createStudentAdmissionApplication(input: {
     return { error: "Payment proof screenshot is required." };
   }
 
+  const passwordResult = readApplicationPassword(input.formData);
+  if ("error" in passwordResult) return passwordResult;
+  const passwordHash = await hashApplicationPassword(passwordResult.password);
+  const sanitizedFormData = stripPasswordFields(input.formData);
+
   const allowedMethods = new Set(["bkash", "nagad", "bank", "paypal", "cash"]);
   if (!allowedMethods.has(feeMethod)) {
     return { error: "Invalid admission fee payment method." };
@@ -255,11 +265,12 @@ export async function createStudentAdmissionApplication(input: {
     fullName,
     email,
     whatsapp: normalizedWa.whatsapp,
-    formData: input.formData,
+    formData: sanitizedFormData,
+    passwordHash,
     locale,
     paymentStatus: "pending",
     ...(() => {
-      const enrollment = buildEnrollmentDefaultsFromFormData(input.formData);
+      const enrollment = buildEnrollmentDefaultsFromFormData(sanitizedFormData);
       return {
         classTime: enrollment.classTime,
         assignedTeacherSlug: enrollment.assignedTeacherSlug,
@@ -281,7 +292,7 @@ export async function createStudentAdmissionApplication(input: {
       `Name: ${fullName}`,
       `Email: ${email}`,
       `WhatsApp: ${normalizedWa.whatsapp}`,
-      `Admission fee: ${feeAmount} ${String(input.formData.admissionFeeCurrency ?? "bdt").toUpperCase()} via ${feeMethod}`,
+      `Admission fee: ${feeAmount} ${String(sanitizedFormData.admissionFeeCurrency ?? "bdt").toUpperCase()} via ${feeMethod}`,
       `Reference: ${feeReference}`,
       `Submitted: ${application.createdAt.toISOString()}`,
     ].join("\n");
@@ -319,7 +330,9 @@ export async function updateStudentAdmissionStatus(
 ): Promise<
   { application: ReturnType<typeof formatStudentAdmission> } | { error: string }
 > {
-  const application = await StudentAdmissionApplication.findById(id);
+  const application = await StudentAdmissionApplication.findById(id).select(
+    "+passwordHash"
+  );
   if (!application) {
     return { error: "Application not found" };
   }
@@ -351,7 +364,9 @@ export async function updateAdmissionPaymentStatus(
     return { error: "Invalid payment status." };
   }
 
-  const application = await StudentAdmissionApplication.findById(id);
+  const application = await StudentAdmissionApplication.findById(id).select(
+    "+passwordHash"
+  );
   if (!application) {
     return { error: "Application not found" };
   }

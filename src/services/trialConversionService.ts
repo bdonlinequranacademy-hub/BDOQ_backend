@@ -28,6 +28,11 @@ import {
   buildEnrollmentSummaryFromAdmission,
 } from "./userProfileSyncService";
 import { extractParentInfoFromFormData } from "../lib/parentInfoFromFormData";
+import {
+  hashApplicationPassword,
+  readApplicationPassword,
+  stripPasswordFields,
+} from "../lib/applicationPassword";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -316,12 +321,16 @@ export async function completePrefilledAdmission(
     return { error: "Admission fee payment details and proof are required." };
   }
 
+  const passwordResult = readApplicationPassword(input.formData);
+  if ("error" in passwordResult) return passwordResult;
+  application.passwordHash = await hashApplicationPassword(passwordResult.password);
+
   application.fullName = input.fullName.trim();
   application.email = input.email.trim().toLowerCase();
   application.whatsapp = input.whatsapp.trim();
   application.formData = {
-    ...application.formData,
-    ...input.formData,
+    ...stripPasswordFields(application.formData ?? {}),
+    ...stripPasswordFields(input.formData),
     prefillToken: token.trim(),
   };
   application.status = "new";
@@ -359,6 +368,9 @@ export async function completePrefilledAdmission(
   if (trial?.convertedUserId) {
     const user = await User.findById(trial.convertedUserId);
     if (user) {
+      if (application.passwordHash) {
+        user.password = application.passwordHash;
+      }
       await syncUserFromAdmission(user, application);
     }
   } else {

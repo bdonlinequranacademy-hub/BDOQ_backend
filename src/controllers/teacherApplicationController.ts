@@ -133,6 +133,7 @@ export const submitTeacherApplication = async (
       profilePhotoFile: _photo,
       screenshotFile: _shot,
       rulesAccepted: _rules,
+      confirmPassword: _confirm,
       ...sanitized
     } = formData;
 
