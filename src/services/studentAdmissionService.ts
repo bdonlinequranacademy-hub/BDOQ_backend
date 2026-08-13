@@ -21,6 +21,7 @@ import {
   deactivateAdmissionLinkedUser,
   provisionStudentFromAdmission,
 } from "./leadPortalAccountService";
+import { approveAdvanceMonthlyPayment } from "./admissionAdvancePaymentService";
 import {
   hashApplicationPassword,
   readApplicationPassword,
@@ -389,13 +390,13 @@ export async function updateAdmissionPaymentStatus(
 
   await application.save();
 
-  if (
-    paymentStatus === "verified" &&
-    application.status === "approved" &&
-    !application.linkedUserId
-  ) {
-    const provision = await provisionStudentFromAdmission(application);
-    if ("error" in provision) return provision;
+  if (paymentStatus === "verified" && application.status === "approved") {
+    if (!application.linkedUserId) {
+      const provision = await provisionStudentFromAdmission(application);
+      if ("error" in provision) return provision;
+    } else {
+      await approveAdvanceMonthlyPayment(application);
+    }
   }
 
   return { application: formatStudentAdmission(application) };

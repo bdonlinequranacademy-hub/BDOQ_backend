@@ -12,6 +12,7 @@ import { generateStudentId } from "../utils/studentId";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { extractParentInfoFromFormData } from "../lib/parentInfoFromFormData";
 import { syncUserFromAdmission } from "./userProfileSyncService";
+import { provisionBillingFromAdmission } from "./admissionAdvancePaymentService";
 import { sendEmail } from "./emailService";
 import { getPortalBaseUrl } from "../lib/email/resolveAuthOrigin";
 import {
@@ -112,6 +113,7 @@ export async function provisionStudentFromAdmission(
       if (whatsapp && !linked.whatsapp) linked.whatsapp = whatsapp;
       if (country && !linked.country) linked.country = country;
       await syncUserFromAdmission(linked, application);
+      await provisionBillingFromAdmission(linked, application);
       return { user: linked, created: false };
     }
   }
@@ -127,6 +129,7 @@ export async function provisionStudentFromAdmission(
     if (whatsapp && !existing.whatsapp) existing.whatsapp = whatsapp;
     if (country && !existing.country) existing.country = country;
     await syncUserFromAdmission(existing, application);
+    await provisionBillingFromAdmission(existing, application);
     return { user: existing, created: false };
   }
 
@@ -166,6 +169,7 @@ export async function provisionStudentFromAdmission(
     role: "student",
     temporaryPassword,
   });
+  await provisionBillingFromAdmission(user, application);
   return { user, created: true };
 }
 

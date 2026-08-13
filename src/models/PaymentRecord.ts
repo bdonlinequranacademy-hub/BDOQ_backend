@@ -31,6 +31,7 @@ export interface IPaymentRecord extends Document {
   reviewedAt?: Date;
   paidUntilAfter?: Date;
   invoiceNumber?: string | null;
+  sourceAdmissionId?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,12 +124,17 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
       sparse: true,
       unique: true,
     },
+    sourceAdmissionId: {
+      type: Schema.Types.ObjectId,
+      ref: "StudentAdmissionApplication",
+    },
   },
   { timestamps: true }
 );
 
 paymentRecordSchema.index({ student: 1, createdAt: -1 });
 paymentRecordSchema.index({ status: 1, createdAt: -1 });
+paymentRecordSchema.index({ sourceAdmissionId: 1 }, { sparse: true });
 
 export const PaymentRecord = mongoose.model<IPaymentRecord>(
   "PaymentRecord",
