@@ -7,6 +7,9 @@ export type PaymentMethod =
   | "bank_transfer"
   | "paypal"
   | "cash_app"
+  | "bkash"
+  | "nagad"
+  | "rocket"
   | "other";
 
 export type PaymentStatus = "pending" | "approved" | "rejected";
@@ -70,7 +73,17 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     },
     method: {
       type: String,
-      enum: ["zelle", "wise", "bank_transfer", "paypal", "cash_app", "other"],
+      enum: [
+        "zelle",
+        "wise",
+        "bank_transfer",
+        "paypal",
+        "cash_app",
+        "bkash",
+        "nagad",
+        "rocket",
+        "other",
+      ],
       required: true,
     },
     reference: {

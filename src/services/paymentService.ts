@@ -14,6 +14,9 @@ export const PAYMENT_METHODS = [
   "wise",
   "bank_transfer",
   "cash_app",
+  "bkash",
+  "nagad",
+  "rocket",
   "other",
 ] as const;
 

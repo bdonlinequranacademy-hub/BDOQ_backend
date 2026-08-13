@@ -8,6 +8,7 @@ import {
   listOptionalPaymentsForUser,
   reviewOptionalPayment,
 } from "../services/optionalPaymentService";
+import { submitPublicAcademyFeePayment } from "../services/publicAcademyFeePaymentService";
 
 function uploadErrorMessage(err: unknown): string {
   if (!(err instanceof Error)) return "Failed to upload screenshot";
@@ -44,6 +45,122 @@ async function submitOptionalPayment(
       folderKey,
       file.mimetype
     );
+
+    const category =
+      typeof req.body.category === "string" ? req.body.category.trim() : "";
+    if (category === "admission_fee" || category === "monthly_tuition") {
+      const amount = Number(req.body.amount);
+      const paymentDateRaw =
+        typeof req.body.paymentDate === "string" ? req.body.paymentDate.trim() : "";
+      const paymentDate = paymentDateRaw
+        ? new Date(`${paymentDateRaw}T00:00:00`)
+        : new Date(NaN);
+      const whatsapp =
+        typeof req.body.whatsapp === "string"
+          ? req.body.whatsapp.trim()
+          : user?.whatsapp?.trim() ?? "";
+      const payerName =
+        typeof req.body.payerName === "string"
+          ? req.body.payerName.trim()
+          : user?.name?.trim() ?? "";
+      const reference =
+        typeof req.body.reference === "string" ? req.body.reference.trim() : "";
+      const method =
+        typeof req.body.method === "string" ? req.body.method.trim() : "";
+      const currencyRaw =
+        typeof req.body.currency === "string"
+          ? req.body.currency.trim().toUpperCase()
+          : "BDT";
+
+      if (!payerName || payerName.length < 2) {
+        res.status(400).json({
+          success: false,
+          message: "Full name is required.",
+          data: null,
+        });
+        return;
+      }
+      if (!whatsapp) {
+        res.status(400).json({
+          success: false,
+          message:
+            "WhatsApp is required for admission fee and monthly tuition so we can match the student.",
+          data: null,
+        });
+        return;
+      }
+      if (!Number.isFinite(amount) || amount < 1) {
+        res.status(400).json({
+          success: false,
+          message: "Enter a valid amount.",
+          data: null,
+        });
+        return;
+      }
+      if (!reference || reference.length < 3) {
+        res.status(400).json({
+          success: false,
+          message: "Transaction / reference number is required.",
+          data: null,
+        });
+        return;
+      }
+      if (Number.isNaN(paymentDate.getTime())) {
+        res.status(400).json({
+          success: false,
+          message: "Payment date is required.",
+          data: null,
+        });
+        return;
+      }
+      if (
+        method !== "bkash" &&
+        method !== "nagad" &&
+        method !== "rocket" &&
+        method !== "bank"
+      ) {
+        res.status(400).json({
+          success: false,
+          message: "Select a valid payment method.",
+          data: null,
+        });
+        return;
+      }
+
+      const feeResult = await submitPublicAcademyFeePayment({
+        category,
+        amount,
+        currency: currencyRaw === "USD" ? "USD" : "BDT",
+        method,
+        payerName,
+        whatsapp,
+        note: typeof req.body.note === "string" ? req.body.note.trim() : undefined,
+        reference,
+        paymentDate,
+        screenshotUrl: upload.url,
+        screenshotPublicId: upload.publicId,
+        linkedUser: user,
+      });
+
+      if ("error" in feeResult) {
+        res.status(400).json({
+          success: false,
+          message: feeResult.error,
+          data: null,
+        });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        message:
+          category === "admission_fee"
+            ? "JazakAllahu khairan — admission fee proof was received and is awaiting review."
+            : "JazakAllahu khairan — monthly tuition proof was received and is awaiting review.",
+        data: feeResult,
+      });
+      return;
+    }
 
     const result = await createOptionalPayment({
       category: req.body.category,
