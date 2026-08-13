@@ -4,7 +4,7 @@ import {
   type TrialBookingStatus,
   type TrialMeetingPlatform,
 } from "../models/TrialBooking";
-import { TeacherProfile } from "../models/TeacherProfile";
+import { resolveTeacherAssignment } from "../lib/resolveTeacherAssignment";
 import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
 import { normalizeWhatsAppForStorage, buildWaMeUrl, parseWhatsApp } from "../lib/whatsappPhone";
@@ -461,8 +461,8 @@ export async function sendTrialInvitation(
     return { error: "Trial date and time are required before sending the invitation." };
   }
 
-  const teacher = await TeacherProfile.findOne({ slug: booking.teacherSlug.trim() });
-  const teacherName = teacher?.name?.trim() || booking.teacherSlug.trim();
+  const teacher = await resolveTeacherAssignment(booking.teacherSlug);
+  const teacherName = "error" in teacher ? booking.teacherSlug.trim() : teacher.name;
   const courseLabel = formatCourseLabel(booking.courseSlug);
 
   const invitation = buildTrialInvitationContent({

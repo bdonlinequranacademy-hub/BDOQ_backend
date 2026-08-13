@@ -6,7 +6,7 @@ import {
   type IStudentAdmissionApplication,
 } from "../models/StudentAdmissionApplication";
 import { User, type IUser } from "../models/User";
-import { TeacherProfile } from "../models/TeacherProfile";
+import { resolveTeacherAssignment } from "../lib/resolveTeacherAssignment";
 import { buildAdmissionFormDataFromTrial } from "../lib/trialToAdmissionMapper";
 import {
   buildEnrollmentDefaultsFromFormData,
@@ -155,9 +155,11 @@ export async function convertTrialToAdmission(
     return { error: "A valid email is required to convert this trial lead." };
   }
 
-  const teacher = booking.teacherSlug?.trim()
-    ? await TeacherProfile.findOne({ slug: booking.teacherSlug.trim() })
+  const teacherResult = booking.teacherSlug?.trim()
+    ? await resolveTeacherAssignment(booking.teacherSlug)
     : null;
+  const teacher =
+    teacherResult && !("error" in teacherResult) ? teacherResult : null;
 
   const studentName = booking.studentName?.trim() || booking.parentName;
   const formData = buildAdmissionFormDataFromTrial({
@@ -169,7 +171,7 @@ export async function convertTrialToAdmission(
   const locale = input.locale === "bn" ? "bn" : input.locale === "en" ? "en" : undefined;
 
   const enrollmentDefaults = buildEnrollmentDefaultsFromFormData(formData, {
-    teacherSlug: booking.teacherSlug,
+    teacherSlug: teacher?.slug ?? booking.teacherSlug,
     teacherName: teacher?.name,
     meetingPlatform: booking.meetingPlatform,
     meetingLink: booking.meetingLink,

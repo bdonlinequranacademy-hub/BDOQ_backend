@@ -5,7 +5,7 @@ import {
   type StudentAdmissionPaymentStatus,
   type StudentAdmissionClassDay,
 } from "../models/StudentAdmissionApplication";
-import { TeacherProfile } from "../models/TeacherProfile";
+import { resolveTeacherAssignment } from "../lib/resolveTeacherAssignment";
 import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
@@ -440,11 +440,9 @@ export async function updateAdmissionEnrollment(
       application.assignedTeacherSlug = undefined;
       application.assignedTeacherName = undefined;
     } else {
-      const teacher = await TeacherProfile.findOne({ slug });
-      if (!teacher) {
-        return { error: "Selected teacher profile was not found." };
-      }
-      application.assignedTeacherSlug = slug;
+      const teacher = await resolveTeacherAssignment(slug);
+      if ("error" in teacher) return teacher;
+      application.assignedTeacherSlug = teacher.slug;
       application.assignedTeacherName = teacher.name;
     }
   }
