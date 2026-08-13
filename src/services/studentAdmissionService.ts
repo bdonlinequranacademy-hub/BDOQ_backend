@@ -17,6 +17,10 @@ import {
   parseTrialMeetingPlatform,
   normalizeMeetingLink,
 } from "../lib/trialMeetingPlatform";
+import {
+  deactivateAdmissionLinkedUser,
+  provisionStudentFromAdmission,
+} from "./leadPortalAccountService";
 
 export type { StudentAdmissionStatus, StudentAdmissionPaymentStatus };
 
@@ -315,18 +319,23 @@ export async function updateStudentAdmissionStatus(
 ): Promise<
   { application: ReturnType<typeof formatStudentAdmission> } | { error: string }
 > {
-  const application = await StudentAdmissionApplication.findByIdAndUpdate(
-    id,
-    {
-      status,
-      ...(adminNote !== undefined ? { adminNote: adminNote.trim() || undefined } : {}),
-    },
-    { new: true, runValidators: true }
-  );
-
+  const application = await StudentAdmissionApplication.findById(id);
   if (!application) {
     return { error: "Application not found" };
   }
+
+  if (status === "approved") {
+    const provision = await provisionStudentFromAdmission(application);
+    if ("error" in provision) return provision;
+  } else if (application.status === "approved" || application.linkedUserId) {
+    await deactivateAdmissionLinkedUser(application);
+  }
+
+  application.status = status;
+  if (adminNote !== undefined) {
+    application.adminNote = adminNote.trim() || undefined;
+  }
+  await application.save();
 
   return { application: formatStudentAdmission(application) };
 }
@@ -364,6 +373,16 @@ export async function updateAdmissionPaymentStatus(
   }
 
   await application.save();
+
+  if (
+    paymentStatus === "verified" &&
+    application.status === "approved" &&
+    !application.linkedUserId
+  ) {
+    const provision = await provisionStudentFromAdmission(application);
+    if ("error" in provision) return provision;
+  }
+
   return { application: formatStudentAdmission(application) };
 }
 

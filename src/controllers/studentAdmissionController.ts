@@ -256,13 +256,17 @@ export const patchAdminStudentAdmissionStatus = async (
     const result = await updateStudentAdmissionStatus(id, status, adminNote);
 
     if ("error" in result) {
-      res.status(404).json({ success: false, message: result.error, data: null });
+      const statusCode = result.error === "Application not found" ? 404 : 400;
+      res.status(statusCode).json({ success: false, message: result.error, data: null });
       return;
     }
 
     res.status(200).json({
       success: true,
-      message: "Admission application updated",
+      message:
+        status === "approved"
+          ? "Admission approved — student portal account is active"
+          : "Admission application updated",
       data: result.application,
     });
   } catch {
@@ -328,7 +332,8 @@ export const patchAdminStudentAdmissionPaymentStatus = async (
     const result = await updateAdmissionPaymentStatus(id, paymentStatus, rejectReason);
 
     if ("error" in result) {
-      res.status(404).json({ success: false, message: result.error, data: null });
+      const statusCode = result.error === "Application not found" ? 404 : 400;
+      res.status(statusCode).json({ success: false, message: result.error, data: null });
       return;
     }
 

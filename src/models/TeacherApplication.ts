@@ -27,6 +27,7 @@ export interface ITeacherApplication extends Document {
   locale?: "en" | "bn";
   status: TeacherApplicationStatus;
   adminNote?: string;
+  linkedUserId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +55,7 @@ const teacherApplicationSchema = new Schema<ITeacherApplication>(
       default: "new",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
+    linkedUserId: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );

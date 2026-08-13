@@ -8,6 +8,10 @@ import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { toSignedMediaUrl } from "./cloudinaryUploadService";
+import {
+  deactivateTeacherLinkedUser,
+  provisionTeacherFromApplication,
+} from "./leadPortalAccountService";
 
 export type { TeacherApplicationStatus };
 
@@ -47,6 +51,7 @@ export function formatTeacherApplication(app: ITeacherApplication) {
     locale: app.locale,
     status: app.status,
     adminNote: app.adminNote,
+    linkedUserId: app.linkedUserId?.toString(),
     createdAt: app.createdAt,
     updatedAt: app.updatedAt,
   };
@@ -143,18 +148,23 @@ export async function updateTeacherApplicationStatus(
 ): Promise<
   { application: ReturnType<typeof formatTeacherApplication> } | { error: string }
 > {
-  const application = await TeacherApplication.findByIdAndUpdate(
-    id,
-    {
-      status,
-      ...(adminNote !== undefined ? { adminNote: adminNote.trim() || undefined } : {}),
-    },
-    { new: true, runValidators: true }
-  );
-
+  const application = await TeacherApplication.findById(id);
   if (!application) {
     return { error: "Application not found" };
   }
+
+  if (status === "approved") {
+    const provision = await provisionTeacherFromApplication(application);
+    if ("error" in provision) return provision;
+  } else if (application.status === "approved" || application.linkedUserId) {
+    await deactivateTeacherLinkedUser(application);
+  }
+
+  application.status = status;
+  if (adminNote !== undefined) {
+    application.adminNote = adminNote.trim() || undefined;
+  }
+  await application.save();
 
   return { application: formatTeacherApplication(application) };
 }
