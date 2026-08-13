@@ -44,6 +44,11 @@ import {
 import { scanTextHandler } from "../controllers/complianceController";
 import { getTeacherWeeklyReport } from "../controllers/weeklyReportController";
 import { recordTeacherSessionJoin } from "../controllers/sessionJoinController";
+import { paymentProofUpload } from "../middleware/uploadPaymentProof";
+import {
+  listMyOptionalPayments,
+  submitPortalOptionalPayment,
+} from "../controllers/optionalPaymentController";
 
 const router = Router();
 
@@ -93,5 +98,21 @@ router.post("/profile/avatar", (req, res, next) => {
 router.post("/availability/check", checkAvailability);
 router.get("/student-requests", listTeacherStudentRequestsHandler);
 router.post("/student-requests", createTeacherStudentRequest);
+
+router.get("/optional-payments", listMyOptionalPayments);
+router.post(
+  "/optional-payments",
+  (req, res, next) => {
+    paymentProofUpload(req, res, (err: unknown) => {
+      if (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        res.status(400).json({ success: false, message, data: null });
+        return;
+      }
+      next();
+    });
+  },
+  submitPortalOptionalPayment
+);
 
 export default router;

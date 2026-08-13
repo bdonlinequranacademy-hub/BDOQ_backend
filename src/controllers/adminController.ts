@@ -15,6 +15,7 @@ import { StudentAdmissionApplication } from "../models/StudentAdmissionApplicati
 import { TeacherApplication } from "../models/TeacherApplication";
 import { TeacherProfile } from "../models/TeacherProfile";
 import { countPendingPayments } from "../services/paymentReminderService";
+import { countPendingOptionalPayments } from "../services/optionalPaymentService";
 import { generateStudentId } from "../utils/studentId";
 import { normalizeWhatsAppForStorage } from "../lib/whatsappPhone";
 import { syncSlotsFromClass } from "../services/scheduleService";
@@ -978,6 +979,7 @@ export const getDashboardStats = async (
       newTeacherApplications,
       pendingClassLogs,
       pendingPayments,
+      pendingOptionalPayments,
       pendingStudentRequests,
       studentsWithPrograms,
       progressMissingProgram,
@@ -994,6 +996,7 @@ export const getDashboardStats = async (
       TeacherApplication.countDocuments({ status: "new" }),
       ClassLog.countDocuments({ status: "pending" }),
       countPendingPayments(),
+      countPendingOptionalPayments(),
       StudentRequest.countDocuments({ status: "pending" }),
       User.countDocuments({
         role: "student",
@@ -1047,6 +1050,7 @@ export const getDashboardStats = async (
           newTeacherApplications,
           pendingClassLogs,
           pendingPayments,
+          pendingOptionalPayments,
           pendingStudentRequests,
         },
         curriculumCoverage: {

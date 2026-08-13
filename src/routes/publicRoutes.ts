@@ -23,6 +23,8 @@ import {
 } from "../controllers/publicContentController";
 import { studentAdmissionUpload } from "../middleware/uploadStudentAdmission";
 import { teacherApplicationUpload } from "../middleware/uploadTeacherApplication";
+import { paymentProofUpload } from "../middleware/uploadPaymentProof";
+import { submitPublicOptionalPayment } from "../controllers/optionalPaymentController";
 
 const router = Router();
 
@@ -45,6 +47,20 @@ router.post("/trial-bookings", submitTrialBooking);
 router.get("/admission-prefill/:token", getPublicAdmissionPrefill);
 router.post("/contact-messages", submitContactMessage);
 router.post("/newsletter-subscribers", submitNewsletterSubscriber);
+router.post(
+  "/optional-payments",
+  (req, res, next) => {
+    paymentProofUpload(req, res, (err: unknown) => {
+      if (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        res.status(400).json({ success: false, message, data: null });
+        return;
+      }
+      next();
+    });
+  },
+  submitPublicOptionalPayment
+);
 router.post(
   "/student-admissions",
   (req, res, next) => {

@@ -29,6 +29,10 @@ import {
   submitStudentPayment,
   getStudentPaymentInvoice,
 } from "../controllers/paymentController";
+import {
+  listMyOptionalPayments,
+  submitPortalOptionalPayment,
+} from "../controllers/optionalPaymentController";
 
 const router = Router();
 
@@ -74,5 +78,21 @@ router.post("/payments", (req, res, next) => {
     next();
   });
 }, submitStudentPayment);
+
+router.get("/optional-payments", listMyOptionalPayments);
+router.post(
+  "/optional-payments",
+  (req, res, next) => {
+    paymentProofUpload(req, res, (err: unknown) => {
+      if (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        res.status(400).json({ success: false, message, data: null });
+        return;
+      }
+      next();
+    });
+  },
+  submitPortalOptionalPayment
+);
 
 export default router;

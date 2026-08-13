@@ -153,6 +153,11 @@ import {
 } from "../controllers/adminProfileController";
 import { uploadProfileAvatar } from "../controllers/avatarController";
 import { avatarUpload } from "../middleware/uploadAvatar";
+import {
+  approveOptionalPaymentHandler,
+  listAdminOptionalPaymentsHandler,
+  rejectOptionalPaymentHandler,
+} from "../controllers/optionalPaymentController";
 
 const router = Router();
 
@@ -170,6 +175,9 @@ router.get("/payments/overdue", listOverdueBillings);
 router.get("/payments/:id/invoice", getAdminPaymentInvoice);
 router.patch("/payments/:id/approve", approvePayment);
 router.patch("/payments/:id/reject", rejectPayment);
+router.get("/optional-payments", listAdminOptionalPaymentsHandler);
+router.patch("/optional-payments/:id/approve", approveOptionalPaymentHandler);
+router.patch("/optional-payments/:id/reject", rejectOptionalPaymentHandler);
 router.get("/students/:studentId/billing", getStudentBilling);
 router.put("/students/:studentId/billing", upsertStudentBilling);
 

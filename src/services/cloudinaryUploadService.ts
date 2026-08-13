@@ -52,6 +52,38 @@ export async function uploadUserAvatar(
   };
 }
 
+export async function uploadOptionalPaymentProof(
+  buffer: Buffer,
+  folderKey: string,
+  mimeType: string
+): Promise<{ url: string; publicId: string }> {
+  if (!isCloudinaryConfigured()) {
+    throw new Error("CLOUDINARY_NOT_CONFIGURED");
+  }
+
+  if (buffer.length > MAX_BYTES) {
+    throw new Error("FILE_TOO_LARGE");
+  }
+
+  const safeKey = folderKey.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "public";
+  const folder = `bdoq-academy/optional-payments/${safeKey}`;
+
+  const result = await cloudinary.uploader.upload(
+    `data:${mimeType};base64,${buffer.toString("base64")}`,
+    {
+      folder,
+      resource_type: "image",
+      overwrite: false,
+      unique_filename: true,
+    }
+  );
+
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+  };
+}
+
 export async function uploadPaymentProof(
   buffer: Buffer,
   studentId: string,
