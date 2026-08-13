@@ -76,7 +76,8 @@ export const submitStudentAdmission = async (
           file.buffer,
           "student-admissions/payment-proofs",
           file.mimetype || "image/jpeg",
-          "image"
+          "image",
+          file.originalname
         );
       } catch (uploadErr) {
         const message =

@@ -52,17 +52,23 @@ type MulterFiles = {
 async function uploadField(
   files: MulterFiles | undefined,
   field: string,
-  folder: string,
-  resourceType: "image" | "raw" = "image"
+  folder: string
 ): Promise<{ url: string; publicId: string } | undefined> {
   const file = files?.[field]?.[0];
   if (!file) return undefined;
 
+  const mimeType = file.mimetype || "application/octet-stream";
+  const isPdf =
+    mimeType === "application/pdf" ||
+    mimeType === "application/x-pdf" ||
+    file.originalname.toLowerCase().endsWith(".pdf");
+
   return uploadApplicationFile(
     file.buffer,
     folder,
-    file.mimetype || "application/octet-stream",
-    resourceType
+    mimeType,
+    isPdf || mimeType.startsWith("image/") ? "image" : "raw",
+    file.originalname
   );
 }
 
@@ -101,10 +107,10 @@ export const submitTeacherApplication = async (
     try {
       [certificateUpload, cvUpload, profileUpload, screenshotUpload] =
         await Promise.all([
-          uploadField(files, "certificateFile", "teacher-applications/certs", "raw"),
-          uploadField(files, "cvFile", "teacher-applications/cv", "raw"),
-          uploadField(files, "profilePhotoFile", "teacher-applications/photos", "image"),
-          uploadField(files, "screenshotFile", "teacher-applications/screenshots", "image"),
+          uploadField(files, "certificateFile", "teacher-applications/certs"),
+          uploadField(files, "cvFile", "teacher-applications/cv"),
+          uploadField(files, "profilePhotoFile", "teacher-applications/photos"),
+          uploadField(files, "screenshotFile", "teacher-applications/screenshots"),
         ]);
     } catch (uploadErr) {
       const message =

@@ -2,7 +2,18 @@ import { cloudinary, configureCloudinary, isCloudinaryConfigured } from "../conf
 
 configureCloudinary();
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const PDF_MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = IMAGE_MAX_BYTES;
+
+function isPdfUpload(mimeType: string, originalName?: string): boolean {
+  const name = (originalName ?? "").toLowerCase();
+  return (
+    mimeType === "application/pdf" ||
+    mimeType === "application/x-pdf" ||
+    name.endsWith(".pdf")
+  );
+}
 
 export async function deleteCloudinaryAsset(publicId: string): Promise<void> {
   if (!isCloudinaryConfigured() || !publicId.trim()) return;
@@ -76,24 +87,36 @@ export async function uploadApplicationFile(
   buffer: Buffer,
   folder: string,
   mimeType: string,
-  resourceType: "image" | "raw" = "image"
+  resourceType: "image" | "raw" = "image",
+  originalName?: string
 ): Promise<{ url: string; publicId: string }> {
   if (!isCloudinaryConfigured()) {
     throw new Error("CLOUDINARY_NOT_CONFIGURED");
   }
 
-  if (buffer.length > MAX_BYTES) {
+  const pdf = isPdfUpload(mimeType, originalName);
+  const maxBytes = pdf ? PDF_MAX_BYTES : IMAGE_MAX_BYTES;
+
+  if (buffer.length > maxBytes) {
     throw new Error("FILE_TOO_LARGE");
   }
 
   const result = await cloudinary.uploader.upload(
     `data:${mimeType};base64,${buffer.toString("base64")}`,
-    {
-      folder: `boq-academy/${folder}`,
-      resource_type: resourceType,
-      overwrite: false,
-      unique_filename: true,
-    }
+    pdf
+      ? {
+          folder: `boq-academy/${folder}`,
+          resource_type: "image",
+          format: "pdf",
+          overwrite: false,
+          unique_filename: true,
+        }
+      : {
+          folder: `boq-academy/${folder}`,
+          resource_type: mimeType.startsWith("image/") ? "image" : resourceType,
+          overwrite: false,
+          unique_filename: true,
+        }
   );
 
   return {
