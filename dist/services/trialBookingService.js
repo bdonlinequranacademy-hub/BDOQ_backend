@@ -9,7 +9,7 @@ exports.sendTrialInvitation = sendTrialInvitation;
 exports.deleteTrialBooking = deleteTrialBooking;
 exports.countTrialBookingsByStatus = countTrialBookingsByStatus;
 const TrialBooking_1 = require("../models/TrialBooking");
-const TeacherProfile_1 = require("../models/TeacherProfile");
+const resolveTeacherAssignment_1 = require("../lib/resolveTeacherAssignment");
 const emailService_1 = require("./emailService");
 const notificationService_1 = require("./notificationService");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
@@ -17,6 +17,8 @@ const countryTimezone_1 = require("../lib/countryTimezone");
 const trialInvitationContent_1 = require("../lib/trialInvitationContent");
 const trialMeetingPlatform_1 = require("../lib/trialMeetingPlatform");
 const brandEmailTemplate_1 = require("../lib/email/brandEmailTemplate");
+const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
+const resolveAuthOrigin_1 = require("../lib/email/resolveAuthOrigin");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function notifyEmail() {
     const to = process.env.TRIAL_NOTIFY_EMAIL?.trim() ||
@@ -72,7 +74,11 @@ function formatBookingText(booking) {
     ].filter(Boolean);
     return lines.join("\n");
 }
-function formatTrialBooking(booking) {
+function formatTrialBooking(booking, extra) {
+    const token = booking.admissionPrefillToken?.trim() || extra?.prefillToken?.trim();
+    const prefillUrl = token
+        ? `${(0, resolveAuthOrigin_1.getPublicSiteBaseUrl)()}/student-admission?prefill=${token}`
+        : undefined;
     return {
         _id: booking._id.toString(),
         parentName: booking.parentName,
@@ -99,6 +105,7 @@ function formatTrialBooking(booking) {
         convertedAdmissionId: booking.convertedAdmissionId?.toString(),
         convertedUserId: booking.convertedUserId?.toString(),
         convertedAt: booking.convertedAt,
+        prefillUrl,
         utmSource: booking.utmSource,
         utmMedium: booking.utmMedium,
         utmCampaign: booking.utmCampaign,
@@ -187,7 +194,23 @@ async function createTrialBooking(input) {
 async function listTrialBookings(status, limit = 100) {
     const filter = status ? { status } : {};
     const rows = await TrialBooking_1.TrialBooking.find(filter).sort({ createdAt: -1 }).limit(limit);
-    return rows.map(formatTrialBooking);
+    const missingTokenIds = rows
+        .filter((row) => row.convertedAdmissionId && !row.admissionPrefillToken)
+        .map((row) => row.convertedAdmissionId);
+    const tokenByAdmissionId = new Map();
+    if (missingTokenIds.length > 0) {
+        const admissions = await StudentAdmissionApplication_1.StudentAdmissionApplication.find({
+            _id: { $in: missingTokenIds },
+        }).select("_id prefillToken");
+        for (const admission of admissions) {
+            if (admission.prefillToken) {
+                tokenByAdmissionId.set(admission._id.toString(), admission.prefillToken);
+            }
+        }
+    }
+    return rows.map((row) => formatTrialBooking(row, {
+        prefillToken: tokenByAdmissionId.get(row.convertedAdmissionId?.toString() ?? ""),
+    }));
 }
 async function updateTrialBookingStatus(id, status) {
     const booking = await TrialBooking_1.TrialBooking.findByIdAndUpdate(id, { status }, { new: true, runValidators: true });
@@ -328,8 +351,8 @@ async function sendTrialInvitation(id, input) {
     if (!booking.preferredTrialDate?.trim() || !booking.preferredTrialTime?.trim()) {
         return { error: "Trial date and time are required before sending the invitation." };
     }
-    const teacher = await TeacherProfile_1.TeacherProfile.findOne({ slug: booking.teacherSlug.trim() });
-    const teacherName = teacher?.name?.trim() || booking.teacherSlug.trim();
+    const teacher = await (0, resolveTeacherAssignment_1.resolveTeacherAssignment)(booking.teacherSlug);
+    const teacherName = "error" in teacher ? booking.teacherSlug.trim() : teacher.name;
     const courseLabel = formatCourseLabel(booking.courseSlug);
     const invitation = (0, trialInvitationContent_1.buildTrialInvitationContent)({
         booking,

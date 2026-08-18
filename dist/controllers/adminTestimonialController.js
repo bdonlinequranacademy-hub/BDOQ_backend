@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminDeleteTestimonial = exports.adminUpdateTestimonial = exports.adminCreateTestimonial = exports.adminGetTestimonialById = exports.adminGetTestimonials = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const Testimonial_1 = require("../models/Testimonial");
+const revalidationService_1 = require("../services/revalidationService");
 const formatTestimonial = (doc) => ({
     id: doc._id.toString(),
     externalId: doc.externalId,
@@ -155,6 +156,8 @@ const adminCreateTestimonial = async (req, res) => {
             sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
             showOnWebsite: showOnWebsite !== false,
         });
+        // Immediately bust the public-site cache so the new review is visible right away.
+        void (0, revalidationService_1.revalidatePublicCache)("testimonials");
         res.status(201).json({
             success: true,
             message: "Testimonial created successfully",
@@ -231,6 +234,8 @@ const adminUpdateTestimonial = async (req, res) => {
             doc.youtubeId = undefined;
         }
         await doc.save();
+        // Immediately bust the public-site cache so updated review is visible right away.
+        void (0, revalidationService_1.revalidatePublicCache)("testimonials");
         res.status(200).json({
             success: true,
             message: "Testimonial updated successfully",
@@ -266,6 +271,8 @@ const adminDeleteTestimonial = async (req, res) => {
             });
             return;
         }
+        // Immediately bust the public-site cache so removed review disappears right away.
+        void (0, revalidationService_1.revalidatePublicCache)("testimonials");
         res.status(200).json({
             success: true,
             message: "Testimonial deleted successfully",

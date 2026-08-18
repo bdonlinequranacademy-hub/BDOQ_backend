@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.patchAdminTeacherApplicationStatus = exports.listAdminTeacherApplications = exports.submitTeacherApplication = void 0;
+exports.deleteAdminTeacherApplication = exports.patchAdminTeacherApplicationStatus = exports.listAdminTeacherApplications = exports.submitTeacherApplication = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const cloudinaryUploadService_1 = require("../services/cloudinaryUploadService");
 const teacherApplicationService_1 = require("../services/teacherApplicationService");
@@ -39,11 +39,12 @@ function parseFormData(raw) {
     }
     return null;
 }
-async function uploadField(files, field, folder, resourceType = "image") {
+async function uploadField(files, field, folder) {
     const file = files?.[field]?.[0];
     if (!file)
         return undefined;
-    return (0, cloudinaryUploadService_1.uploadApplicationFile)(file.buffer, folder, file.mimetype || "application/octet-stream", resourceType);
+    const mimeType = file.mimetype || "image/jpeg";
+    return (0, cloudinaryUploadService_1.uploadApplicationFile)(file.buffer, folder, mimeType, "image", file.originalname);
 }
 const submitTeacherApplication = async (req, res) => {
     try {
@@ -71,10 +72,10 @@ const submitTeacherApplication = async (req, res) => {
         try {
             [certificateUpload, cvUpload, profileUpload, screenshotUpload] =
                 await Promise.all([
-                    uploadField(files, "certificateFile", "teacher-applications/certs", "raw"),
-                    uploadField(files, "cvFile", "teacher-applications/cv", "raw"),
-                    uploadField(files, "profilePhotoFile", "teacher-applications/photos", "image"),
-                    uploadField(files, "screenshotFile", "teacher-applications/screenshots", "image"),
+                    uploadField(files, "certificateFile", "teacher-applications/certs"),
+                    uploadField(files, "cvFile", "teacher-applications/cv"),
+                    uploadField(files, "profilePhotoFile", "teacher-applications/photos"),
+                    uploadField(files, "screenshotFile", "teacher-applications/screenshots"),
                 ]);
         }
         catch (uploadErr) {
@@ -92,7 +93,7 @@ const submitTeacherApplication = async (req, res) => {
             });
             return;
         }
-        const { certificateFile: _cert, cvFile: _cv, profilePhotoFile: _photo, screenshotFile: _shot, rulesAccepted: _rules, ...sanitized } = formData;
+        const { certificateFile: _cert, cvFile: _cv, profilePhotoFile: _photo, screenshotFile: _shot, rulesAccepted: _rules, confirmPassword: _confirm, ...sanitized } = formData;
         const result = await (0, teacherApplicationService_1.createTeacherApplication)({
             fullName,
             email,
@@ -181,12 +182,15 @@ const patchAdminTeacherApplicationStatus = async (req, res) => {
         }
         const result = await (0, teacherApplicationService_1.updateTeacherApplicationStatus)(id, status, adminNote);
         if ("error" in result) {
-            res.status(404).json({ success: false, message: result.error, data: null });
+            const statusCode = result.error === "Application not found" ? 404 : 400;
+            res.status(statusCode).json({ success: false, message: result.error, data: null });
             return;
         }
         res.status(200).json({
             success: true,
-            message: "Teacher application updated",
+            message: status === "approved"
+                ? "Application approved — teacher portal account is active"
+                : "Teacher application updated",
             data: result.application,
         });
     }
@@ -199,3 +203,34 @@ const patchAdminTeacherApplicationStatus = async (req, res) => {
     }
 };
 exports.patchAdminTeacherApplicationStatus = patchAdminTeacherApplicationStatus;
+const deleteAdminTeacherApplication = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid application ID",
+                data: null,
+            });
+            return;
+        }
+        const result = await (0, teacherApplicationService_1.deleteTeacherApplication)(id);
+        if ("error" in result) {
+            res.status(404).json({ success: false, message: result.error, data: null });
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            message: "Teacher application deleted",
+            data: null,
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete teacher application",
+            data: null,
+        });
+    }
+};
+exports.deleteAdminTeacherApplication = deleteAdminTeacherApplication;

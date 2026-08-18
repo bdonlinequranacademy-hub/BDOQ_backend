@@ -7,13 +7,17 @@ exports.listStudentAdmissionApplications = listStudentAdmissionApplications;
 exports.updateStudentAdmissionStatus = updateStudentAdmissionStatus;
 exports.updateAdmissionPaymentStatus = updateAdmissionPaymentStatus;
 exports.updateAdmissionEnrollment = updateAdmissionEnrollment;
+exports.deleteStudentAdmissionApplication = deleteStudentAdmissionApplication;
 const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
-const TeacherProfile_1 = require("../models/TeacherProfile");
+const resolveTeacherAssignment_1 = require("../lib/resolveTeacherAssignment");
 const emailService_1 = require("./emailService");
 const notificationService_1 = require("./notificationService");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
 const admissionPackageDefaults_1 = require("../lib/admissionPackageDefaults");
 const trialMeetingPlatform_1 = require("../lib/trialMeetingPlatform");
+const leadPortalAccountService_1 = require("./leadPortalAccountService");
+const admissionAdvancePaymentService_1 = require("./admissionAdvancePaymentService");
+const applicationPassword_1 = require("../lib/applicationPassword");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function notifyEmail() {
     const to = process.env.ADMISSION_NOTIFY_EMAIL?.trim() ||
@@ -28,7 +32,7 @@ function formatStudentAdmission(app) {
         fullName: app.fullName,
         email: app.email,
         whatsapp: app.whatsapp,
-        formData: app.formData,
+        formData: (0, applicationPassword_1.stripPasswordFields)(app.formData ?? {}),
         locale: app.locale,
         status: app.status,
         adminNote: app.adminNote,
@@ -138,7 +142,12 @@ async function createStudentAdmissionApplication(input) {
     if (!proofUrl) {
         return { error: "Payment proof screenshot is required." };
     }
-    const allowedMethods = new Set(["bkash", "nagad", "bank", "paypal", "cash"]);
+    const passwordResult = (0, applicationPassword_1.readApplicationPassword)(input.formData);
+    if ("error" in passwordResult)
+        return passwordResult;
+    const passwordHash = await (0, applicationPassword_1.hashApplicationPassword)(passwordResult.password);
+    const sanitizedFormData = (0, applicationPassword_1.stripPasswordFields)(input.formData);
+    const allowedMethods = new Set(["bkash", "nagad", "bank", "cash"]);
     if (!allowedMethods.has(feeMethod)) {
         return { error: "Invalid admission fee payment method." };
     }
@@ -160,11 +169,12 @@ async function createStudentAdmissionApplication(input) {
         fullName,
         email,
         whatsapp: normalizedWa.whatsapp,
-        formData: input.formData,
+        formData: sanitizedFormData,
+        passwordHash,
         locale,
         paymentStatus: "pending",
         ...(() => {
-            const enrollment = buildEnrollmentDefaultsFromFormData(input.formData);
+            const enrollment = buildEnrollmentDefaultsFromFormData(sanitizedFormData);
             return {
                 classTime: enrollment.classTime,
                 assignedTeacherSlug: enrollment.assignedTeacherSlug,
@@ -185,7 +195,7 @@ async function createStudentAdmissionApplication(input) {
             `Name: ${fullName}`,
             `Email: ${email}`,
             `WhatsApp: ${normalizedWa.whatsapp}`,
-            `Admission fee: ${feeAmount} ${String(input.formData.admissionFeeCurrency ?? "bdt").toUpperCase()} via ${feeMethod}`,
+            `Admission fee: ${feeAmount} ${String(sanitizedFormData.admissionFeeCurrency ?? "bdt").toUpperCase()} via ${feeMethod}`,
             `Reference: ${feeReference}`,
             `Submitted: ${application.createdAt.toISOString()}`,
         ].join("\n");
@@ -209,20 +219,30 @@ async function listStudentAdmissionApplications(status, limit = 100) {
     return rows.map(formatStudentAdmission);
 }
 async function updateStudentAdmissionStatus(id, status, adminNote) {
-    const application = await StudentAdmissionApplication_1.StudentAdmissionApplication.findByIdAndUpdate(id, {
-        status,
-        ...(adminNote !== undefined ? { adminNote: adminNote.trim() || undefined } : {}),
-    }, { new: true, runValidators: true });
+    const application = await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(id).select("+passwordHash");
     if (!application) {
         return { error: "Application not found" };
     }
+    if (status === "approved") {
+        const provision = await (0, leadPortalAccountService_1.provisionStudentFromAdmission)(application);
+        if ("error" in provision)
+            return provision;
+    }
+    else if (application.status === "approved" || application.linkedUserId) {
+        await (0, leadPortalAccountService_1.deactivateAdmissionLinkedUser)(application);
+    }
+    application.status = status;
+    if (adminNote !== undefined) {
+        application.adminNote = adminNote.trim() || undefined;
+    }
+    await application.save();
     return { application: formatStudentAdmission(application) };
 }
 async function updateAdmissionPaymentStatus(id, paymentStatus, rejectReason) {
     if (!["pending", "verified", "rejected"].includes(paymentStatus)) {
         return { error: "Invalid payment status." };
     }
-    const application = await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(id);
+    const application = await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(id).select("+passwordHash");
     if (!application) {
         return { error: "Application not found" };
     }
@@ -243,6 +263,16 @@ async function updateAdmissionPaymentStatus(id, paymentStatus, rejectReason) {
         application.paymentRejectReason = undefined;
     }
     await application.save();
+    if (paymentStatus === "verified" && application.status === "approved") {
+        if (!application.linkedUserId) {
+            const provision = await (0, leadPortalAccountService_1.provisionStudentFromAdmission)(application);
+            if ("error" in provision)
+                return provision;
+        }
+        else {
+            await (0, admissionAdvancePaymentService_1.approveAdvanceMonthlyPayment)(application);
+        }
+    }
     return { application: formatStudentAdmission(application) };
 }
 async function updateAdmissionEnrollment(id, input) {
@@ -285,11 +315,10 @@ async function updateAdmissionEnrollment(id, input) {
             application.assignedTeacherName = undefined;
         }
         else {
-            const teacher = await TeacherProfile_1.TeacherProfile.findOne({ slug });
-            if (!teacher) {
-                return { error: "Selected teacher profile was not found." };
-            }
-            application.assignedTeacherSlug = slug;
+            const teacher = await (0, resolveTeacherAssignment_1.resolveTeacherAssignment)(slug);
+            if ("error" in teacher)
+                return teacher;
+            application.assignedTeacherSlug = teacher.slug;
             application.assignedTeacherName = teacher.name;
         }
     }
@@ -313,4 +342,11 @@ async function updateAdmissionEnrollment(id, input) {
     application.enrollmentSetupAt = new Date();
     await application.save();
     return { application: formatStudentAdmission(application) };
+}
+async function deleteStudentAdmissionApplication(id) {
+    const deleted = await StudentAdmissionApplication_1.StudentAdmissionApplication.findByIdAndDelete(id);
+    if (!deleted) {
+        return { error: "Application not found" };
+    }
+    return { ok: true };
 }

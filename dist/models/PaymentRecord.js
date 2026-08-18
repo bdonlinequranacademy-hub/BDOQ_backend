@@ -68,7 +68,17 @@ const paymentRecordSchema = new mongoose_1.Schema({
     },
     method: {
         type: String,
-        enum: ["zelle", "wise", "bank_transfer", "paypal", "cash_app", "other"],
+        enum: [
+            "zelle",
+            "wise",
+            "bank_transfer",
+            "paypal",
+            "cash_app",
+            "bkash",
+            "nagad",
+            "rocket",
+            "other",
+        ],
         required: true,
     },
     reference: {
@@ -122,7 +132,12 @@ const paymentRecordSchema = new mongoose_1.Schema({
         sparse: true,
         unique: true,
     },
+    sourceAdmissionId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "StudentAdmissionApplication",
+    },
 }, { timestamps: true });
 paymentRecordSchema.index({ student: 1, createdAt: -1 });
 paymentRecordSchema.index({ status: 1, createdAt: -1 });
+paymentRecordSchema.index({ sourceAdmissionId: 1 }, { sparse: true });
 exports.PaymentRecord = mongoose_1.default.model("PaymentRecord", paymentRecordSchema);

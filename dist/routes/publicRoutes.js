@@ -11,6 +11,8 @@ const liveMonitorController_1 = require("../controllers/liveMonitorController");
 const publicContentController_1 = require("../controllers/publicContentController");
 const uploadStudentAdmission_1 = require("../middleware/uploadStudentAdmission");
 const uploadTeacherApplication_1 = require("../middleware/uploadTeacherApplication");
+const uploadPaymentProof_1 = require("../middleware/uploadPaymentProof");
+const optionalPaymentController_1 = require("../controllers/optionalPaymentController");
 const router = (0, express_1.Router)();
 /** Public marketing endpoints (no auth). */
 router.get("/teachers", publicContentController_1.getPublicTeachersHandler);
@@ -31,6 +33,16 @@ router.post("/trial-bookings", trialBookingController_1.submitTrialBooking);
 router.get("/admission-prefill/:token", studentAdmissionController_1.getPublicAdmissionPrefill);
 router.post("/contact-messages", contactMessageController_1.submitContactMessage);
 router.post("/newsletter-subscribers", newsletterSubscriberController_1.submitNewsletterSubscriber);
+router.post("/optional-payments", (req, res, next) => {
+    (0, uploadPaymentProof_1.paymentProofUpload)(req, res, (err) => {
+        if (err) {
+            const message = err instanceof Error ? err.message : "Upload failed";
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, optionalPaymentController_1.submitPublicOptionalPayment);
 router.post("/student-admissions", (req, res, next) => {
     (0, uploadStudentAdmission_1.studentAdmissionUpload)(req, res, (err) => {
         if (err) {

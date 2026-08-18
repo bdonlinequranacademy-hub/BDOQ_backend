@@ -282,7 +282,6 @@ const postAdminConvertTrialToAdmission = async (req, res) => {
         }
         const result = await (0, trialConversionService_1.convertTrialToAdmission)(id, {
             email: typeof req.body.email === "string" ? req.body.email : "",
-            createUser: req.body.createUser !== false,
             locale: req.body.locale === "bn" ? "bn" : req.body.locale === "en" ? "en" : undefined,
         });
         if ("error" in result) {

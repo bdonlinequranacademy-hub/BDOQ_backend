@@ -7,7 +7,7 @@ exports.studentAdmissionUpload = void 0;
 const multer_1 = __importDefault(require("multer"));
 exports.studentAdmissionUpload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 2 },
     fileFilter: (_req, file, cb) => {
         if (!file.mimetype.startsWith("image/")) {
             cb(new Error("Only image files are allowed"));
@@ -15,4 +15,7 @@ exports.studentAdmissionUpload = (0, multer_1.default)({
         }
         cb(null, true);
     },
-}).single("admissionPaymentProof");
+}).fields([
+    { name: "admissionPaymentProof", maxCount: 1 },
+    { name: "monthlyTuitionProof", maxCount: 1 },
+]);

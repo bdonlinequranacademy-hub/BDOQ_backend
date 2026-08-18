@@ -84,6 +84,11 @@ const classSchema = new mongoose_1.Schema({
         },
     ],
     schedule: scheduleSchema,
+    curriculum: {
+        programId: { type: String, trim: true },
+        unitId: { type: String, trim: true },
+        topicId: { type: String, trim: true },
+    },
     meetingLink: {
         type: String,
         trim: true,

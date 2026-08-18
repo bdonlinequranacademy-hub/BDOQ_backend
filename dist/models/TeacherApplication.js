@@ -57,6 +57,8 @@ const teacherApplicationSchema = new mongoose_1.Schema({
         default: "new",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
+    linkedUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
+    passwordHash: { type: String, select: false },
 }, { timestamps: true });
 teacherApplicationSchema.index({ status: 1, createdAt: -1 });
 teacherApplicationSchema.index({ email: 1, createdAt: -1 });

@@ -4,11 +4,25 @@ exports.formatTeacherApplication = formatTeacherApplication;
 exports.createTeacherApplication = createTeacherApplication;
 exports.listTeacherApplications = listTeacherApplications;
 exports.updateTeacherApplicationStatus = updateTeacherApplicationStatus;
+exports.deleteTeacherApplication = deleteTeacherApplication;
 const TeacherApplication_1 = require("../models/TeacherApplication");
 const emailService_1 = require("./emailService");
 const notificationService_1 = require("./notificationService");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
+const cloudinaryUploadService_1 = require("./cloudinaryUploadService");
+const leadPortalAccountService_1 = require("./leadPortalAccountService");
+const applicationPassword_1 = require("../lib/applicationPassword");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const OMITTED_TEACHER_FORM_KEYS = new Set([
+    "tajweedExperience",
+    "hifzExperience",
+    "password",
+    "confirmPassword",
+    "passwordHash",
+]);
+function sanitizeTeacherFormData(formData) {
+    return Object.fromEntries(Object.entries(formData).filter(([key]) => !OMITTED_TEACHER_FORM_KEYS.has(key)));
+}
 function notifyEmail() {
     const to = process.env.TEACHER_NOTIFY_EMAIL?.trim() ||
         process.env.TRIAL_NOTIFY_EMAIL?.trim() ||
@@ -16,17 +30,32 @@ function notifyEmail() {
         process.env.TEST_EMAIL_TO?.trim();
     return to || null;
 }
+function formatTeacherFiles(files) {
+    if (!files)
+        return files;
+    return {
+        certificateUrl: (0, cloudinaryUploadService_1.toSignedMediaUrl)(files.certificateUrl, files.certificatePublicId),
+        certificatePublicId: files.certificatePublicId,
+        cvUrl: (0, cloudinaryUploadService_1.toSignedMediaUrl)(files.cvUrl, files.cvPublicId),
+        cvPublicId: files.cvPublicId,
+        profilePhotoUrl: files.profilePhotoUrl,
+        profilePhotoPublicId: files.profilePhotoPublicId,
+        screenshotUrl: files.screenshotUrl,
+        screenshotPublicId: files.screenshotPublicId,
+    };
+}
 function formatTeacherApplication(app) {
     return {
         _id: app._id.toString(),
         fullName: app.fullName,
         email: app.email,
         phone: app.phone,
-        formData: app.formData,
-        files: app.files,
+        formData: sanitizeTeacherFormData(app.formData ?? {}),
+        files: formatTeacherFiles(app.files),
         locale: app.locale,
         status: app.status,
         adminNote: app.adminNote,
+        linkedUserId: app.linkedUserId?.toString(),
         createdAt: app.createdAt,
         updatedAt: app.updatedAt,
     };
@@ -47,6 +76,10 @@ async function createTeacherApplication(input) {
     if (!input.files?.cvUrl || !input.files?.profilePhotoUrl || !input.files?.certificateUrl) {
         return { error: "CV, certificate, and profile photo are required." };
     }
+    const passwordResult = (0, applicationPassword_1.readApplicationPassword)(input.formData);
+    if ("error" in passwordResult)
+        return passwordResult;
+    const passwordHash = await (0, applicationPassword_1.hashApplicationPassword)(passwordResult.password);
     const countryHint = typeof input.formData.country === "string"
         ? input.formData.country
         : typeof input.formData.nationality === "string"
@@ -61,9 +94,10 @@ async function createTeacherApplication(input) {
         fullName,
         email,
         phone: normalizedPhone.whatsapp,
-        formData: input.formData,
+        formData: sanitizeTeacherFormData((0, applicationPassword_1.stripPasswordFields)(input.formData)),
         files: input.files,
         locale,
+        passwordHash,
     });
     const notifyTo = notifyEmail();
     if (notifyTo) {
@@ -92,12 +126,29 @@ async function listTeacherApplications(status, limit = 100) {
     return rows.map(formatTeacherApplication);
 }
 async function updateTeacherApplicationStatus(id, status, adminNote) {
-    const application = await TeacherApplication_1.TeacherApplication.findByIdAndUpdate(id, {
-        status,
-        ...(adminNote !== undefined ? { adminNote: adminNote.trim() || undefined } : {}),
-    }, { new: true, runValidators: true });
+    const application = await TeacherApplication_1.TeacherApplication.findById(id).select("+passwordHash");
     if (!application) {
         return { error: "Application not found" };
     }
+    if (status === "approved") {
+        const provision = await (0, leadPortalAccountService_1.provisionTeacherFromApplication)(application);
+        if ("error" in provision)
+            return provision;
+    }
+    else if (application.status === "approved" || application.linkedUserId) {
+        await (0, leadPortalAccountService_1.deactivateTeacherLinkedUser)(application);
+    }
+    application.status = status;
+    if (adminNote !== undefined) {
+        application.adminNote = adminNote.trim() || undefined;
+    }
+    await application.save();
     return { application: formatTeacherApplication(application) };
+}
+async function deleteTeacherApplication(id) {
+    const deleted = await TeacherApplication_1.TeacherApplication.findByIdAndDelete(id);
+    if (!deleted) {
+        return { error: "Application not found" };
+    }
+    return { ok: true };
 }

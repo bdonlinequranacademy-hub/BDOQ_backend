@@ -1,0 +1,153 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.provisionBillingFromAdmission = provisionBillingFromAdmission;
+exports.approveAdvanceMonthlyPayment = approveAdvanceMonthlyPayment;
+const PaymentRecord_1 = require("../models/PaymentRecord");
+const StudentBilling_1 = require("../models/StudentBilling");
+const admissionPackageDefaults_1 = require("../lib/admissionPackageDefaults");
+const paymentService_1 = require("./paymentService");
+const paymentReminderService_1 = require("./paymentReminderService");
+function formString(formData, key) {
+    if (!formData)
+        return "";
+    const value = formData[key];
+    if (typeof value === "string")
+        return value.trim();
+    if (typeof value === "number" && Number.isFinite(value))
+        return String(value);
+    return "";
+}
+function wantsAdvanceMonth(formData) {
+    const choice = formData?.monthlyTuitionChoice;
+    if (choice === "yes")
+        return true;
+    if (choice === "no")
+        return false;
+    const value = formData?.payCurrentMonthTuition;
+    return value === true || value === "true" || value === "yes" || value === "on";
+}
+function mapAdmissionMethod(raw) {
+    const method = raw.toLowerCase();
+    if (method === "bank" || method === "bank_transfer")
+        return "bank_transfer";
+    if (method === "bkash" || method === "nagad" || method === "rocket") {
+        return method;
+    }
+    return "other";
+}
+async function provisionBillingFromAdmission(user, application) {
+    const formData = application.formData ?? {};
+    const defaults = (0, admissionPackageDefaults_1.getPackageDefaults)(formString(formData, "packagePlan"));
+    const currencyRaw = (application.monthlyFeeCurrency ||
+        formString(formData, "admissionFeeCurrency") ||
+        "bdt").toLowerCase();
+    const billingCurrency = currencyRaw === "usd" ? "USD" : "BDT";
+    const monthlyFee = application.monthlyFeeAmount ??
+        (billingCurrency === "USD" ? defaults.monthlyFeeUsd : defaults.monthlyFeeBdt);
+    let billing = await StudentBilling_1.StudentBilling.findOne({ student: user._id });
+    if (!billing) {
+        billing = await StudentBilling_1.StudentBilling.create({
+            student: user._id,
+            monthlyFee,
+            currency: billingCurrency,
+            dueDayOfMonth: 1,
+            paidUntil: null,
+            isActive: true,
+        });
+    }
+    else {
+        billing.monthlyFee = monthlyFee;
+        billing.currency = billingCurrency;
+        billing.isActive = true;
+        await billing.save();
+    }
+    if (!wantsAdvanceMonth(formData))
+        return;
+    const existing = await PaymentRecord_1.PaymentRecord.findOne({
+        student: user._id,
+        sourceAdmissionId: application._id,
+    });
+    if (existing) {
+        if (application.paymentStatus === "verified" && existing.status === "pending") {
+            await approveAdvanceMonthlyPayment(application);
+        }
+        return;
+    }
+    const amount = Number(formString(formData, "monthlyTuitionAmount")) || monthlyFee;
+    const proofUrl = formString(formData, "monthlyTuitionProofUrl") ||
+        formString(formData, "admissionPaymentProofUrl");
+    if (!proofUrl || amount <= 0)
+        return;
+    const reference = formString(formData, "monthlyTuitionReference") ||
+        formString(formData, "admissionPaymentReference") ||
+        `ADM-${application._id.toString().slice(-8)}`;
+    const dateRaw = formString(formData, "monthlyTuitionDate") ||
+        formString(formData, "admissionPaymentDate");
+    const parsedDate = dateRaw ? new Date(`${dateRaw}T00:00:00`) : new Date();
+    const verified = application.paymentStatus === "verified";
+    const paidUntilAfter = verified ? (0, paymentService_1.computePaidUntil)(billing.paidUntil, 1) : undefined;
+    await PaymentRecord_1.PaymentRecord.create({
+        student: user._id,
+        amount,
+        currency: billingCurrency,
+        country: formString(formData, "currentCountry") ||
+            formString(formData, "country") ||
+            user.country ||
+            "Bangladesh",
+        paymentDate: Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+        monthsCovered: 1,
+        method: mapAdmissionMethod(formString(formData, "monthlyTuitionPaymentMethod") ||
+            formString(formData, "admissionFeePaymentMethod") ||
+            formString(formData, "paymentMethod")),
+        reference,
+        note: "Running month tuition paid in advance with student admission.",
+        screenshotUrl: proofUrl,
+        screenshotPublicId: formString(formData, "monthlyTuitionProofPublicId") ||
+            formString(formData, "admissionPaymentProofPublicId") ||
+            "admission-proof",
+        status: verified ? "approved" : "pending",
+        paidUntilAfter,
+        sourceAdmissionId: application._id,
+        reviewedAt: verified ? new Date() : undefined,
+    });
+    if (verified && paidUntilAfter) {
+        billing.paidUntil = paidUntilAfter;
+        billing.lastReminderAt = null;
+        billing.lastReminderKind = null;
+        await billing.save();
+    }
+    else {
+        await (0, paymentReminderService_1.notifyAdminsNewPayment)(user.name).catch(() => undefined);
+    }
+}
+async function approveAdvanceMonthlyPayment(application) {
+    if (!application.linkedUserId)
+        return;
+    const record = await PaymentRecord_1.PaymentRecord.findOne({
+        student: application.linkedUserId,
+        sourceAdmissionId: application._id,
+        status: "pending",
+    });
+    if (!record)
+        return;
+    let billing = await StudentBilling_1.StudentBilling.findOne({ student: application.linkedUserId });
+    if (!billing) {
+        billing = await StudentBilling_1.StudentBilling.create({
+            student: application.linkedUserId,
+            monthlyFee: record.amount / Math.max(record.monthsCovered, 1),
+            currency: record.currency,
+            dueDayOfMonth: 1,
+            paidUntil: null,
+            isActive: true,
+        });
+    }
+    const paidUntilAfter = (0, paymentService_1.computePaidUntil)(billing.paidUntil, record.monthsCovered);
+    billing.paidUntil = paidUntilAfter;
+    billing.lastReminderAt = null;
+    billing.lastReminderKind = null;
+    await billing.save();
+    record.status = "approved";
+    record.reviewedAt = new Date();
+    record.paidUntilAfter = paidUntilAfter;
+    await record.save();
+}

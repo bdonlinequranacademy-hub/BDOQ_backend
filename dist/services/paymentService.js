@@ -18,8 +18,10 @@ exports.PAYMENT_METHODS = [
     "zelle",
     "wise",
     "bank_transfer",
-    "paypal",
     "cash_app",
+    "bkash",
+    "nagad",
+    "rocket",
     "other",
 ];
 function addMonths(from, months) {

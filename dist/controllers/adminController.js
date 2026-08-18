@@ -18,7 +18,9 @@ const ContactMessage_1 = require("../models/ContactMessage");
 const StudentRequest_1 = require("../models/StudentRequest");
 const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
 const TeacherApplication_1 = require("../models/TeacherApplication");
+const TeacherProfile_1 = require("../models/TeacherProfile");
 const paymentReminderService_1 = require("../services/paymentReminderService");
+const optionalPaymentService_1 = require("../services/optionalPaymentService");
 const studentId_1 = require("../utils/studentId");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
 const scheduleService_1 = require("../services/scheduleService");
@@ -524,23 +526,29 @@ const deleteUser = async (req, res) => {
         if (!(0, adminRoles_1.canManageUser)(actor, target)) {
             res.status(403).json({
                 success: false,
-                message: "You are not allowed to deactivate this user",
+                message: "You are not allowed to remove this user",
                 data: null,
             });
             return;
         }
-        const user = await User_1.User.findByIdAndUpdate(id, { isActive: false }, { new: true }).select("-password");
-        if (!user) {
-            res.status(404).json({
-                success: false,
-                message: "User not found",
+        if (target.isActive !== false) {
+            await User_1.User.findByIdAndUpdate(id, { isActive: false }).select("-password");
+            res.status(200).json({
+                success: true,
+                message: "User deactivated successfully",
                 data: null,
             });
             return;
         }
+        await Promise.all([
+            StudentAdmissionApplication_1.StudentAdmissionApplication.updateMany({ linkedUserId: target._id }, { $unset: { linkedUserId: 1 } }),
+            TeacherApplication_1.TeacherApplication.updateMany({ linkedUserId: target._id }, { $unset: { linkedUserId: 1 } }),
+            TeacherProfile_1.TeacherProfile.updateMany({ linkedUserId: target._id }, { $unset: { linkedUserId: 1 } }),
+        ]);
+        await User_1.User.findByIdAndDelete(id);
         res.status(200).json({
             success: true,
-            message: "User deactivated successfully",
+            message: "User deleted successfully",
             data: null,
         });
     }
@@ -591,7 +599,7 @@ const deleteClass = async (req, res) => {
 exports.deleteClass = deleteClass;
 const createClass = async (req, res) => {
     try {
-        const { title, description, teacherId, studentIds, schedule, meetingLink, meetingPlatform, sessionRateBdt, } = req.body;
+        const { title, description, teacherId, studentIds, schedule, curriculum, meetingLink, meetingPlatform, sessionRateBdt, } = req.body;
         if (!title || !teacherId) {
             res.status(400).json({
                 success: false,
@@ -626,6 +634,7 @@ const createClass = async (req, res) => {
             teacher: teacherId,
             students: studentIds || [],
             schedule: parsedSchedule,
+            curriculum,
             meetingLink: (0, meetingLink_1.normalizeMeetingLink)(meetingLink),
             meetingPlatform: (0, trialMeetingPlatform_1.parseTrialMeetingPlatform)(meetingPlatform),
             sessionRateBdt,
@@ -664,7 +673,7 @@ exports.createClass = createClass;
 const updateClass = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, teacherId, studentIds, schedule, meetingLink, meetingPlatform, isActive, sessionRateBdt, } = req.body;
+        const { title, description, teacherId, studentIds, schedule, curriculum, meetingLink, meetingPlatform, isActive, sessionRateBdt, } = req.body;
         if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             res.status(400).json({
                 success: false,
@@ -711,6 +720,8 @@ const updateClass = async (req, res) => {
         if (meetingPlatform !== undefined) {
             updateData.meetingPlatform = (0, trialMeetingPlatform_1.parseTrialMeetingPlatform)(meetingPlatform);
         }
+        if (curriculum !== undefined)
+            updateData.curriculum = curriculum;
         if (isActive !== undefined)
             updateData.isActive = isActive;
         if (sessionRateBdt !== undefined)
@@ -816,7 +827,7 @@ const getAllClasses = async (req, res) => {
 exports.getAllClasses = getAllClasses;
 const getDashboardStats = async (_req, res) => {
     try {
-        const [totalStudents, totalTeachers, totalClasses, activeClasses, liveMonitor, newTrials, newContacts, newStudentAdmissions, newTeacherApplications, pendingClassLogs, pendingPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
+        const [totalStudents, totalTeachers, totalClasses, activeClasses, liveMonitor, newTrials, newContacts, newStudentAdmissions, newTeacherApplications, pendingClassLogs, pendingPayments, pendingOptionalPayments, pendingStudentRequests, studentsWithPrograms, progressMissingProgram, logsMissingProgram,] = await Promise.all([
             User_1.User.countDocuments({ role: "student" }),
             User_1.User.countDocuments({ role: "teacher" }),
             Class_1.Class.countDocuments(),
@@ -828,6 +839,7 @@ const getDashboardStats = async (_req, res) => {
             TeacherApplication_1.TeacherApplication.countDocuments({ status: "new" }),
             ClassLog_1.ClassLog.countDocuments({ status: "pending" }),
             (0, paymentReminderService_1.countPendingPayments)(),
+            (0, optionalPaymentService_1.countPendingOptionalPayments)(),
             StudentRequest_1.StudentRequest.countDocuments({ status: "pending" }),
             User_1.User.countDocuments({
                 role: "student",
@@ -879,6 +891,7 @@ const getDashboardStats = async (_req, res) => {
                     newTeacherApplications,
                     pendingClassLogs,
                     pendingPayments,
+                    pendingOptionalPayments,
                     pendingStudentRequests,
                 },
                 curriculumCoverage: {

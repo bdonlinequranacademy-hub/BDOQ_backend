@@ -695,6 +695,7 @@ export const createClass = async (
       teacherId,
       studentIds,
       schedule,
+      curriculum,
       meetingLink,
       meetingPlatform,
       sessionRateBdt,
@@ -740,6 +741,7 @@ export const createClass = async (
       teacher: teacherId,
       students: studentIds || [],
       schedule: parsedSchedule,
+      curriculum,
       meetingLink: normalizeMeetingLink(meetingLink),
       meetingPlatform: parseTrialMeetingPlatform(meetingPlatform),
       sessionRateBdt,
@@ -793,6 +795,7 @@ export const updateClass = async (
       teacherId,
       studentIds,
       schedule,
+      curriculum,
       meetingLink,
       meetingPlatform,
       isActive,
@@ -845,6 +848,7 @@ export const updateClass = async (
     if (meetingPlatform !== undefined) {
       updateData.meetingPlatform = parseTrialMeetingPlatform(meetingPlatform);
     }
+    if (curriculum !== undefined) updateData.curriculum = curriculum;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (sessionRateBdt !== undefined) updateData.sessionRateBdt = sessionRateBdt;
 

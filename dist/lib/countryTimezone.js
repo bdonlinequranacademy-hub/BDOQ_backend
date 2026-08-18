@@ -50,7 +50,7 @@ function formatTrialLocalSchedule(date, time, timeZone) {
     if (!year || !month || !day || Number.isNaN(hour) || Number.isNaN(minute)) {
         return `${date} ${time} (${tz})`;
     }
-    const localLabel = new Intl.DateTimeFormat("en-GB", {
+    const localLabel = new Intl.DateTimeFormat("en-US", {
         timeZone: tz,
         day: "numeric",
         month: "short",
@@ -66,7 +66,7 @@ function formatTrialBangladeshSchedule(date, time, sourceTimeZone) {
         return null;
     const sourceTz = sourceTimeZone?.trim() || exports.DEFAULT_TIMEZONE;
     const utc = zonedLocalToUtc(date, time, sourceTz);
-    const bdLabel = new Intl.DateTimeFormat("en-GB", {
+    const bdLabel = new Intl.DateTimeFormat("en-US", {
         timeZone: exports.BD_TIMEZONE,
         day: "numeric",
         month: "short",

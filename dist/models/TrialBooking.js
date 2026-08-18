@@ -77,6 +77,7 @@ const trialBookingSchema = new mongoose_1.Schema({
     convertedAdmissionId: { type: mongoose_1.Schema.Types.ObjectId, ref: "StudentAdmissionApplication" },
     convertedUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     convertedAt: { type: Date },
+    admissionPrefillToken: { type: String, trim: true },
     utmSource: { type: String, trim: true },
     utmMedium: { type: String, trim: true },
     utmCampaign: { type: String, trim: true },

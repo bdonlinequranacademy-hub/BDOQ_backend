@@ -24,6 +24,11 @@ export interface IClass extends Document {
   teacher: Types.ObjectId;
   students: Types.ObjectId[];
   schedule?: ISchedule;
+  curriculum?: {
+    programId?: string;
+    unitId?: string;
+    topicId?: string;
+  };
   meetingLink?: string;
   meetingPlatform?: TrialMeetingPlatform;
   sessionRateBdt?: number;
@@ -86,6 +91,11 @@ const classSchema = new Schema<IClass>(
       },
     ],
     schedule: scheduleSchema,
+    curriculum: {
+      programId: { type: String, trim: true },
+      unitId: { type: String, trim: true },
+      topicId: { type: String, trim: true },
+    },
     meetingLink: {
       type: String,
       trim: true,

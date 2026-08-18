@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.patchAdminStudentAdmissionEnrollment = exports.patchAdminStudentAdmissionPaymentStatus = exports.patchAdminStudentAdmissionStatus = exports.listAdminStudentAdmissions = exports.getPublicAdmissionPrefill = exports.submitStudentAdmission = void 0;
+exports.deleteAdminStudentAdmission = exports.patchAdminStudentAdmissionEnrollment = exports.patchAdminStudentAdmissionPaymentStatus = exports.patchAdminStudentAdmissionStatus = exports.listAdminStudentAdmissions = exports.getPublicAdmissionPrefill = exports.submitStudentAdmission = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const cloudinaryUploadService_1 = require("../services/cloudinaryUploadService");
 const studentAdmissionService_1 = require("../services/studentAdmissionService");
@@ -42,7 +42,10 @@ function parseFormData(raw) {
 }
 const submitStudentAdmission = async (req, res) => {
     try {
-        const file = req.file;
+        const files = req.files;
+        const admissionFile = files?.admissionPaymentProof?.[0] ??
+            (req.file?.fieldname === "admissionPaymentProof" ? req.file : undefined);
+        const monthlyFile = files?.monthlyTuitionProof?.[0];
         const body = parseFormData(req.body.data ?? req.body) ?? {};
         const fullName = typeof body.fullName === "string"
             ? body.fullName
@@ -50,18 +53,22 @@ const submitStudentAdmission = async (req, res) => {
                 ? body.name
                 : "";
         let proofUpload;
-        if (file) {
-            try {
-                proofUpload = await (0, cloudinaryUploadService_1.uploadApplicationFile)(file.buffer, "student-admissions/payment-proofs", file.mimetype || "image/jpeg", "image");
+        let monthlyProofUpload;
+        try {
+            if (admissionFile) {
+                proofUpload = await (0, cloudinaryUploadService_1.uploadApplicationFile)(admissionFile.buffer, "student-admissions/payment-proofs", admissionFile.mimetype || "image/jpeg", "image", admissionFile.originalname);
             }
-            catch (uploadErr) {
-                const message = uploadErr instanceof Error &&
-                    uploadErr.message === "CLOUDINARY_NOT_CONFIGURED"
-                    ? "File upload is not configured on the server"
-                    : "Failed to upload payment proof";
-                res.status(503).json({ success: false, message, data: null });
-                return;
+            if (monthlyFile) {
+                monthlyProofUpload = await (0, cloudinaryUploadService_1.uploadApplicationFile)(monthlyFile.buffer, "student-admissions/monthly-tuition-proofs", monthlyFile.mimetype || "image/jpeg", "image", monthlyFile.originalname);
             }
+        }
+        catch (uploadErr) {
+            const message = uploadErr instanceof Error &&
+                uploadErr.message === "CLOUDINARY_NOT_CONFIGURED"
+                ? "File upload is not configured on the server"
+                : "Failed to upload payment proof";
+            res.status(503).json({ success: false, message, data: null });
+            return;
         }
         const formData = {
             ...body,
@@ -71,8 +78,15 @@ const submitStudentAdmission = async (req, res) => {
                     admissionPaymentProofPublicId: proofUpload.publicId,
                 }
                 : {}),
+            ...(monthlyProofUpload
+                ? {
+                    monthlyTuitionProofUrl: monthlyProofUpload.url,
+                    monthlyTuitionProofPublicId: monthlyProofUpload.publicId,
+                }
+                : {}),
         };
         delete formData.admissionPaymentProofFile;
+        delete formData.monthlyTuitionProofFile;
         const prefillToken = typeof body.prefillToken === "string" ? body.prefillToken.trim() : "";
         if (prefillToken) {
             if (!proofUpload?.url) {
@@ -201,12 +215,15 @@ const patchAdminStudentAdmissionStatus = async (req, res) => {
         }
         const result = await (0, studentAdmissionService_1.updateStudentAdmissionStatus)(id, status, adminNote);
         if ("error" in result) {
-            res.status(404).json({ success: false, message: result.error, data: null });
+            const statusCode = result.error === "Application not found" ? 404 : 400;
+            res.status(statusCode).json({ success: false, message: result.error, data: null });
             return;
         }
         res.status(200).json({
             success: true,
-            message: "Admission application updated",
+            message: status === "approved"
+                ? "Admission approved — student portal account is active"
+                : "Admission application updated",
             data: result.application,
         });
     }
@@ -262,7 +279,8 @@ const patchAdminStudentAdmissionPaymentStatus = async (req, res) => {
         }
         const result = await (0, studentAdmissionService_1.updateAdmissionPaymentStatus)(id, paymentStatus, rejectReason);
         if ("error" in result) {
-            res.status(404).json({ success: false, message: result.error, data: null });
+            const statusCode = result.error === "Application not found" ? 404 : 400;
+            res.status(statusCode).json({ success: false, message: result.error, data: null });
             return;
         }
         res.status(200).json({
@@ -350,3 +368,34 @@ const patchAdminStudentAdmissionEnrollment = async (req, res) => {
     }
 };
 exports.patchAdminStudentAdmissionEnrollment = patchAdminStudentAdmissionEnrollment;
+const deleteAdminStudentAdmission = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid application ID",
+                data: null,
+            });
+            return;
+        }
+        const result = await (0, studentAdmissionService_1.deleteStudentAdmissionApplication)(id);
+        if ("error" in result) {
+            res.status(404).json({ success: false, message: result.error, data: null });
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            message: "Admission application deleted",
+            data: null,
+        });
+    }
+    catch {
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete admission application",
+            data: null,
+        });
+    }
+};
+exports.deleteAdminStudentAdmission = deleteAdminStudentAdmission;

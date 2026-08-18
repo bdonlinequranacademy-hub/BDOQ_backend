@@ -12,6 +12,8 @@ const studentRequestController_1 = require("../controllers/studentRequestControl
 const complianceController_1 = require("../controllers/complianceController");
 const weeklyReportController_1 = require("../controllers/weeklyReportController");
 const sessionJoinController_1 = require("../controllers/sessionJoinController");
+const uploadPaymentProof_1 = require("../middleware/uploadPaymentProof");
+const optionalPaymentController_1 = require("../controllers/optionalPaymentController");
 const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("teacher"));
 router.get("/students", teacherController_1.getMyStudents);
@@ -58,4 +60,15 @@ router.post("/profile/avatar", (req, res, next) => {
 router.post("/availability/check", teacherProfileController_1.checkAvailability);
 router.get("/student-requests", studentRequestController_1.listTeacherStudentRequestsHandler);
 router.post("/student-requests", studentRequestController_1.createTeacherStudentRequest);
+router.get("/optional-payments", optionalPaymentController_1.listMyOptionalPayments);
+router.post("/optional-payments", (req, res, next) => {
+    (0, uploadPaymentProof_1.paymentProofUpload)(req, res, (err) => {
+        if (err) {
+            const message = err instanceof Error ? err.message : "Upload failed";
+            res.status(400).json({ success: false, message, data: null });
+            return;
+        }
+        next();
+    });
+}, optionalPaymentController_1.submitPortalOptionalPayment);
 exports.default = router;
