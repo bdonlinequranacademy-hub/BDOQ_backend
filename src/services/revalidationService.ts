@@ -31,6 +31,7 @@ export async function revalidatePublicCache(tag: RevalidateTag): Promise<void> {
         "x-revalidate-secret": SECRET,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({}),
       // Short timeout so it never delays the admin response
       signal: AbortSignal.timeout(5000),
     });
