@@ -6,6 +6,7 @@ import {
   Testimonial,
   type TestimonialMediaType,
 } from "../models/Testimonial";
+import { revalidatePublicCache } from "../services/revalidationService";
 
 const formatTestimonial = (doc: ITestimonial) => ({
   id: doc._id.toString(),
@@ -194,6 +195,9 @@ export const adminCreateTestimonial = async (
       showOnWebsite: showOnWebsite !== false,
     });
 
+    // Immediately bust the public-site cache so the new review is visible right away.
+    void revalidatePublicCache("testimonials");
+
     res.status(201).json({
       success: true,
       message: "Testimonial created successfully",
@@ -277,6 +281,9 @@ export const adminUpdateTestimonial = async (
 
     await doc.save();
 
+    // Immediately bust the public-site cache so updated review is visible right away.
+    void revalidatePublicCache("testimonials");
+
     res.status(200).json({
       success: true,
       message: "Testimonial updated successfully",
@@ -315,6 +322,9 @@ export const adminDeleteTestimonial = async (
       });
       return;
     }
+
+    // Immediately bust the public-site cache so removed review disappears right away.
+    void revalidatePublicCache("testimonials");
 
     res.status(200).json({
       success: true,
