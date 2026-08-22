@@ -121,9 +121,8 @@ export async function provisionStudentFromAdmission(
   const existing = await User.findOne({ email });
   if (existing) {
     if (existing.role !== "student") {
-      return {
-        error: `This email already belongs to a ${existing.role.replace("_", " ")} account. Change the admission email or create the student from Users.`,
-      };
+      existing.role = "student";
+      await existing.save();
     }
     existing.isActive = true;
     if (whatsapp && !existing.whatsapp) existing.whatsapp = whatsapp;
@@ -211,9 +210,8 @@ export async function provisionTeacherFromApplication(
   const existing = await User.findOne({ email });
   if (existing) {
     if (existing.role !== "teacher") {
-      return {
-        error: `This email already belongs to a ${existing.role.replace("_", " ")} account. Change the application email or create the teacher from Users.`,
-      };
+      existing.role = "teacher";
+      await existing.save();
     }
     existing.isActive = true;
     if (whatsapp && !existing.whatsapp) existing.whatsapp = whatsapp;
