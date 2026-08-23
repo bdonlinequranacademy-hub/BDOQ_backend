@@ -84,8 +84,8 @@ const trialBookingSchema = new mongoose_1.Schema({
     utmContent: { type: String, trim: true },
     status: {
         type: String,
-        enum: ["new", "contacted", "scheduled", "closed"],
-        default: "new",
+        enum: ["pending", "contacted", "scheduled", "reviewing", "approved", "rejected"],
+        default: "pending",
     },
 }, { timestamps: true });
 trialBookingSchema.index({ status: 1, createdAt: -1 });

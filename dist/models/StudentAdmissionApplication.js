@@ -43,8 +43,8 @@ const studentAdmissionApplicationSchema = new mongoose_1.Schema({
     locale: { type: String, enum: ["en", "bn"] },
     status: {
         type: String,
-        enum: ["new", "reviewing", "approved", "closed"],
-        default: "new",
+        enum: ["pending", "reviewing", "approved", "rejected"],
+        default: "pending",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
     sourceTrialBookingId: { type: mongoose_1.Schema.Types.ObjectId, ref: "TrialBooking" },

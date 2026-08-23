@@ -52,7 +52,7 @@ const studentRequestSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: ["pending", "approved", "rejected"],
+        enum: ["pending", "reviewing", "approved", "rejected"],
         default: "pending",
     },
     adminNote: {

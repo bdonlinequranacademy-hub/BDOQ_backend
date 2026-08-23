@@ -15,10 +15,10 @@ function parseLocale(value) {
     return undefined;
 }
 function parseStatus(value) {
-    if (value === "new" ||
+    if (value === "pending" ||
         value === "reviewing" ||
         value === "approved" ||
-        value === "closed") {
+        value === "rejected") {
         return value;
     }
     return undefined;
@@ -208,7 +208,7 @@ const patchAdminStudentAdmissionStatus = async (req, res) => {
         if (!status) {
             res.status(400).json({
                 success: false,
-                message: "status must be new, reviewing, approved, or closed",
+                message: "status must be pending, reviewing, approved, or rejected",
                 data: null,
             });
             return;
@@ -227,10 +227,10 @@ const patchAdminStudentAdmissionStatus = async (req, res) => {
             data: result.application,
         });
     }
-    catch {
+    catch (error) {
         res.status(500).json({
             success: false,
-            message: "Failed to update admission application",
+            message: error.message || "Failed to update admission application",
             data: null,
         });
     }

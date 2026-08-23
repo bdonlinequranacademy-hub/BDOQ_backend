@@ -33,7 +33,12 @@ function parseTeacherPreference(value) {
     return undefined;
 }
 function parseBookingStatus(value) {
-    if (value === "new" || value === "contacted" || value === "scheduled" || value === "closed") {
+    if (value === "pending" ||
+        value === "contacted" ||
+        value === "scheduled" ||
+        value === "reviewing" ||
+        value === "approved" ||
+        value === "rejected") {
         return value;
     }
     return undefined;
@@ -148,7 +153,7 @@ const patchAdminTrialBookingStatus = async (req, res) => {
         if (!status) {
             res.status(400).json({
                 success: false,
-                message: "status must be new, contacted, scheduled, or closed",
+                message: "status must be pending, contacted, scheduled, reviewing, approved, or rejected",
                 data: null,
             });
             return;

@@ -9,6 +9,7 @@ exports.updateAdmissionPaymentStatus = updateAdmissionPaymentStatus;
 exports.updateAdmissionEnrollment = updateAdmissionEnrollment;
 exports.deleteStudentAdmissionApplication = deleteStudentAdmissionApplication;
 const StudentAdmissionApplication_1 = require("../models/StudentAdmissionApplication");
+const TrialBooking_1 = require("../models/TrialBooking");
 const resolveTeacherAssignment_1 = require("../lib/resolveTeacherAssignment");
 const emailService_1 = require("./emailService");
 const notificationService_1 = require("./notificationService");
@@ -223,12 +224,15 @@ async function updateStudentAdmissionStatus(id, status, adminNote) {
     if (!application) {
         return { error: "Application not found" };
     }
-    if (status === "approved") {
+    if (status === "approved" || status === "rejected") {
         const provision = await (0, leadPortalAccountService_1.provisionStudentFromAdmission)(application);
         if ("error" in provision)
             return provision;
+        if (application.sourceTrialBookingId) {
+            await TrialBooking_1.TrialBooking.findByIdAndUpdate(application.sourceTrialBookingId, { status });
+        }
     }
-    else if (application.status === "approved" || application.linkedUserId) {
+    else if (application.linkedUserId) {
         await (0, leadPortalAccountService_1.deactivateAdmissionLinkedUser)(application);
     }
     application.status = status;
@@ -263,11 +267,14 @@ async function updateAdmissionPaymentStatus(id, paymentStatus, rejectReason) {
         application.paymentRejectReason = undefined;
     }
     await application.save();
-    if (paymentStatus === "verified" && application.status === "approved") {
+    if (paymentStatus === "verified" && (application.status === "approved" || application.status === "rejected")) {
         if (!application.linkedUserId) {
             const provision = await (0, leadPortalAccountService_1.provisionStudentFromAdmission)(application);
             if ("error" in provision)
                 return provision;
+            if (application.sourceTrialBookingId) {
+                await TrialBooking_1.TrialBooking.findByIdAndUpdate(application.sourceTrialBookingId, { status: application.status });
+            }
         }
         else {
             await (0, admissionAdvancePaymentService_1.approveAdvanceMonthlyPayment)(application);

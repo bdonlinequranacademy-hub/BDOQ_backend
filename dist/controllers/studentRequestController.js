@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.rejectStudentRequest = exports.approveStudentRequest = exports.listAdminStudentRequestsHandler = exports.listTeacherStudentRequestsHandler = exports.createTeacherStudentRequest = void 0;
 const studentRequestService_1 = require("../services/studentRequestService");
 function parseStatus(value) {
-    if (value === "pending" || value === "approved" || value === "rejected") {
+    if (value === "pending" || value === "reviewing" || value === "approved" || value === "rejected") {
         return value;
     }
     return undefined;

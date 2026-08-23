@@ -394,7 +394,7 @@ async function sendTrialInvitation(id, input) {
         ? (0, whatsappPhone_1.buildWaMeUrl)(waParsed.value.waMeDigits, invitation.whatsappMessage)
         : null;
     booking.invitationSentAt = new Date();
-    if (booking.status !== "closed") {
+    if (booking.status !== "rejected") {
         booking.status = "scheduled";
     }
     await booking.save();

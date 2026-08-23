@@ -53,8 +53,8 @@ const teacherApplicationSchema = new mongoose_1.Schema({
     locale: { type: String, enum: ["en", "bn"] },
     status: {
         type: String,
-        enum: ["new", "reviewing", "approved", "rejected", "closed"],
-        default: "new",
+        enum: ["pending", "reviewing", "approved", "rejected"],
+        default: "pending",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
     linkedUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
