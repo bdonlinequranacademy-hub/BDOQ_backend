@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
-export type StudentRequestStatus = "pending" | "approved" | "rejected";
+export type StudentRequestStatus = "pending" | "reviewing" | "approved" | "rejected";
 
 export interface IStudentRequest extends Document {
   teacher: Types.ObjectId;
@@ -32,7 +32,7 @@ const studentRequestSchema = new Schema<IStudentRequest>(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "reviewing", "approved", "rejected"],
       default: "pending",
     },
     adminNote: {

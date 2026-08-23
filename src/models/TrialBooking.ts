@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type TrialBookingStatus = "new" | "contacted" | "scheduled" | "closed";
+export type TrialBookingStatus = "pending" | "contacted" | "scheduled" | "reviewing" | "approved" | "rejected";
 
 export type TrialMeetingPlatform =
   | "google_meet"
@@ -94,8 +94,8 @@ const trialBookingSchema = new Schema<ITrialBooking>(
     utmContent: { type: String, trim: true },
     status: {
       type: String,
-      enum: ["new", "contacted", "scheduled", "closed"],
-      default: "new",
+      enum: ["pending", "contacted", "scheduled", "reviewing", "approved", "rejected"],
+      default: "pending",
     },
   },
   { timestamps: true }

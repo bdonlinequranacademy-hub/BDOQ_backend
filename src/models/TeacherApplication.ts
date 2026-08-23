@@ -1,11 +1,10 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export type TeacherApplicationStatus =
-  | "new"
+  | "pending"
   | "reviewing"
   | "approved"
-  | "rejected"
-  | "closed";
+  | "rejected";
 
 export interface ITeacherApplicationFiles {
   certificateUrl?: string;
@@ -52,8 +51,8 @@ const teacherApplicationSchema = new Schema<ITeacherApplication>(
     locale: { type: String, enum: ["en", "bn"] },
     status: {
       type: String,
-      enum: ["new", "reviewing", "approved", "rejected", "closed"],
-      default: "new",
+      enum: ["pending", "reviewing", "approved", "rejected"],
+      default: "pending",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
     linkedUserId: { type: Schema.Types.ObjectId, ref: "User" },

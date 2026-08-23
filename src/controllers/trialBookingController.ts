@@ -47,7 +47,14 @@ function parseTeacherPreference(value: unknown): "any" | "female" | "male" | und
 }
 
 function parseBookingStatus(value: unknown): TrialBookingStatus | undefined {
-  if (value === "new" || value === "contacted" || value === "scheduled" || value === "closed") {
+  if (
+    value === "pending" ||
+    value === "contacted" ||
+    value === "scheduled" ||
+    value === "reviewing" ||
+    value === "approved" ||
+    value === "rejected"
+  ) {
     return value;
   }
   return undefined;
@@ -175,7 +182,7 @@ export const patchAdminTrialBookingStatus = async (
     if (!status) {
       res.status(400).json({
         success: false,
-        message: "status must be new, contacted, scheduled, or closed",
+        message: "status must be pending, contacted, scheduled, reviewing, approved, or rejected",
         data: null,
       });
       return;

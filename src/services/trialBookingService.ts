@@ -542,7 +542,7 @@ export async function sendTrialInvitation(
       : null;
 
   booking.invitationSentAt = new Date();
-  if (booking.status !== "closed") {
+  if (booking.status !== "rejected") {
     booking.status = "scheduled";
   }
   await booking.save();

@@ -338,7 +338,7 @@ export async function updateStudentAdmissionStatus(
     return { error: "Application not found" };
   }
 
-  if (status === "approved" || status === "closed") {
+  if (status === "approved" || status === "rejected") {
     const provision = await provisionStudentFromAdmission(application);
     if ("error" in provision) return provision;
   } else if (application.linkedUserId) {
@@ -390,7 +390,7 @@ export async function updateAdmissionPaymentStatus(
 
   await application.save();
 
-  if (paymentStatus === "verified" && (application.status === "approved" || application.status === "closed")) {
+  if (paymentStatus === "verified" && (application.status === "approved" || application.status === "rejected")) {
     if (!application.linkedUserId) {
       const provision = await provisionStudentFromAdmission(application);
       if ("error" in provision) return provision;

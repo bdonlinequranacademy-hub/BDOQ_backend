@@ -2,10 +2,10 @@ import mongoose, { Document, Schema } from "mongoose";
 import type { TrialMeetingPlatform } from "../lib/trialMeetingPlatform";
 
 export type StudentAdmissionStatus =
-  | "new"
+  | "pending"
   | "reviewing"
   | "approved"
-  | "closed";
+  | "rejected";
 
 export type StudentAdmissionPaymentStatus = "pending" | "verified" | "rejected";
 
@@ -60,8 +60,8 @@ const studentAdmissionApplicationSchema = new Schema<IStudentAdmissionApplicatio
     locale: { type: String, enum: ["en", "bn"] },
     status: {
       type: String,
-      enum: ["new", "reviewing", "approved", "closed"],
-      default: "new",
+      enum: ["pending", "reviewing", "approved", "rejected"],
+      default: "pending",
     },
     adminNote: { type: String, trim: true, maxlength: 2000 },
     sourceTrialBookingId: { type: Schema.Types.ObjectId, ref: "TrialBooking" },

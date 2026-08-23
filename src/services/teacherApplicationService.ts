@@ -179,7 +179,7 @@ export async function updateTeacherApplicationStatus(
     return { error: "Application not found" };
   }
 
-  if (status === "approved" || status === "closed") {
+  if (status === "approved" || status === "rejected") {
     const provision = await provisionTeacherFromApplication(application);
     if ("error" in provision) return provision;
   } else if (application.linkedUserId) {

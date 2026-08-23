@@ -16,11 +16,10 @@ function parseLocale(value: unknown): "en" | "bn" | undefined {
 
 function parseStatus(value: unknown): TeacherApplicationStatus | undefined {
   if (
-    value === "new" ||
+    value === "pending" ||
     value === "reviewing" ||
     value === "approved" ||
-    value === "rejected" ||
-    value === "closed"
+    value === "rejected"
   ) {
     return value;
   }
@@ -229,7 +228,7 @@ export const patchAdminTeacherApplicationStatus = async (
     if (!status) {
       res.status(400).json({
         success: false,
-        message: "status must be new, reviewing, approved, rejected, or closed",
+        message: "status must be pending, reviewing, approved, or rejected",
         data: null,
       });
       return;
@@ -251,10 +250,10 @@ export const patchAdminTeacherApplicationStatus = async (
           : "Teacher application updated",
       data: result.application,
     });
-  } catch {
+  } catch (error: any) {
     res.status(500).json({
       success: false,
-      message: "Failed to update teacher application",
+      message: error.message || "Failed to update teacher application",
       data: null,
     });
   }

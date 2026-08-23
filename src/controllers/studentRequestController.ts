@@ -8,7 +8,7 @@ import {
 } from "../services/studentRequestService";
 
 function parseStatus(value: unknown): StudentRequestStatus | undefined {
-  if (value === "pending" || value === "approved" || value === "rejected") {
+  if (value === "pending" || value === "reviewing" || value === "approved" || value === "rejected") {
     return value;
   }
   return undefined;

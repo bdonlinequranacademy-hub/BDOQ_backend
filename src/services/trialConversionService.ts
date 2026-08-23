@@ -107,8 +107,8 @@ export async function convertTrialToAdmission(
   booking.convertedAdmissionId = admission._id;
   booking.convertedAt = new Date();
   booking.admissionPrefillToken = prefillToken;
-  if (booking.status !== "closed") {
-    booking.status = "closed";
+  if (booking.status !== "reviewing") {
+    booking.status = "reviewing";
   }
   await booking.save();
 
@@ -208,7 +208,7 @@ export async function completePrefilledAdmission(
     ...stripPasswordFields(input.formData),
     prefillToken: token.trim(),
   };
-  application.status = "new";
+  application.status = "pending";
   application.paymentStatus = "pending";
   application.adminNote =
     `${application.adminNote ?? ""}\nPayment submitted via trial prefill link.`.trim();
