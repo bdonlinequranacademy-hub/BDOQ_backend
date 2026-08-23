@@ -179,10 +179,10 @@ export async function updateTeacherApplicationStatus(
     return { error: "Application not found" };
   }
 
-  if (status === "approved") {
+  if (status === "approved" || status === "closed") {
     const provision = await provisionTeacherFromApplication(application);
     if ("error" in provision) return provision;
-  } else if (application.status === "approved" || application.linkedUserId) {
+  } else if (application.linkedUserId) {
     await deactivateTeacherLinkedUser(application);
   }
 
