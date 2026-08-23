@@ -5,6 +5,7 @@ import {
   type StudentAdmissionPaymentStatus,
   type StudentAdmissionClassDay,
 } from "../models/StudentAdmissionApplication";
+import { TrialBooking } from "../models/TrialBooking";
 import { resolveTeacherAssignment } from "../lib/resolveTeacherAssignment";
 import { sendEmail } from "./emailService";
 import { signalAdminPending } from "./notificationService";
@@ -341,6 +342,10 @@ export async function updateStudentAdmissionStatus(
   if (status === "approved" || status === "rejected") {
     const provision = await provisionStudentFromAdmission(application);
     if ("error" in provision) return provision;
+    
+    if (application.sourceTrialBookingId) {
+      await TrialBooking.findByIdAndUpdate(application.sourceTrialBookingId, { status });
+    }
   } else if (application.linkedUserId) {
     await deactivateAdmissionLinkedUser(application);
   }
@@ -394,6 +399,10 @@ export async function updateAdmissionPaymentStatus(
     if (!application.linkedUserId) {
       const provision = await provisionStudentFromAdmission(application);
       if ("error" in provision) return provision;
+
+      if (application.sourceTrialBookingId) {
+        await TrialBooking.findByIdAndUpdate(application.sourceTrialBookingId, { status: application.status });
+      }
     } else {
       await approveAdvanceMonthlyPayment(application);
     }
