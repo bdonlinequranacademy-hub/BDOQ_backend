@@ -252,6 +252,9 @@ export interface PublicLiveDashboard {
   teachersOnline: PublicLiveDashboardTeacher[];
   activeTeacherCount: number;
   activeTeacherDisplay: string;
+  totalLiveCount: number;
+  totalQueuedCount: number;
+  totalOnlineTeachersCount: number;
   updatedAt: string;
 }
 
@@ -293,8 +296,14 @@ export async function getPublicLiveDashboard(): Promise<PublicLiveDashboard> {
   const payload = await getLiveMonitorPayload();
   const now = new Date();
 
-  const queueSessions = payload.sessions
-    .filter((s) => s.sessionPhase === "live" || s.sessionPhase === "upcoming")
+  const allActiveSessions = payload.sessions.filter(
+    (s) => s.sessionPhase === "live" || s.sessionPhase === "upcoming"
+  );
+
+  const totalLiveCount = allActiveSessions.filter((s) => s.sessionPhase === "live").length;
+  const totalQueuedCount = allActiveSessions.filter((s) => s.sessionPhase === "upcoming").length;
+
+  const queueSessions = allActiveSessions
     .sort((a, b) => {
       const phaseOrder = { live: 0, upcoming: 1, completed: 2 };
       const phaseDiff = phaseOrder[a.sessionPhase] - phaseOrder[b.sessionPhase];
@@ -312,10 +321,10 @@ export async function getPublicLiveDashboard(): Promise<PublicLiveDashboard> {
   }));
 
   const liveTeacherIds = new Set(
-    payload.sessions
-      .filter((s) => s.sessionPhase === "live" || s.sessionPhase === "upcoming")
-      .map((s) => s.teacher._id)
+    allActiveSessions.map((s) => s.teacher._id)
   );
+  
+  const totalOnlineTeachersCount = liveTeacherIds.size;
 
   const teacherDocs = await User.find({
     _id: { $in: [...liveTeacherIds] },
@@ -353,6 +362,9 @@ export async function getPublicLiveDashboard(): Promise<PublicLiveDashboard> {
     teachersOnline,
     activeTeacherCount,
     activeTeacherDisplay: formatActiveTeacherDisplay(activeTeacherCount),
+    totalLiveCount,
+    totalQueuedCount,
+    totalOnlineTeachersCount,
     updatedAt: payload.updatedAt,
   };
 }
