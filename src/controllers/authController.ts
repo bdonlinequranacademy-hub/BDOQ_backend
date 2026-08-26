@@ -107,35 +107,40 @@ export const register = async (
       return;
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    let user = await User.findOne({ email: email.toLowerCase() });
+    const assignRole = role || "student";
+    const skipVerification = !isEmailVerificationEnforced() || assignRole !== "student";
 
-    if (existingUser) {
-      res.status(400).json({
-        success: false,
-        message: "Email already exists",
-        data: null,
+    if (user) {
+      if (user.role === assignRole) {
+        user.password = await bcrypt.hash(password, 10);
+        user.name = name;
+        await user.save();
+      } else {
+        res.status(400).json({
+          success: false,
+          message: `This email is already registered as a ${user.role}. You cannot create a ${assignRole} account with the same email.`,
+          data: null,
+        });
+        return;
+      }
+    } else {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const studentId = await generateStudentId();
+
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: assignRole,
+        authProvider: "local",
+        emailVerified: skipVerification,
+        studentId,
+        timezone: "Asia/Dhaka",
       });
-      return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const assignRole = "student";
-    const skipVerification =
-      !isEmailVerificationEnforced() || assignRole !== "student";
-    const studentId = await generateStudentId();
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: assignRole,
-      authProvider: "local",
-      emailVerified: skipVerification,
-      studentId,
-      timezone: "Asia/Dhaka",
-    });
-
-    if (!skipVerification) {
+    if (!skipVerification && !user.emailVerified) {
       const raw = await assignVerificationToken(user);
       const authBase = resolveAuthBaseUrl(req, "portal");
       await sendUserVerificationEmail(user, raw, authBase);
