@@ -450,6 +450,8 @@ export const getUserProfileDetail = async (
                 admission as InstanceType<typeof StudentAdmissionApplication>
               )
             : null,
+          applicationData: admission?.formData ?? null,
+          applicationId: admission ? String(admission._id) : null,
           stats: {
             activeClasses: classes.filter((c) => c.isActive !== false).length,
             totalClasses: classes.length,
@@ -569,6 +571,53 @@ export const getUserProfileDetail = async (
     res.status(500).json({
       success: false,
       message: "Failed to fetch user profile",
+      data: null,
+    });
+  }
+};
+
+export const updateUserApplicationData = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { applicationId, applicationData } = req.body;
+
+    if (!applicationId || !applicationData) {
+      res.status(400).json({
+        success: false,
+        message: "Missing application ID or data",
+        data: null,
+      });
+      return;
+    }
+
+    const application = await StudentAdmissionApplication.findById(applicationId);
+    if (!application) {
+      res.status(404).json({
+        success: false,
+        message: "Application not found",
+        data: null,
+      });
+      return;
+    }
+
+    // Merge new data with existing data
+    application.formData = { ...application.formData, ...applicationData };
+    application.markModified("formData");
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Application data updated successfully",
+      data: application.formData,
+    });
+  } catch (err) {
+    console.error("[admin] updateUserApplicationData failed:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update application data",
       data: null,
     });
   }

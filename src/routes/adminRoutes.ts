@@ -20,7 +20,7 @@ import {
   updateClass,
   updateUser,
 } from "../controllers/adminController";
-import { getUserProfileDetail } from "../controllers/adminUserProfileController";
+import { getUserProfileDetail, updateUserApplicationData } from "../controllers/adminUserProfileController";
 import {
   adminCreateBlogPost,
   adminDeleteBlogPost,
@@ -165,6 +165,7 @@ router.use(auth, checkRole("admin", "super_admin"));
 
 router.get("/users", getAllUsers);
 router.get("/users/:id/profile", getUserProfileDetail);
+router.put("/users/:id/application-data", updateUserApplicationData);
 router.get("/users/:id", getUserById);
 router.post("/users", createUser);
 router.put("/users/:id", updateUser);

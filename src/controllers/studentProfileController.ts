@@ -24,6 +24,8 @@ export interface StudentProfileView {
   avatarUrl: string;
   gender?: "male" | "female";
   parentInfo?: IParentInfo;
+  applicationData?: Record<string, unknown> | null;
+  applicationId?: string | null;
 }
 
 function toProfileView(user: InstanceType<typeof User>): StudentProfileView {
@@ -48,7 +50,7 @@ export const getStudentProfile = async (
 ): Promise<void> => {
   try {
     const user = await User.findById(req.user!._id).select(
-      "name email role studentId timezone country whatsapp avatarUrl gender parentInfo"
+      "name email role studentId timezone country whatsapp avatarUrl gender parentInfo sourceAdmissionId"
     );
     if (!user) {
       res.status(404).json({
@@ -59,10 +61,25 @@ export const getStudentProfile = async (
       return;
     }
 
+    let applicationData = null;
+    let applicationId = null;
+
+    if (user.sourceAdmissionId) {
+      const admission = await StudentAdmissionApplication.findById(user.sourceAdmissionId).select("formData").lean();
+      if (admission) {
+        applicationData = admission.formData;
+        applicationId = String(admission._id);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Profile fetched successfully",
-      data: toProfileView(user),
+      data: {
+        ...toProfileView(user),
+        applicationData,
+        applicationId,
+      },
     });
   } catch {
     res.status(500).json({
@@ -124,6 +141,62 @@ export const updateStudentProfile = async (
     res.status(500).json({
       success: false,
       message: "Failed to update profile",
+      data: null,
+    });
+  }
+};
+
+export const updateMyApplicationData = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { applicationId, applicationData } = req.body;
+
+    if (!applicationId || !applicationData) {
+      res.status(400).json({
+        success: false,
+        message: "Missing application ID or data",
+        data: null,
+      });
+      return;
+    }
+
+    const application = await StudentAdmissionApplication.findById(applicationId);
+    if (!application) {
+      res.status(404).json({
+        success: false,
+        message: "Application not found",
+        data: null,
+      });
+      return;
+    }
+
+    // Verify ownership
+    if (String(application.linkedUserId) !== String(req.user!._id)) {
+      res.status(403).json({
+        success: false,
+        message: "Not authorized to update this application",
+        data: null,
+      });
+      return;
+    }
+
+    // Merge new data with existing data
+    application.formData = { ...application.formData, ...applicationData };
+    application.markModified("formData");
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Application data updated successfully",
+      data: application.formData,
+    });
+  } catch (err) {
+    console.error("[student] updateMyApplicationData failed:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update application data",
       data: null,
     });
   }

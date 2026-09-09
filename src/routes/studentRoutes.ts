@@ -19,6 +19,7 @@ import {
   getStudentProfile,
   getStudentProfileHub,
   updateStudentProfile,
+  updateMyApplicationData,
 } from "../controllers/studentProfileController";
 import { uploadProfileAvatar } from "../controllers/avatarController";
 import { avatarUpload } from "../middleware/uploadAvatar";
@@ -53,6 +54,7 @@ router.patch("/notifications/:id/read", markAsRead);
 router.get("/profile", getStudentProfile);
 router.get("/profile/hub", getStudentProfileHub);
 router.patch("/profile", updateStudentProfile);
+router.put("/profile/application-data", updateMyApplicationData);
 router.patch("/profile/password", changeStudentPassword);
 router.post("/profile/avatar", (req, res, next) => {
   avatarUpload(req, res, (err: unknown) => {
