@@ -603,8 +603,8 @@ export const updateUserApplicationData = async (
       return;
     }
 
-    // Merge new data with existing data
-    application.formData = { ...application.formData, ...applicationData };
+    // Replace old data with new data entirely to support deletion of fields
+    application.formData = applicationData;
     application.markModified("formData");
     await application.save();
 

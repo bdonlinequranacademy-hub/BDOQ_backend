@@ -182,8 +182,8 @@ export const updateMyApplicationData = async (
       return;
     }
 
-    // Merge new data with existing data
-    application.formData = { ...application.formData, ...applicationData };
+    // Replace old data with new data entirely to support deletion of fields
+    application.formData = applicationData;
     application.markModified("formData");
     await application.save();
 
@@ -306,7 +306,11 @@ export const getStudentProfileHub = async (
       success: true,
       message: "Profile hub fetched successfully",
       data: {
-        profile: toProfileView(user),
+        profile: {
+          ...toProfileView(user),
+          applicationData: admission ? admission.formData : null,
+          applicationId: admission ? String(admission._id) : null,
+        },
         enrollment: admission
           ? buildEnrollmentSummaryFromAdmission(
               admission as InstanceType<typeof StudentAdmissionApplication>
