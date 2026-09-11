@@ -131,6 +131,7 @@ import {
   adminSaveSectionHeaders,
   adminUpsertSectionHeader,
 } from "../controllers/adminSectionHeaderController";
+import { getSiteSettings, updateSiteSettings } from "../controllers/siteSettingsController";
 import {
   adminCreateTestimonial,
   adminDeleteTestimonial,

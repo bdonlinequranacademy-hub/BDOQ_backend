@@ -25,6 +25,7 @@ import { studentAdmissionUpload } from "../middleware/uploadStudentAdmission";
 import { teacherApplicationUpload } from "../middleware/uploadTeacherApplication";
 import { paymentProofUpload } from "../middleware/uploadPaymentProof";
 import { submitPublicOptionalPayment } from "../controllers/optionalPaymentController";
+import { getSiteSettings } from "../controllers/siteSettingsController";
 
 const router = Router();
 
@@ -43,6 +44,7 @@ router.get("/schedule-preview", getPublicSchedulePreviewHandler);
 router.get("/stats", getPublicStatsHandler);
 router.get("/progress-highlights", getPublicProgressHighlightsHandler);
 router.get("/live-dashboard", getPublicLiveDashboardHandler);
+router.get("/site-settings", getSiteSettings);
 router.post("/trial-bookings", submitTrialBooking);
 router.get("/admission-prefill/:token", getPublicAdmissionPrefill);
 router.post("/contact-messages", submitContactMessage);
