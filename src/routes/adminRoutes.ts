@@ -355,6 +355,6 @@ router.post("/profile/avatar", (req, res, next) => {
 
 // Site Settings
 router.get("/site-settings", getSiteSettings);
-router.patch("/site-settings", restrictTo("super_admin"), updateSiteSettings);
+router.patch("/site-settings", checkRole("super_admin"), updateSiteSettings);
 
 export default router;
