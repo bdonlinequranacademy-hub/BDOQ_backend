@@ -48,9 +48,9 @@ Sign in: ${loginUrl}
 Please update your profile and availability in the portal.`;
 }
 
-export function trialLeadFollowUpMessage(parentName: string): string {
-  const first = parentName.split(" ")[0] || parentName;
-  return `Assalamu Alaikum ${first},
+export function trialLeadFollowUpMessage(studentName: string): string {
+  const first = studentName.split(" ")[0] || studentName;
+  return `Assalamu Alaikum Dear ${first},
 
 Thank you for booking a *free trial class* with ${ACADEMY}.
 

@@ -32,8 +32,7 @@ export function buildTrialInvitationContent(
   input: ITrialInvitationContentInput
 ): ITrialInvitationContent {
   const { booking, teacherName, courseLabel } = input;
-  const studentName = booking.studentName?.trim() || booking.parentName;
-  const parentName = booking.parentName;
+  const studentName = booking.studentName?.trim() || "";
   const platformLabel = formatTrialMeetingPlatform(booking.meetingPlatform);
   const localSchedule =
     formatTrialLocalSchedule(
@@ -68,7 +67,7 @@ export function buildTrialInvitationContent(
   const messageBody = lines.join("\n");
 
   const whatsappLines = [
-    `Assalamu Alaikum ${firstName(parentName)},`,
+    `Assalamu Alaikum Dear ${firstName(studentName)},`,
     "",
     `Your *free trial class* at ${ACADEMY} is confirmed.`,
     "",
@@ -88,7 +87,7 @@ export function buildTrialInvitationContent(
   return {
     subject: `Free Trial Class Confirmed — ${studentName} | ${ACADEMY}`,
     emailTitle: "Your Free Trial Class is Confirmed",
-    greeting: `Assalamu Alaikum ${parentName},`,
+    greeting: `Assalamu Alaikum Dear ${studentName},`,
     messageBody,
     whatsappMessage: whatsappLines.join("\n"),
     meetingLink,

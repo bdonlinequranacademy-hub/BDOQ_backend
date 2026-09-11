@@ -64,7 +64,7 @@ export function buildAdmissionFormDataFromTrial(
   input: ITrialAdmissionPrefillInput
 ): Record<string, unknown> {
   const { booking, email, teacherName } = input;
-  const studentName = booking.studentName?.trim() || booking.parentName;
+  const studentName = booking.studentName?.trim();
   const country = booking.country?.trim() || "Bangladesh";
   const timezone = booking.timezone?.trim() || resolveTimezoneFromCountry(country);
   const timeParts = parsePreferredTime(booking.preferredTrialTime);
@@ -105,7 +105,6 @@ export function buildAdmissionFormDataFromTrial(
     internetType: "wifi",
     packagePlan: "standard",
     paymentMethod: "bkash",
-    parentName: booking.parentName,
     parentRelationship: "Parent/Guardian",
     parentWhatsapp: booking.whatsapp,
     parentEmail: email,

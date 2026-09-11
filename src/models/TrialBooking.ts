@@ -10,8 +10,7 @@ export type TrialMeetingPlatform =
   | "custom";
 
 export interface ITrialBooking extends Document {
-  parentName: string;
-  studentName?: string;
+  studentName: string;
   email?: string;
   whatsapp: string;
   country?: string;
@@ -46,8 +45,7 @@ export interface ITrialBooking extends Document {
 
 const trialBookingSchema = new Schema<ITrialBooking>(
   {
-    parentName: { type: String, required: true, trim: true },
-    studentName: { type: String, trim: true },
+    studentName: { type: String, required: true, trim: true },
     email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
     country: { type: String, trim: true },

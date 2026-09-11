@@ -64,7 +64,7 @@ export async function convertTrialToAdmission(
   const teacher =
     teacherResult && !("error" in teacherResult) ? teacherResult : null;
 
-  const studentName = booking.studentName?.trim() || booking.parentName;
+  const studentName = booking.studentName?.trim() || "Student";
   const formData = buildAdmissionFormDataFromTrial({
     booking,
     email,

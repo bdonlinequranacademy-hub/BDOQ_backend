@@ -82,7 +82,6 @@ export const submitTrialBooking = async (req: Request, res: Response): Promise<v
       : [];
 
     const result = await createTrialBooking({
-      parentName: req.body.parentName,
       studentName: req.body.studentName,
       email: req.body.email,
       whatsapp: req.body.whatsapp,
@@ -227,7 +226,6 @@ export const patchAdminTrialBooking = async (req: Request, res: Response): Promi
       : undefined;
 
     const result = await updateTrialBooking(id, {
-      parentName: typeof req.body.parentName === "string" ? req.body.parentName : undefined,
       studentName: typeof req.body.studentName === "string" ? req.body.studentName : undefined,
       email: typeof req.body.email === "string" ? req.body.email : undefined,
       whatsapp: typeof req.body.whatsapp === "string" ? req.body.whatsapp : undefined,

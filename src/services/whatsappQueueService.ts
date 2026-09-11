@@ -145,13 +145,13 @@ export async function listWhatsAppQueue(): Promise<WhatsAppQueueItem[]> {
     .limit(30);
 
   for (const trial of trials) {
-    const message = trialLeadFollowUpMessage(trial.parentName);
+    const message = trialLeadFollowUpMessage(trial.studentName || "");
     items.push({
       id: `trial-${trial._id.toString()}`,
       category: "new_trial",
       title: "New free class lead",
       subtitle: trial.learnerType,
-      recipientName: trial.parentName,
+      recipientName: trial.studentName || "",
       recipientRole: "lead",
       message,
       createdAt: trial.createdAt.toISOString(),

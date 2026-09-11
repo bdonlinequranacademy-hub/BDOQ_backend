@@ -28,8 +28,7 @@ import { getPublicSiteBaseUrl } from "../lib/email/resolveAuthOrigin";
 export type { TrialBookingStatus };
 
 export interface CreateTrialBookingInput {
-  parentName: string;
-  studentName?: string;
+  studentName: string;
   email?: string;
   whatsapp: string;
   country?: string;
@@ -53,7 +52,6 @@ export interface CreateTrialBookingInput {
 }
 
 export interface UpdateTrialBookingInput {
-  parentName?: string;
   studentName?: string;
   email?: string;
   whatsapp?: string;
@@ -107,7 +105,6 @@ function formatBookingText(booking: ITrialBooking): string {
   );
 
   const lines = [
-    `Parent: ${booking.parentName}`,
     booking.studentName ? `Student: ${booking.studentName}` : null,
     booking.email ? `Email: ${booking.email}` : null,
     `WhatsApp: ${booking.whatsapp}`,
@@ -116,7 +113,7 @@ function formatBookingText(booking: ITrialBooking): string {
     booking.learnerGender ? `Gender: ${booking.learnerGender}` : null,
     `Learner type: ${booking.learnerType}`,
     `Teacher preference: ${booking.teacherPreference}`,
-    localSchedule ? `Trial (parent local): ${localSchedule}` : null,
+    localSchedule ? `Trial (local): ${localSchedule}` : null,
     bdSchedule ? `Trial (Bangladesh): ${bdSchedule}` : null,
     booking.timeSlot ? `Preferred time (legacy): ${booking.timeSlot}` : null,
     booking.preferredDays.length
@@ -152,7 +149,6 @@ export function formatTrialBooking(
 
   return {
     _id: booking._id.toString(),
-    parentName: booking.parentName,
     studentName: booking.studentName,
     email: booking.email,
     whatsapp: booking.whatsapp,
@@ -190,7 +186,6 @@ export function formatTrialBooking(
 export async function createTrialBooking(
   input: CreateTrialBookingInput
 ): Promise<{ booking: ITrialBooking } | { error: string }> {
-  const parentName = input.parentName?.trim();
   const studentName = input.studentName?.trim();
   const email = input.email?.trim().toLowerCase();
   const whatsappRaw = input.whatsapp?.trim();
@@ -201,8 +196,8 @@ export async function createTrialBooking(
   const timezone =
     input.timezone?.trim() || resolveTimezoneFromCountry(country ?? "");
 
-  if (!parentName || !whatsappRaw) {
-    return { error: "Parent name and WhatsApp are required." };
+  if (!whatsappRaw) {
+    return { error: "WhatsApp is required." };
   }
 
   if (!studentName) {
@@ -231,7 +226,6 @@ export async function createTrialBooking(
   }
 
   const booking = await TrialBooking.create({
-    parentName,
     studentName,
     email: email || undefined,
     whatsapp: normalizedWa.whatsapp,
@@ -260,7 +254,7 @@ export async function createTrialBooking(
     const text = formatBookingText(booking);
     await sendEmail({
       to: notifyTo,
-      subject: `[Trial] ${parentName} — ${booking.learnerType}`,
+      subject: `[Trial] ${booking.studentName} — ${booking.learnerType}`,
       text,
       html: text.replace(/\n/g, "<br>"),
     }).catch((err) => {
@@ -329,11 +323,7 @@ export async function updateTrialBooking(
     return { error: "Trial booking not found" };
   }
 
-  if (input.parentName !== undefined) {
-    const parentName = input.parentName.trim();
-    if (!parentName) return { error: "Parent name is required." };
-    booking.parentName = parentName;
-  }
+
 
   if (input.studentName !== undefined) {
     const studentName = input.studentName.trim();
