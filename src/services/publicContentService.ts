@@ -138,7 +138,7 @@ export async function getPublicStats(): Promise<PublicStatsView> {
     totalTeachingHours,
     yearsExperience,
     totalTeachers: websiteTeachers > 0 ? websiteTeachers : portalTeachers,
-    totalStudents,
+    totalStudents: Math.max(300, totalStudents),
     featuredTeachers,
   };
 }
