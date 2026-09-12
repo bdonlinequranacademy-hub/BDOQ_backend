@@ -120,6 +120,7 @@ export function buildEnrollmentDefaultsFromFormData(
   classDurationMinutes?: number;
   monthlyFeeAmount?: number;
   monthlyFeeCurrency?: "bdt" | "usd";
+  classDays?: StudentAdmissionClassDay[];
 } {
   const packagePlan =
     typeof formData.packagePlan === "string" ? formData.packagePlan : "standard";
@@ -163,6 +164,17 @@ export function buildEnrollmentDefaultsFromFormData(
   const currency =
     formData.admissionFeeCurrency === "usd" ? "usd" : ("bdt" as const);
 
+  let classDays: StudentAdmissionClassDay[] | undefined;
+  if (Array.isArray(formData.preferredClassDays)) {
+    const allowed = new Set(CLASS_DAYS);
+    const validDays = formData.preferredClassDays.filter((day): day is StudentAdmissionClassDay =>
+      typeof day === "string" && allowed.has(day as StudentAdmissionClassDay)
+    );
+    if (validDays.length > 0) {
+      classDays = validDays;
+    }
+  }
+
   return {
     classTime,
     assignedTeacherSlug: teacherSlug,
@@ -177,6 +189,7 @@ export function buildEnrollmentDefaultsFromFormData(
     classTimeHour: hour,
     classTimeMinute: minute,
     classTimePeriod: period,
+    classDays,
   };
 }
 
@@ -283,6 +296,7 @@ export async function createStudentAdmissionApplication(input: {
         classDurationMinutes: enrollment.classDurationMinutes,
         monthlyFeeAmount: enrollment.monthlyFeeAmount,
         monthlyFeeCurrency: enrollment.monthlyFeeCurrency,
+        classDays: enrollment.classDays,
       };
     })(),
   });
