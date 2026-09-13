@@ -92,6 +92,14 @@ function buildEnrollmentDefaultsFromFormData(formData, options) {
     const meetingLink = (0, trialMeetingPlatform_1.normalizeMeetingLink)(options?.meetingLink ||
         (typeof formData.meetingLink === "string" ? formData.meetingLink : "")) || undefined;
     const currency = formData.admissionFeeCurrency === "usd" ? "usd" : "bdt";
+    let classDays;
+    if (Array.isArray(formData.preferredClassDays)) {
+        const allowed = new Set(CLASS_DAYS);
+        const validDays = formData.preferredClassDays.filter((day) => typeof day === "string" && allowed.has(day));
+        if (validDays.length > 0) {
+            classDays = validDays;
+        }
+    }
     return {
         classTime,
         assignedTeacherSlug: teacherSlug,
@@ -105,6 +113,7 @@ function buildEnrollmentDefaultsFromFormData(formData, options) {
         classTimeHour: hour,
         classTimeMinute: minute,
         classTimePeriod: period,
+        classDays,
     };
 }
 async function createStudentAdmissionApplication(input) {
@@ -186,6 +195,7 @@ async function createStudentAdmissionApplication(input) {
                 classDurationMinutes: enrollment.classDurationMinutes,
                 monthlyFeeAmount: enrollment.monthlyFeeAmount,
                 monthlyFeeCurrency: enrollment.monthlyFeeCurrency,
+                classDays: enrollment.classDays,
             };
         })(),
     });

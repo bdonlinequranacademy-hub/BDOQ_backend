@@ -6,6 +6,7 @@ import {
 } from "../models/TrialBooking";
 import { resolveTeacherAssignment } from "../lib/resolveTeacherAssignment";
 import { sendEmail } from "./emailService";
+import { sendSMS, isSmsConfigured } from "./smsService";
 import { signalAdminPending } from "./notificationService";
 import { normalizeWhatsAppForStorage, buildWaMeUrl, parseWhatsApp } from "../lib/whatsappPhone";
 import {
@@ -531,11 +532,28 @@ export async function sendTrialInvitation(
       ? buildWaMeUrl(waParsed.value.waMeDigits, invitation.whatsappMessage)
       : null;
 
+  const isFirstInvitation = !booking.invitationSentAt;
+
   booking.invitationSentAt = new Date();
   if (booking.status !== "rejected") {
     booking.status = "scheduled";
   }
   await booking.save();
+
+  if (isSmsConfigured() && booking.whatsapp && isFirstInvitation) {
+    const timeStr = booking.preferredTrialTime || "scheduled time";
+    const dateStr = booking.preferredTrialDate || "scheduled date";
+    const smsMessage = `Your trial is scheduled on ${dateStr} at ${timeStr}. Check email/WhatsApp for link. - BDOQ Academy`;
+    
+    // Fire and forget
+    sendSMS(booking.whatsapp, smsMessage)
+      .then((res) => {
+        if (!res.success) console.warn(`[SMS Warning] Trial schedule SMS to ${booking.whatsapp} failed: ${res.message}`);
+      })
+      .catch((err) => {
+        console.warn(`[SMS Error] Exception sending trial SMS to ${booking.whatsapp}:`, err instanceof Error ? err.message : err);
+      });
+  }
 
   return {
     booking: formatTrialBooking(booking),

@@ -7,6 +7,7 @@ const SessionSlot_1 = require("../models/SessionSlot");
 const notificationService_1 = require("./notificationService");
 const sessionJoinService_1 = require("./sessionJoinService");
 const socketServer_1 = require("../realtime/socketServer");
+const smsService_1 = require("./smsService");
 const scheduleUtils_1 = require("../utils/scheduleUtils");
 const TEACHER_LATE_MINUTES = 5;
 const STUDENT_NO_SHOW_MINUTES = 10;
@@ -64,8 +65,8 @@ async function runNoShowChecks() {
     const joinMap = await (0, sessionJoinService_1.getJoinMapForDate)(sessionDate);
     const slots = await SessionSlot_1.SessionSlot.find({ day, isActive: true })
         .populate("class", "title isActive")
-        .populate("teacher", "name email isActive")
-        .populate("student", "name email isActive");
+        .populate("teacher", "name email isActive whatsapp")
+        .populate("student", "name email isActive whatsapp");
     let alertsSent = 0;
     for (const slot of slots) {
         const classDoc = populatedClass(slot.class);
@@ -119,6 +120,17 @@ async function runNoShowChecks() {
             await markAlertSent(slotId, sessionDate, "teacher_no_show");
             const msg = `${teacher.name} did not join "${classDoc.title}" with ${student.name} (${timeLabel}).`;
             await (0, notificationService_1.notifyAdmins)("Teacher no-show", msg, "class");
+            if ((0, smsService_1.isSmsConfigured)() && student.whatsapp) {
+                const smsMessage = "Sorry, your teacher hasn't joined the class yet. Our team has been notified and will assist you shortly. - BDOQ Academy";
+                (0, smsService_1.sendSMS)(student.whatsapp, smsMessage)
+                    .then((res) => {
+                    if (!res.success)
+                        console.warn(`[SMS Warning] Teacher no-show SMS to ${student.whatsapp} failed: ${res.message}`);
+                })
+                    .catch((err) => {
+                    console.warn(`[SMS Error] Exception sending teacher no-show SMS to ${student.whatsapp}:`, err instanceof Error ? err.message : err);
+                });
+            }
             alertsSent += 1;
         }
         if (phase === "completed" && !joins.studentJoinedAt) {

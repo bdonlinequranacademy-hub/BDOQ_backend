@@ -13,6 +13,7 @@ const uploadStudentAdmission_1 = require("../middleware/uploadStudentAdmission")
 const uploadTeacherApplication_1 = require("../middleware/uploadTeacherApplication");
 const uploadPaymentProof_1 = require("../middleware/uploadPaymentProof");
 const optionalPaymentController_1 = require("../controllers/optionalPaymentController");
+const siteSettingsController_1 = require("../controllers/siteSettingsController");
 const router = (0, express_1.Router)();
 /** Public marketing endpoints (no auth). */
 router.get("/teachers", publicContentController_1.getPublicTeachersHandler);
@@ -29,6 +30,7 @@ router.get("/schedule-preview", publicContentController_1.getPublicSchedulePrevi
 router.get("/stats", publicContentController_1.getPublicStatsHandler);
 router.get("/progress-highlights", publicContentController_1.getPublicProgressHighlightsHandler);
 router.get("/live-dashboard", liveMonitorController_1.getPublicLiveDashboardHandler);
+router.get("/site-settings", siteSettingsController_1.getSiteSettings);
 router.post("/trial-bookings", trialBookingController_1.submitTrialBooking);
 router.get("/admission-prefill/:token", studentAdmissionController_1.getPublicAdmissionPrefill);
 router.post("/contact-messages", contactMessageController_1.submitContactMessage);

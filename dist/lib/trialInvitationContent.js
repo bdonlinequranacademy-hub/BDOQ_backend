@@ -11,8 +11,7 @@ function firstName(name) {
 }
 function buildTrialInvitationContent(input) {
     const { booking, teacherName, courseLabel } = input;
-    const studentName = booking.studentName?.trim() || booking.parentName;
-    const parentName = booking.parentName;
+    const studentName = booking.studentName?.trim() || "";
     const platformLabel = (0, trialMeetingPlatform_1.formatTrialMeetingPlatform)(booking.meetingPlatform);
     const localSchedule = (0, countryTimezone_1.formatTrialLocalSchedule)(booking.preferredTrialDate, booking.preferredTrialTime, booking.timezone) ?? "To be confirmed";
     const bdSchedule = (0, countryTimezone_1.formatTrialBangladeshSchedule)(booking.preferredTrialDate, booking.preferredTrialTime, booking.timezone) ?? "To be confirmed";
@@ -34,7 +33,7 @@ function buildTrialInvitationContent(input) {
     ].filter((line) => line !== null);
     const messageBody = lines.join("\n");
     const whatsappLines = [
-        `Assalamu Alaikum ${firstName(parentName)},`,
+        `Assalamu Alaikum Dear ${firstName(studentName)},`,
         "",
         `Your *free trial class* at ${ACADEMY} is confirmed.`,
         "",
@@ -53,7 +52,7 @@ function buildTrialInvitationContent(input) {
     return {
         subject: `Free Trial Class Confirmed — ${studentName} | ${ACADEMY}`,
         emailTitle: "Your Free Trial Class is Confirmed",
-        greeting: `Assalamu Alaikum ${parentName},`,
+        greeting: `Assalamu Alaikum Dear ${studentName},`,
         messageBody,
         whatsappMessage: whatsappLines.join("\n"),
         meetingLink,

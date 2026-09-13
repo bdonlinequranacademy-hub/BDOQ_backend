@@ -17,6 +17,7 @@ const studentRequestController_1 = require("../controllers/studentRequestControl
 const trialBookingController_1 = require("../controllers/trialBookingController");
 const contactMessageController_1 = require("../controllers/contactMessageController");
 const newsletterSubscriberController_1 = require("../controllers/newsletterSubscriberController");
+const smsController_1 = require("../controllers/smsController");
 const studentAdmissionController_1 = require("../controllers/studentAdmissionController");
 const teacherApplicationController_1 = require("../controllers/teacherApplicationController");
 const curriculumAdminController_1 = require("../controllers/curriculumAdminController");
@@ -29,6 +30,7 @@ const adminTeacherProfileController_1 = require("../controllers/adminTeacherProf
 const adminFaqController_1 = require("../controllers/adminFaqController");
 const adminHomeHeroController_1 = require("../controllers/adminHomeHeroController");
 const adminSectionHeaderController_1 = require("../controllers/adminSectionHeaderController");
+const siteSettingsController_1 = require("../controllers/siteSettingsController");
 const adminTestimonialController_1 = require("../controllers/adminTestimonialController");
 const whatsappQueueController_1 = require("../controllers/whatsappQueueController");
 const liveMonitorController_1 = require("../controllers/liveMonitorController");
@@ -41,6 +43,7 @@ const router = (0, express_1.Router)();
 router.use(auth_1.auth, (0, auth_1.checkRole)("admin", "super_admin"));
 router.get("/users", adminController_1.getAllUsers);
 router.get("/users/:id/profile", adminUserProfileController_1.getUserProfileDetail);
+router.put("/users/:id/application-data", adminUserProfileController_1.updateUserApplicationData);
 router.get("/users/:id", adminController_1.getUserById);
 router.post("/users", adminController_1.createUser);
 router.put("/users/:id", adminController_1.updateUser);
@@ -84,6 +87,7 @@ router.patch("/trial-bookings/:id/status", trialBookingController_1.patchAdminTr
 router.delete("/trial-bookings/:id", (0, auth_1.checkRole)("super_admin"), trialBookingController_1.deleteAdminTrialBooking);
 router.get("/contact-messages", contactMessageController_1.listAdminContactMessages);
 router.patch("/contact-messages/:id/status", contactMessageController_1.patchAdminContactMessageStatus);
+router.post("/sms/send", smsController_1.sendAdminSMS);
 router.get("/newsletter-subscribers", newsletterSubscriberController_1.listAdminNewsletterSubscribers);
 router.patch("/newsletter-subscribers/:id/status", newsletterSubscriberController_1.patchAdminNewsletterSubscriberStatus);
 router.get("/student-admissions", studentAdmissionController_1.listAdminStudentAdmissions);
@@ -188,4 +192,7 @@ router.post("/profile/avatar", (req, res, next) => {
         next();
     });
 }, avatarController_1.uploadProfileAvatar);
+// Site Settings
+router.get("/site-settings", siteSettingsController_1.getSiteSettings);
+router.patch("/site-settings", (0, auth_1.checkRole)("super_admin"), siteSettingsController_1.updateSiteSettings);
 exports.default = router;

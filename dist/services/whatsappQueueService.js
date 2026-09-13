@@ -89,13 +89,13 @@ async function listWhatsAppQueue() {
         .sort({ createdAt: -1 })
         .limit(30);
     for (const trial of trials) {
-        const message = (0, whatsappMessages_1.trialLeadFollowUpMessage)(trial.parentName);
+        const message = (0, whatsappMessages_1.trialLeadFollowUpMessage)(trial.studentName || "");
         items.push({
             id: `trial-${trial._id.toString()}`,
             category: "new_trial",
             title: "New free class lead",
             subtitle: trial.learnerType,
-            recipientName: trial.parentName,
+            recipientName: trial.studentName || "",
             recipientRole: "lead",
             message,
             createdAt: trial.createdAt.toISOString(),

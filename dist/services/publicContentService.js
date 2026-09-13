@@ -84,7 +84,7 @@ async function getPublicStats() {
         totalTeachingHours,
         yearsExperience,
         totalTeachers: websiteTeachers > 0 ? websiteTeachers : portalTeachers,
-        totalStudents,
+        totalStudents: Math.max(300, totalStudents),
         featuredTeachers,
     };
 }

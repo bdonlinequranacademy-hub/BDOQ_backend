@@ -14,6 +14,7 @@ import { extractParentInfoFromFormData } from "../lib/parentInfoFromFormData";
 import { syncUserFromAdmission } from "./userProfileSyncService";
 import { provisionBillingFromAdmission } from "./admissionAdvancePaymentService";
 import { sendEmail } from "./emailService";
+import { sendSMS, isSmsConfigured } from "./smsService";
 import { getPortalBaseUrl } from "../lib/email/resolveAuthOrigin";
 import {
   buildBrandEmailHtml,
@@ -169,6 +170,21 @@ export async function provisionStudentFromAdmission(
     temporaryPassword,
   });
   await provisionBillingFromAdmission(user, application);
+
+  if (isSmsConfigured() && user.whatsapp) {
+    const studentId = user.studentId || "N/A";
+    const smsMessage = `Admission approved! Student ID: ${studentId}. Log in to your portal for details. - BDOQ Academy`;
+    
+    // Fire and forget
+    sendSMS(user.whatsapp, smsMessage)
+      .then((res) => {
+        if (!res.success) console.warn(`[SMS Warning] Admission SMS to ${user.whatsapp} failed: ${res.message}`);
+      })
+      .catch((err) => {
+        console.warn(`[SMS Error] Exception sending admission SMS to ${user.whatsapp}:`, err instanceof Error ? err.message : err);
+      });
+  }
+
   return { user, created: true };
 }
 

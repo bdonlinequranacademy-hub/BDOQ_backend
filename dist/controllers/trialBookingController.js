@@ -63,7 +63,6 @@ const submitTrialBooking = async (req, res) => {
             ? req.body.preferredDays.filter((d) => typeof d === "string")
             : [];
         const result = await (0, trialBookingService_1.createTrialBooking)({
-            parentName: req.body.parentName,
             studentName: req.body.studentName,
             email: req.body.email,
             whatsapp: req.body.whatsapp,
@@ -193,7 +192,6 @@ const patchAdminTrialBooking = async (req, res) => {
             ? req.body.preferredDays.filter((d) => typeof d === "string")
             : undefined;
         const result = await (0, trialBookingService_1.updateTrialBooking)(id, {
-            parentName: typeof req.body.parentName === "string" ? req.body.parentName : undefined,
             studentName: typeof req.body.studentName === "string" ? req.body.studentName : undefined,
             email: typeof req.body.email === "string" ? req.body.email : undefined,
             whatsapp: typeof req.body.whatsapp === "string" ? req.body.whatsapp : undefined,

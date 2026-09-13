@@ -28,6 +28,7 @@ router.patch("/notifications/:id/read", studentController_1.markAsRead);
 router.get("/profile", studentProfileController_1.getStudentProfile);
 router.get("/profile/hub", studentProfileController_1.getStudentProfileHub);
 router.patch("/profile", studentProfileController_1.updateStudentProfile);
+router.put("/profile/application-data", studentProfileController_1.updateMyApplicationData);
 router.patch("/profile/password", studentProfileController_1.changeStudentPassword);
 router.post("/profile/avatar", (req, res, next) => {
     (0, uploadAvatar_1.avatarUpload)(req, res, (err) => {

@@ -9,6 +9,7 @@ const StudentBilling_1 = require("../models/StudentBilling");
 const PaymentRecord_1 = require("../models/PaymentRecord");
 const notificationService_1 = require("./notificationService");
 const paymentService_1 = require("./paymentService");
+const smsService_1 = require("./smsService");
 function startOfDay(d) {
     const x = new Date(d);
     x.setHours(0, 0, 0, 0);
@@ -23,7 +24,7 @@ function populatedStudent(value) {
     return value;
 }
 async function runPaymentReminders() {
-    const billings = await StudentBilling_1.StudentBilling.find({ isActive: true }).populate("student", "name email isActive role");
+    const billings = await StudentBilling_1.StudentBilling.find({ isActive: true }).populate("student", "name email isActive role whatsapp");
     const today = startOfDay(new Date());
     for (const billing of billings) {
         const studentDoc = populatedStudent(billing.student);
@@ -70,6 +71,17 @@ async function runPaymentReminders() {
             message,
             type: "payment",
         });
+        if (kind === "overdue" && (0, smsService_1.isSmsConfigured)() && studentDoc.whatsapp) {
+            const smsMessage = "Payment reminder: Your payment is overdue. Please log in to your BDOQ student portal or contact us to complete your payment. - BD Online Quran Academy";
+            (0, smsService_1.sendSMS)(studentDoc.whatsapp, smsMessage)
+                .then((res) => {
+                if (!res.success)
+                    console.warn(`[SMS Warning] Overdue SMS to ${studentDoc.whatsapp} failed: ${res.message}`);
+            })
+                .catch((err) => {
+                console.warn(`[SMS Error] Exception sending overdue SMS to ${studentDoc.whatsapp}:`, err instanceof Error ? err.message : err);
+            });
+        }
         billing.lastReminderAt = new Date();
         billing.lastReminderKind = kind;
         await billing.save();

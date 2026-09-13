@@ -57,4 +57,8 @@ export function validateEnv(): void {
   if (requireVerify && !isSet(process.env.RESEND_API_KEY)) {
     console.warn("[env] Email verification is enabled but RESEND_API_KEY is not configured.");
   }
+
+  if (!isSet(process.env.BULKSMS_API_KEY) || !isSet(process.env.BULKSMS_SENDER_ID)) {
+    console.warn("[env] BULKSMS_API_KEY or BULKSMS_SENDER_ID is missing. Bulk SMS Dhaka API will not work.");
+  }
 }

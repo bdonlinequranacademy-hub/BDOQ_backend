@@ -83,30 +83,39 @@ const register = async (req, res) => {
             });
             return;
         }
-        const existingUser = await User_1.User.findOne({ email: email.toLowerCase() });
-        if (existingUser) {
-            res.status(400).json({
-                success: false,
-                message: "Email already exists",
-                data: null,
-            });
-            return;
-        }
-        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
-        const assignRole = "student";
+        let user = await User_1.User.findOne({ email: email.toLowerCase() });
+        const assignRole = role || "student";
         const skipVerification = !(0, emailService_1.isEmailVerificationEnforced)() || assignRole !== "student";
-        const studentId = await (0, studentId_1.generateStudentId)();
-        const user = await User_1.User.create({
-            name,
-            email,
-            password: hashedPassword,
-            role: assignRole,
-            authProvider: "local",
-            emailVerified: skipVerification,
-            studentId,
-            timezone: "Asia/Dhaka",
-        });
-        if (!skipVerification) {
+        if (user) {
+            if (user.role === assignRole) {
+                user.password = await bcryptjs_1.default.hash(password, 10);
+                user.name = name;
+                await user.save();
+            }
+            else {
+                res.status(400).json({
+                    success: false,
+                    message: `This email is already registered as a ${user.role}. You cannot create a ${assignRole} account with the same email.`,
+                    data: null,
+                });
+                return;
+            }
+        }
+        else {
+            const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+            const studentId = await (0, studentId_1.generateStudentId)();
+            user = await User_1.User.create({
+                name,
+                email,
+                password: hashedPassword,
+                role: assignRole,
+                authProvider: "local",
+                emailVerified: skipVerification,
+                studentId,
+                timezone: "Asia/Dhaka",
+            });
+        }
+        if (!skipVerification && !user.emailVerified) {
             const raw = await assignVerificationToken(user);
             const authBase = (0, resolveAuthOrigin_1.resolveAuthBaseUrl)(req, "portal");
             await sendUserVerificationEmail(user, raw, authBase);

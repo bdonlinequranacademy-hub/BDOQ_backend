@@ -36,8 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TrialBooking = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const trialBookingSchema = new mongoose_1.Schema({
-    parentName: { type: String, required: true, trim: true },
-    studentName: { type: String, trim: true },
+    studentName: { type: String, required: true, trim: true },
     email: { type: String, trim: true, lowercase: true },
     whatsapp: { type: String, required: true, trim: true },
     country: { type: String, trim: true },

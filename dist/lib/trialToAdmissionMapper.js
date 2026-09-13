@@ -56,7 +56,7 @@ function nationalityFromCountry(country) {
 }
 function buildAdmissionFormDataFromTrial(input) {
     const { booking, email, teacherName } = input;
-    const studentName = booking.studentName?.trim() || booking.parentName;
+    const studentName = booking.studentName?.trim();
     const country = booking.country?.trim() || "Bangladesh";
     const timezone = booking.timezone?.trim() || (0, countryTimezone_1.resolveTimezoneFromCountry)(country);
     const timeParts = parsePreferredTime(booking.preferredTrialTime);
@@ -96,7 +96,6 @@ function buildAdmissionFormDataFromTrial(input) {
         internetType: "wifi",
         packagePlan: "standard",
         paymentMethod: "bkash",
-        parentName: booking.parentName,
         parentRelationship: "Parent/Guardian",
         parentWhatsapp: booking.whatsapp,
         parentEmail: email,

@@ -11,6 +11,7 @@ exports.countTrialBookingsByStatus = countTrialBookingsByStatus;
 const TrialBooking_1 = require("../models/TrialBooking");
 const resolveTeacherAssignment_1 = require("../lib/resolveTeacherAssignment");
 const emailService_1 = require("./emailService");
+const smsService_1 = require("./smsService");
 const notificationService_1 = require("./notificationService");
 const whatsappPhone_1 = require("../lib/whatsappPhone");
 const countryTimezone_1 = require("../lib/countryTimezone");
@@ -42,7 +43,6 @@ function formatBookingText(booking) {
     const localSchedule = (0, countryTimezone_1.formatTrialLocalSchedule)(booking.preferredTrialDate, booking.preferredTrialTime, booking.timezone);
     const bdSchedule = (0, countryTimezone_1.formatTrialBangladeshSchedule)(booking.preferredTrialDate, booking.preferredTrialTime, booking.timezone);
     const lines = [
-        `Parent: ${booking.parentName}`,
         booking.studentName ? `Student: ${booking.studentName}` : null,
         booking.email ? `Email: ${booking.email}` : null,
         `WhatsApp: ${booking.whatsapp}`,
@@ -51,7 +51,7 @@ function formatBookingText(booking) {
         booking.learnerGender ? `Gender: ${booking.learnerGender}` : null,
         `Learner type: ${booking.learnerType}`,
         `Teacher preference: ${booking.teacherPreference}`,
-        localSchedule ? `Trial (parent local): ${localSchedule}` : null,
+        localSchedule ? `Trial (local): ${localSchedule}` : null,
         bdSchedule ? `Trial (Bangladesh): ${bdSchedule}` : null,
         booking.timeSlot ? `Preferred time (legacy): ${booking.timeSlot}` : null,
         booking.preferredDays.length
@@ -81,7 +81,6 @@ function formatTrialBooking(booking, extra) {
         : undefined;
     return {
         _id: booking._id.toString(),
-        parentName: booking.parentName,
         studentName: booking.studentName,
         email: booking.email,
         whatsapp: booking.whatsapp,
@@ -116,7 +115,6 @@ function formatTrialBooking(booking, extra) {
     };
 }
 async function createTrialBooking(input) {
-    const parentName = input.parentName?.trim();
     const studentName = input.studentName?.trim();
     const email = input.email?.trim().toLowerCase();
     const whatsappRaw = input.whatsapp?.trim();
@@ -125,8 +123,8 @@ async function createTrialBooking(input) {
     const preferredTrialTime = input.preferredTrialTime?.trim();
     const additionalNote = input.additionalNote?.trim();
     const timezone = input.timezone?.trim() || (0, countryTimezone_1.resolveTimezoneFromCountry)(country ?? "");
-    if (!parentName || !whatsappRaw) {
-        return { error: "Parent name and WhatsApp are required." };
+    if (!whatsappRaw) {
+        return { error: "WhatsApp is required." };
     }
     if (!studentName) {
         return { error: "Student name is required." };
@@ -148,7 +146,6 @@ async function createTrialBooking(input) {
         return { error: "Invalid learner type." };
     }
     const booking = await TrialBooking_1.TrialBooking.create({
-        parentName,
         studentName,
         email: email || undefined,
         whatsapp: normalizedWa.whatsapp,
@@ -176,7 +173,7 @@ async function createTrialBooking(input) {
         const text = formatBookingText(booking);
         await (0, emailService_1.sendEmail)({
             to: notifyTo,
-            subject: `[Trial] ${parentName} — ${booking.learnerType}`,
+            subject: `[Trial] ${booking.studentName} — ${booking.learnerType}`,
             text,
             html: text.replace(/\n/g, "<br>"),
         }).catch((err) => {
@@ -223,12 +220,6 @@ async function updateTrialBooking(id, input) {
     const booking = await TrialBooking_1.TrialBooking.findById(id);
     if (!booking) {
         return { error: "Trial booking not found" };
-    }
-    if (input.parentName !== undefined) {
-        const parentName = input.parentName.trim();
-        if (!parentName)
-            return { error: "Parent name is required." };
-        booking.parentName = parentName;
     }
     if (input.studentName !== undefined) {
         const studentName = input.studentName.trim();
@@ -393,11 +384,26 @@ async function sendTrialInvitation(id, input) {
     const whatsappUrl = waParsed.ok && waParsed.value.waMeDigits
         ? (0, whatsappPhone_1.buildWaMeUrl)(waParsed.value.waMeDigits, invitation.whatsappMessage)
         : null;
+    const isFirstInvitation = !booking.invitationSentAt;
     booking.invitationSentAt = new Date();
     if (booking.status !== "rejected") {
         booking.status = "scheduled";
     }
     await booking.save();
+    if ((0, smsService_1.isSmsConfigured)() && booking.whatsapp && isFirstInvitation) {
+        const timeStr = booking.preferredTrialTime || "scheduled time";
+        const dateStr = booking.preferredTrialDate || "scheduled date";
+        const smsMessage = `Your trial is scheduled on ${dateStr} at ${timeStr}. Check email/WhatsApp for link. - BDOQ Academy`;
+        // Fire and forget
+        (0, smsService_1.sendSMS)(booking.whatsapp, smsMessage)
+            .then((res) => {
+            if (!res.success)
+                console.warn(`[SMS Warning] Trial schedule SMS to ${booking.whatsapp} failed: ${res.message}`);
+        })
+            .catch((err) => {
+            console.warn(`[SMS Error] Exception sending trial SMS to ${booking.whatsapp}:`, err instanceof Error ? err.message : err);
+        });
+    }
     return {
         booking: formatTrialBooking(booking),
         delivery: {

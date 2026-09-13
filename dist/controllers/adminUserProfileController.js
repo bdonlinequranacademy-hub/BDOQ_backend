@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserProfileDetail = void 0;
+exports.updateUserApplicationData = exports.getUserProfileDetail = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const User_1 = require("../models/User");
 const Class_1 = require("../models/Class");
@@ -364,6 +364,8 @@ const getUserProfileDetail = async (req, res) => {
                     enrollment: admission
                         ? (0, userProfileSyncService_1.buildEnrollmentSummaryFromAdmission)(admission)
                         : null,
+                    applicationData: admission?.formData ?? null,
+                    applicationId: admission ? String(admission._id) : null,
                     stats: {
                         activeClasses: classes.filter((c) => c.isActive !== false).length,
                         totalClasses: classes.length,
@@ -477,3 +479,44 @@ const getUserProfileDetail = async (req, res) => {
     }
 };
 exports.getUserProfileDetail = getUserProfileDetail;
+const updateUserApplicationData = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { applicationId, applicationData } = req.body;
+        if (!applicationId || !applicationData) {
+            res.status(400).json({
+                success: false,
+                message: "Missing application ID or data",
+                data: null,
+            });
+            return;
+        }
+        const application = await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(applicationId);
+        if (!application) {
+            res.status(404).json({
+                success: false,
+                message: "Application not found",
+                data: null,
+            });
+            return;
+        }
+        // Replace old data with new data entirely to support deletion of fields
+        application.formData = applicationData;
+        application.markModified("formData");
+        await application.save();
+        res.status(200).json({
+            success: true,
+            message: "Application data updated successfully",
+            data: application.formData,
+        });
+    }
+    catch (err) {
+        console.error("[admin] updateUserApplicationData failed:", err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update application data",
+            data: null,
+        });
+    }
+};
+exports.updateUserApplicationData = updateUserApplicationData;

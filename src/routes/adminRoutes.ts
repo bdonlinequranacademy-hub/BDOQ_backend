@@ -57,6 +57,7 @@ import {
   listAdminNewsletterSubscribers,
   patchAdminNewsletterSubscriberStatus,
 } from "../controllers/newsletterSubscriberController";
+import { sendAdminSMS } from "../controllers/smsController";
 import {
   listAdminStudentAdmissions,
   patchAdminStudentAdmissionStatus,
@@ -221,6 +222,7 @@ router.delete(
 );
 router.get("/contact-messages", listAdminContactMessages);
 router.patch("/contact-messages/:id/status", patchAdminContactMessageStatus);
+router.post("/sms/send", sendAdminSMS);
 router.get("/newsletter-subscribers", listAdminNewsletterSubscribers);
 router.patch(
   "/newsletter-subscribers/:id/status",

@@ -17,6 +17,7 @@ const parentInfoFromFormData_1 = require("../lib/parentInfoFromFormData");
 const userProfileSyncService_1 = require("./userProfileSyncService");
 const admissionAdvancePaymentService_1 = require("./admissionAdvancePaymentService");
 const emailService_1 = require("./emailService");
+const smsService_1 = require("./smsService");
 const resolveAuthOrigin_1 = require("../lib/email/resolveAuthOrigin");
 const brandEmailTemplate_1 = require("../lib/email/brandEmailTemplate");
 const emailConfig_1 = require("../lib/email/emailConfig");
@@ -149,6 +150,19 @@ async function provisionStudentFromAdmission(application) {
         temporaryPassword,
     });
     await (0, admissionAdvancePaymentService_1.provisionBillingFromAdmission)(user, application);
+    if ((0, smsService_1.isSmsConfigured)() && user.whatsapp) {
+        const studentId = user.studentId || "N/A";
+        const smsMessage = `Admission approved! Student ID: ${studentId}. Log in to your portal for details. - BDOQ Academy`;
+        // Fire and forget
+        (0, smsService_1.sendSMS)(user.whatsapp, smsMessage)
+            .then((res) => {
+            if (!res.success)
+                console.warn(`[SMS Warning] Admission SMS to ${user.whatsapp} failed: ${res.message}`);
+        })
+            .catch((err) => {
+            console.warn(`[SMS Error] Exception sending admission SMS to ${user.whatsapp}:`, err instanceof Error ? err.message : err);
+        });
+    }
     return { user, created: true };
 }
 async function deactivateAdmissionLinkedUser(application) {

@@ -3,6 +3,7 @@ import { PaymentRecord } from "../models/PaymentRecord";
 import { IUser, User } from "../models/User";
 import { createUserNotification, notifyAdmins } from "./notificationService";
 import { billingStatusLabel } from "./paymentService";
+import { sendSMS, isSmsConfigured } from "./smsService";
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -22,7 +23,7 @@ function populatedStudent(value: unknown): IUser | null {
 export async function runPaymentReminders(): Promise<void> {
   const billings = await StudentBilling.find({ isActive: true }).populate(
     "student",
-    "name email isActive role"
+    "name email isActive role whatsapp"
   );
 
   const today = startOfDay(new Date());
@@ -81,6 +82,17 @@ export async function runPaymentReminders(): Promise<void> {
       message,
       type: "payment",
     });
+
+    if (kind === "overdue" && isSmsConfigured() && studentDoc.whatsapp) {
+      const smsMessage = "Payment reminder: Your payment is overdue. Please log in to your BDOQ student portal or contact us to complete your payment. - BD Online Quran Academy";
+      sendSMS(studentDoc.whatsapp, smsMessage)
+        .then((res) => {
+          if (!res.success) console.warn(`[SMS Warning] Overdue SMS to ${studentDoc.whatsapp} failed: ${res.message}`);
+        })
+        .catch((err) => {
+          console.warn(`[SMS Error] Exception sending overdue SMS to ${studentDoc.whatsapp}:`, err instanceof Error ? err.message : err);
+        });
+    }
 
     billing.lastReminderAt = new Date();
     billing.lastReminderKind = kind;

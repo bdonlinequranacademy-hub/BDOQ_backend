@@ -56,9 +56,9 @@ Sign in: ${loginUrl}
 
 Please update your profile and availability in the portal.`;
 }
-function trialLeadFollowUpMessage(parentName) {
-    const first = parentName.split(" ")[0] || parentName;
-    return `Assalamu Alaikum ${first},
+function trialLeadFollowUpMessage(studentName) {
+    const first = studentName.split(" ")[0] || studentName;
+    return `Assalamu Alaikum Dear ${first},
 
 Thank you for booking a *free trial class* with ${ACADEMY}.
 

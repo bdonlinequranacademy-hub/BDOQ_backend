@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getStudentProfileHub = exports.changeStudentPassword = exports.updateStudentProfile = exports.getStudentProfile = void 0;
+exports.getStudentProfileHub = exports.changeStudentPassword = exports.updateMyApplicationData = exports.updateStudentProfile = exports.getStudentProfile = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
 const Class_1 = require("../models/Class");
@@ -32,7 +32,7 @@ function toProfileView(user) {
 }
 const getStudentProfile = async (req, res) => {
     try {
-        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp avatarUrl gender parentInfo");
+        const user = await User_1.User.findById(req.user._id).select("name email role studentId timezone country whatsapp avatarUrl gender parentInfo sourceAdmissionId");
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -41,10 +41,23 @@ const getStudentProfile = async (req, res) => {
             });
             return;
         }
+        let applicationData = null;
+        let applicationId = null;
+        if (user.sourceAdmissionId) {
+            const admission = await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(user.sourceAdmissionId).select("formData").lean();
+            if (admission) {
+                applicationData = admission.formData;
+                applicationId = String(admission._id);
+            }
+        }
         res.status(200).json({
             success: true,
             message: "Profile fetched successfully",
-            data: toProfileView(user),
+            data: {
+                ...toProfileView(user),
+                applicationData,
+                applicationId,
+            },
         });
     }
     catch {
@@ -107,6 +120,55 @@ const updateStudentProfile = async (req, res) => {
     }
 };
 exports.updateStudentProfile = updateStudentProfile;
+const updateMyApplicationData = async (req, res) => {
+    try {
+        const { applicationId, applicationData } = req.body;
+        if (!applicationId || !applicationData) {
+            res.status(400).json({
+                success: false,
+                message: "Missing application ID or data",
+                data: null,
+            });
+            return;
+        }
+        const application = await StudentAdmissionApplication_1.StudentAdmissionApplication.findById(applicationId);
+        if (!application) {
+            res.status(404).json({
+                success: false,
+                message: "Application not found",
+                data: null,
+            });
+            return;
+        }
+        // Verify ownership
+        if (String(application.linkedUserId) !== String(req.user._id)) {
+            res.status(403).json({
+                success: false,
+                message: "Not authorized to update this application",
+                data: null,
+            });
+            return;
+        }
+        // Replace old data with new data entirely to support deletion of fields
+        application.formData = applicationData;
+        application.markModified("formData");
+        await application.save();
+        res.status(200).json({
+            success: true,
+            message: "Application data updated successfully",
+            data: application.formData,
+        });
+    }
+    catch (err) {
+        console.error("[student] updateMyApplicationData failed:", err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update application data",
+            data: null,
+        });
+    }
+};
+exports.updateMyApplicationData = updateMyApplicationData;
 const changeStudentPassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -193,7 +255,11 @@ const getStudentProfileHub = async (req, res) => {
             success: true,
             message: "Profile hub fetched successfully",
             data: {
-                profile: toProfileView(user),
+                profile: {
+                    ...toProfileView(user),
+                    applicationData: admission ? admission.formData : null,
+                    applicationId: admission ? String(admission._id) : null,
+                },
                 enrollment: admission
                     ? (0, userProfileSyncService_1.buildEnrollmentSummaryFromAdmission)(admission)
                     : null,

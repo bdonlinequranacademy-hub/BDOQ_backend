@@ -168,8 +168,10 @@ function formatActiveTeacherDisplay(count) {
 async function getPublicLiveDashboard() {
     const payload = await getLiveMonitorPayload();
     const now = new Date();
-    const queueSessions = payload.sessions
-        .filter((s) => s.sessionPhase === "live" || s.sessionPhase === "upcoming")
+    const allActiveSessions = payload.sessions.filter((s) => s.sessionPhase === "live" || s.sessionPhase === "upcoming");
+    const totalLiveCount = allActiveSessions.filter((s) => s.sessionPhase === "live").length;
+    const totalQueuedCount = allActiveSessions.filter((s) => s.sessionPhase === "upcoming").length;
+    const queueSessions = allActiveSessions
         .sort((a, b) => {
         const phaseOrder = { live: 0, upcoming: 1, completed: 2 };
         const phaseDiff = phaseOrder[a.sessionPhase] - phaseOrder[b.sessionPhase];
@@ -185,9 +187,8 @@ async function getPublicLiveDashboard() {
         status: session.sessionPhase === "live" ? "live" : "queued",
         timeLabel: formatSessionTimeLabel(session, now),
     }));
-    const liveTeacherIds = new Set(payload.sessions
-        .filter((s) => s.sessionPhase === "live" || s.sessionPhase === "upcoming")
-        .map((s) => s.teacher._id));
+    const liveTeacherIds = new Set(allActiveSessions.map((s) => s.teacher._id));
+    const totalOnlineTeachersCount = liveTeacherIds.size;
     const teacherDocs = await User_1.User.find({
         _id: { $in: [...liveTeacherIds] },
         role: "teacher",
@@ -218,6 +219,9 @@ async function getPublicLiveDashboard() {
         teachersOnline,
         activeTeacherCount,
         activeTeacherDisplay: formatActiveTeacherDisplay(activeTeacherCount),
+        totalLiveCount,
+        totalQueuedCount,
+        totalOnlineTeachersCount,
         updatedAt: payload.updatedAt,
     };
 }

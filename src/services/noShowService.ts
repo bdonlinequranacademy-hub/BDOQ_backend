@@ -8,6 +8,7 @@ import {
 } from "./notificationService";
 import { getJoinMapForDate } from "./sessionJoinService";
 import { emitAdminLiveMonitorUpdate } from "../realtime/socketServer";
+import { sendSMS, isSmsConfigured } from "./smsService";
 import {
   ACADEMY_TIMEZONE,
   formatWeeklyTime,
@@ -95,8 +96,8 @@ export async function runNoShowChecks(): Promise<number> {
 
   const slots = await SessionSlot.find({ day, isActive: true })
     .populate("class", "title isActive")
-    .populate("teacher", "name email isActive")
-    .populate("student", "name email isActive");
+    .populate("teacher", "name email isActive whatsapp")
+    .populate("student", "name email isActive whatsapp");
 
   let alertsSent = 0;
 
@@ -162,6 +163,18 @@ export async function runNoShowChecks(): Promise<number> {
       await markAlertSent(slotId, sessionDate, "teacher_no_show");
       const msg = `${teacher.name} did not join "${classDoc.title}" with ${student.name} (${timeLabel}).`;
       await notifyAdmins("Teacher no-show", msg, "class");
+      
+      if (isSmsConfigured() && student.whatsapp) {
+        const smsMessage = "Sorry, your teacher hasn't joined the class yet. Our team has been notified and will assist you shortly. - BDOQ Academy";
+        sendSMS(student.whatsapp, smsMessage)
+          .then((res) => {
+            if (!res.success) console.warn(`[SMS Warning] Teacher no-show SMS to ${student.whatsapp} failed: ${res.message}`);
+          })
+          .catch((err) => {
+            console.warn(`[SMS Error] Exception sending teacher no-show SMS to ${student.whatsapp}:`, err instanceof Error ? err.message : err);
+          });
+      }
+
       alertsSent += 1;
     }
 

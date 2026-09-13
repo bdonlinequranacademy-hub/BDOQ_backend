@@ -39,7 +39,7 @@ async function convertTrialToAdmission(trialId, input) {
         ? await (0, resolveTeacherAssignment_1.resolveTeacherAssignment)(booking.teacherSlug)
         : null;
     const teacher = teacherResult && !("error" in teacherResult) ? teacherResult : null;
-    const studentName = booking.studentName?.trim() || booking.parentName;
+    const studentName = booking.studentName?.trim() || "Student";
     const formData = (0, trialToAdmissionMapper_1.buildAdmissionFormDataFromTrial)({
         booking,
         email,
