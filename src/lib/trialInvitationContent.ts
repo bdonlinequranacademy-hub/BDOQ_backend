@@ -7,7 +7,7 @@ import { formatTrialMeetingPlatform } from "./trialMeetingPlatform";
 import { normalizeMeetingLink } from "./trialMeetingPlatform";
 
 const ACADEMY = "BD Online Quran Academy";
-const WHATSAPP_SUPPORT = "+8801923-947460";
+const WHATSAPP_SUPPORT = "+8801923947460";
 
 export interface ITrialInvitationContentInput {
   booking: ITrialBooking;
