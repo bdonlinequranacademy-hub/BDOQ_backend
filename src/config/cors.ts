@@ -50,6 +50,9 @@ export function getAllowedOrigins(): string[] {
     "http://localhost:5174",
     "http://localhost:5175",
     "http://localhost:4321",
+    "https://www.bdonlinequranacademy.com",
+    "https://admin.bdonlinequranacademy.com"
+
   ];
 
   const fromEnv = parseOriginList(process.env.CORS_ORIGINS);
